@@ -14,7 +14,6 @@ function App() {
       <div className="py-16"></div>
 
       <ServiceSchedule />
-      <About />
     </>
   );
 }
