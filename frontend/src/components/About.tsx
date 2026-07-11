@@ -48,10 +48,6 @@ function About() {
             for a church family to call home, you'll find a welcoming community
             committed to loving God, loving people, and making disciples.
           </p>
-
-          <button className="min-w-[240px] rounded-xl bg-[#556B2F] px-10 py-5 font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-[#6B8E23]">
-            Learn More About GGCCC
-          </button>
         </div>
       </div>
     </section>
