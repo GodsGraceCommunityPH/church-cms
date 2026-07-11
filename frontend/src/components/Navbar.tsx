@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-black/30 text-white backdrop-blur-md transition-all duration-300">
@@ -15,8 +17,10 @@ function Navbar() {
             Home
           </li>
 
-          <li className="cursor-pointer transition hover:text-[#6B8E23]">
-            About
+          <li>
+            <Link to="/about" className="transition hover:text-[#6B8E23]">
+              About
+            </Link>
           </li>
 
           <li className="cursor-pointer transition hover:text-[#6B8E23]">

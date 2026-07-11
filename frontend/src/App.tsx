@@ -1,19 +1,19 @@
+import { Routes, Route } from "react-router-dom";
+
 import Navbar from "./components/Navbar";
-import Hero from "./components/Hero";
-import ServiceSchedule from "./components/ServiceSchedule";
-import Welcome from "./components/Welcome";
-import About from "./components/About";
+
+import HomePage from "./pages/HomePage";
+import AboutPage from "./pages/AboutPage";
 
 function App() {
   return (
     <>
       <Navbar />
-      <Hero />
-      <Welcome />
 
-      <div className="py-16"></div>
-
-      <ServiceSchedule />
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/about" element={<AboutPage />} />
+      </Routes>
     </>
   );
 }
