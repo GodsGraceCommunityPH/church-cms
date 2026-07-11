@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { NavLink, Link } from "react-router-dom";
 
 function Navbar() {
   return (
@@ -13,8 +13,10 @@ function Navbar() {
         <h1 className="text-xl font-bold">God's Grace Community</h1>
 
         <ul className="flex items-center gap-8 text-sm font-medium">
-          <li className="cursor-pointer transition hover:text-[#6B8E23]">
-            Home
+          <li>
+            <Link to="/" className="transition hover:text-[#6B8E23]">
+              Home
+            </Link>
           </li>
 
           <li>
@@ -23,12 +25,14 @@ function Navbar() {
             </Link>
           </li>
 
-          <li className="cursor-pointer transition hover:text-[#6B8E23]">
+          {/* <li className="cursor-pointer transition hover:text-[#6B8E23]">
             Ministries
-          </li>
+          </li> */}
 
-          <li className="cursor-pointer transition hover:text-[#6B8E23]">
-            Contact
+          <li>
+            <Link to="/contact" className="transition hover:text-[#6B8E23]">
+              Contact
+            </Link>
           </li>
 
           <li>
