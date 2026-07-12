@@ -1,4 +1,4 @@
-import { MapPin, Mail, ArrowRight, HeartHandshake } from "lucide-react";
+import { MapPin, Mail } from "lucide-react";
 
 function ContactPage() {
   return (
@@ -117,7 +117,7 @@ function ContactPage() {
                   padding: "5px 15px",
                 }}
               >
-                Visit our Facebook
+                <span>Visit our Facebook</span>
               </a>
             </div>
           </section>
