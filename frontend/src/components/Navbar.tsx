@@ -33,7 +33,7 @@ function Navbar() {
             <NavLink
               to="/"
               className={({ isActive }) =>
-                isActive ? "text-[#A3B18A]" : "transition hover:text-[#A3B18A]"
+                isActive ? "text-[#DDE5C3]" : "transition hover:text-[#DDE5C3]"
               }
             >
               Home
@@ -42,7 +42,7 @@ function Navbar() {
             <NavLink
               to="/about"
               className={({ isActive }) =>
-                isActive ? "text-[#A3B18A]" : "transition hover:text-[#A3B18A]"
+                isActive ? "text-[#DDE5C3]" : "transition hover:text-[#DDE5C3]"
               }
             >
               About
@@ -51,7 +51,7 @@ function Navbar() {
             <NavLink
               to="/contact"
               className={({ isActive }) =>
-                isActive ? "text-[#A3B18A]" : "transition hover:text-[#A3B18A]"
+                isActive ? "text-[#DDE5C3]" : "transition hover:text-[#DDE5C3]"
               }
             >
               Contact
@@ -86,7 +86,7 @@ function Navbar() {
         <div className="flex justify-end px-6 pt-8 pb-6">
           <button
             onClick={closeMenu}
-            className="text-white transition hover:text-[#A3B18A]"
+            className="text-white transition hover:text-[#DDE5C3]"
           >
             <X size={30} />
           </button>
@@ -100,8 +100,8 @@ function Navbar() {
             className={({ isActive }) =>
               `flex w-[90%] items-center rounded-xl border-l-4 px-5 py-4 transition ${
                 isActive
-                  ? "border-[#556B2F] text-[#A3B18A]"
-                  : "border-transparent text-white hover:border-[#556B2F] hover:text-[#A3B18A]"
+                  ? "border-[#556B2F] text-[#DDE5C3]"
+                  : "border-transparent text-white hover:border-[#556B2F] hover:text-[#DDE5C3]"
               }`
             }
           >
@@ -117,8 +117,8 @@ function Navbar() {
             className={({ isActive }) =>
               `flex w-[90%] items-center rounded-xl border-l-4 px-5 py-4 transition ${
                 isActive
-                  ? "border-[#556B2F] text-[#A3B18A]"
-                  : "border-transparent text-white hover:border-[#556B2F] hover:text-[#A3B18A]"
+                  ? "border-[#556B2F] text-[#DDE5C3]"
+                  : "border-transparent text-white hover:border-[#556B2F] hover:text-[#DDE5C3]"
               }`
             }
           >
@@ -134,8 +134,8 @@ function Navbar() {
             className={({ isActive }) =>
               `flex w-[90%] items-center rounded-xl border-l-4 px-5 py-4 transition ${
                 isActive
-                  ? "border-[#556B2F] text-[#A3B18A]"
-                  : "border-transparent text-white hover:border-[#556B2F] hover:text-[#A3B18A]"
+                  ? "border-[#556B2F] text-[#DDE5C3]"
+                  : "border-transparent text-white hover:border-[#556B2F] hover:text-[#DDE5C3]"
               }`
             }
           >
