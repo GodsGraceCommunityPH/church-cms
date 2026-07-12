@@ -11,10 +11,10 @@ function Hero() {
       />
 
       {/* Dark Overlay */}
-      <div className="absolute inset-0 bg-black/60"></div>
+      <div className="absolute inset-0 bg-black/60" />
 
       {/* Bottom Gradient */}
-      <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-b from-transparent to-white"></div>
+      <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-b from-transparent to-white" />
 
       {/* Hero Content */}
       <div className="relative z-10">
@@ -45,12 +45,13 @@ function Hero() {
               Making Disciples.
             </p>
 
-            <div className="flex gap-6">
-              <button className="min-w-[240px] rounded-xl bg-[#556B2F] px-10 py-5 font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-[#6B8E23]">
+            {/* Buttons */}
+            <div className="flex flex-col gap-4 md:flex-row md:gap-6">
+              <button className="w-full rounded-xl bg-[#556B2F] px-10 py-5 font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-[#6B8E23] md:min-w-[240px] md:w-auto">
                 Join Us This Sunday
               </button>
 
-              <button className="min-w-[240px] rounded-xl border border-[#A3B18A] px-10 py-5 font-semibold text-white transition-all duration-300 hover:bg-[#A3B18A] hover:text-slate-900">
+              <button className="w-full rounded-xl border-2 border-[#556B2F] bg-white px-10 py-5 font-semibold text-[#556B2F] transition-all duration-300 hover:bg-[#556B2F] hover:text-white md:min-w-[240px] md:w-auto md:border-[#A3B18A] md:bg-transparent md:text-white md:hover:bg-[#A3B18A] md:hover:text-slate-900">
                 Watch Sermons
               </button>
             </div>

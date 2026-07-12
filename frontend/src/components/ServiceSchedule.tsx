@@ -8,14 +8,14 @@ function ServiceSchedule() {
       time: "10:00 AM – 11:30 AM",
     },
     {
-      icon: <BookOpen size={42} strokeWidth={2} className="text-[#556B2F]" />,
-      title: "Lifeline",
-      time: "12:30 PM - Every last Sunday of the month",
-    },
-    {
       icon: <Sunset size={42} strokeWidth={2} className="text-[#556B2F]" />,
       title: "Afternoon Worship",
       time: "2:00 PM – 3:30 PM",
+    },
+    {
+      icon: <BookOpen size={42} strokeWidth={2} className="text-[#556B2F]" />,
+      title: "Lifeline",
+      time: "12:30 PM - Every last Sunday of the month",
     },
     {
       icon: <Compass size={42} strokeWidth={2} className="text-[#556B2F]" />,
