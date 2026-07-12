@@ -10,14 +10,14 @@ function About() {
       }}
     >
       <div
-        className="grid items-center gap-20 lg:grid-cols-2"
+        className="grid items-center gap-12 lg:grid-cols-2"
         style={{
           paddingLeft: "80px",
           paddingRight: "80px",
         }}
       >
         {/* Church Image */}
-        <div>
+        <div className="order-2 lg:order-2">
           <img
             src={churchImage}
             alt="God's Grace Community Covenant Church"
@@ -26,7 +26,7 @@ function About() {
         </div>
 
         {/* Content */}
-        <div>
+        <div className="order-1 lg:order-1">
           <p className="mb-4 text-sm font-semibold uppercase tracking-[0.4em] text-[#A3B18A]">
             OUR STORY
           </p>
