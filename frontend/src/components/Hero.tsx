@@ -47,13 +47,23 @@ function Hero() {
 
             {/* Buttons */}
             <div className="flex flex-col gap-4 md:flex-row md:gap-6">
-              <button className="w-full rounded-xl bg-[#556B2F] px-10 py-5 font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-[#6B8E23] md:min-w-[240px] md:w-auto">
+              {/* Join Us */}
+              <a
+                href="#services"
+                className="w-full rounded-xl bg-[#556B2F] px-10 py-5 text-center font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-[#6B8E23] md:min-w-[240px] md:w-auto"
+              >
                 Join Us This Sunday
-              </button>
+              </a>
 
-              <button className="w-full rounded-xl border-2 border-[#556B2F] bg-white px-10 py-5 font-semibold text-[#556B2F] transition-all duration-300 hover:bg-[#556B2F] hover:text-white md:min-w-[240px] md:w-auto md:border-[#A3B18A] md:bg-transparent md:text-white md:hover:bg-[#A3B18A] md:hover:text-slate-900">
+              {/* Watch Sermons */}
+              <a
+                href="https://www.facebook.com/GGCCCCaloocan"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full rounded-xl border-2 border-[#556B2F] bg-white px-10 py-5 text-center font-semibold text-[#556B2F] transition-all duration-300 hover:bg-[#556B2F] hover:text-white md:min-w-[240px] md:w-auto md:border-[#A3B18A] md:bg-transparent md:text-white md:hover:bg-[#A3B18A] md:hover:text-slate-900"
+              >
                 Watch Sermons
-              </button>
+              </a>
             </div>
           </div>
         </div>

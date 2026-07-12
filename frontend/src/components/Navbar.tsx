@@ -1,90 +1,152 @@
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { Menu, X, House, Info, Mail } from "lucide-react";
 
 function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const navLink = "transition-colors duration-300 hover:text-[#A3B18A]";
+  const closeMenu = () => setMenuOpen(false);
 
   return (
-    <nav className="fixed inset-x-0 top-0 z-50 bg-black/30 text-white backdrop-blur-md">
-      <div
-        className="flex h-20 items-center justify-between md:h-24"
-        style={{
-          paddingLeft: "max(24px, env(safe-area-inset-left))",
-          paddingRight: "max(24px, env(safe-area-inset-right))",
-        }}
-      >
-        {/* Logo */}
-        <Link to="/" className="text-xl font-bold tracking-wide lg:text-2xl">
-          <span className="lg:hidden">GGCCC</span>
+    <>
+      {/* Navbar */}
+      <nav className="fixed inset-x-0 top-0 z-50 bg-black/30 backdrop-blur-md">
+        <div
+          className="flex h-20 w-full items-center justify-between"
+          style={{
+            paddingLeft: window.innerWidth < 768 ? "24px" : "80px",
+            paddingRight: window.innerWidth < 768 ? "24px" : "80px",
+          }}
+        >
+          {/* Logo */}
+          <Link
+            to="/"
+            onClick={closeMenu}
+            className="text-2xl font-bold text-white"
+          >
+            <span className="lg:hidden">GGCCC</span>
+            <span className="hidden lg:block">God's Grace Community</span>
+          </Link>
 
-          <span className="hidden lg:inline">God's Grace Community</span>
-        </Link>
-
-        {/* Desktop */}
-        <ul className="hidden items-center gap-10 text-sm font-medium md:flex">
-          <li>
-            <NavLink to="/" className={navLink}>
+          {/* Desktop */}
+          <div className="hidden items-center gap-10 font-medium text-white md:flex">
+            <NavLink
+              to="/"
+              className={({ isActive }) =>
+                isActive ? "text-[#A3B18A]" : "transition hover:text-[#A3B18A]"
+              }
+            >
               Home
             </NavLink>
-          </li>
 
-          <li>
-            <NavLink to="/about" className={navLink}>
+            <NavLink
+              to="/about"
+              className={({ isActive }) =>
+                isActive ? "text-[#A3B18A]" : "transition hover:text-[#A3B18A]"
+              }
+            >
               About
             </NavLink>
-          </li>
 
-          <li>
-            <NavLink to="/contact" className={navLink}>
+            <NavLink
+              to="/contact"
+              className={({ isActive }) =>
+                isActive ? "text-[#A3B18A]" : "transition hover:text-[#A3B18A]"
+              }
+            >
               Contact
             </NavLink>
-          </li>
-        </ul>
-
-        {/* Mobile */}
-        <button
-          className="rounded-lg p-2 transition hover:bg-white/10 md:hidden"
-          onClick={() => setMenuOpen(!menuOpen)}
-        >
-          {menuOpen ? <X size={30} /> : <Menu size={30} />}
-        </button>
-      </div>
-
-      {menuOpen && (
-        <div className="border-t border-white/10 bg-black/90 backdrop-blur-xl md:hidden">
-          <div
-            className="py-6"
-            style={{
-              paddingLeft: "max(24px, env(safe-area-inset-left))",
-              paddingRight: "max(24px, env(safe-area-inset-right))",
-            }}
-          >
-            <ul className="space-y-5 text-lg">
-              <li>
-                <NavLink to="/" onClick={() => setMenuOpen(false)}>
-                  Home
-                </NavLink>
-              </li>
-
-              <li>
-                <NavLink to="/about" onClick={() => setMenuOpen(false)}>
-                  About
-                </NavLink>
-              </li>
-
-              <li>
-                <NavLink to="/contact" onClick={() => setMenuOpen(false)}>
-                  Contact
-                </NavLink>
-              </li>
-            </ul>
           </div>
+
+          {/* Hamburger */}
+          <button
+            onClick={() => setMenuOpen(true)}
+            className="text-white md:hidden"
+          >
+            <Menu size={30} />
+          </button>
         </div>
-      )}
-    </nav>
+      </nav>
+
+      {/* Backdrop */}
+      <div
+        onClick={closeMenu}
+        className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 md:hidden ${
+          menuOpen ? "visible opacity-100" : "invisible opacity-0"
+        }`}
+      />
+
+      {/* Drawer */}
+      <aside
+        className={`fixed right-0 top-0 z-50 h-screen w-[58%] max-w-[250px] bg-black/90 backdrop-blur-xl shadow-2xl transition-transform duration-300 md:hidden ${
+          menuOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        {/* Close */}
+        <div className="flex justify-end px-6 pt-8 pb-6">
+          <button
+            onClick={closeMenu}
+            className="text-white transition hover:text-[#A3B18A]"
+          >
+            <X size={30} />
+          </button>
+        </div>
+
+        {/* Menu */}
+        <nav className="mt-4 flex flex-col items-center gap-3 px-4">
+          <NavLink
+            to="/"
+            onClick={closeMenu}
+            className={({ isActive }) =>
+              `flex w-[90%] items-center rounded-xl border-l-4 px-5 py-4 transition ${
+                isActive
+                  ? "border-[#556B2F] text-[#A3B18A]"
+                  : "border-transparent text-white hover:border-[#556B2F] hover:text-[#A3B18A]"
+              }`
+            }
+          >
+            <div className="flex items-center gap-4">
+              <House size={20} />
+              <span className="text-base font-medium">Home</span>
+            </div>
+          </NavLink>
+
+          <NavLink
+            to="/about"
+            onClick={closeMenu}
+            className={({ isActive }) =>
+              `flex w-[90%] items-center rounded-xl border-l-4 px-5 py-4 transition ${
+                isActive
+                  ? "border-[#556B2F] text-[#A3B18A]"
+                  : "border-transparent text-white hover:border-[#556B2F] hover:text-[#A3B18A]"
+              }`
+            }
+          >
+            <div className="flex items-center gap-4">
+              <Info size={20} />
+              <span className="text-base font-medium">About</span>
+            </div>
+          </NavLink>
+
+          <NavLink
+            to="/contact"
+            onClick={closeMenu}
+            className={({ isActive }) =>
+              `flex w-[90%] items-center rounded-xl border-l-4 px-5 py-4 transition ${
+                isActive
+                  ? "border-[#556B2F] text-[#A3B18A]"
+                  : "border-transparent text-white hover:border-[#556B2F] hover:text-[#A3B18A]"
+              }`
+            }
+          >
+            <div className="flex items-center gap-4">
+              <Mail size={20} />
+              <span className="text-base font-medium">Contact</span>
+            </div>
+          </NavLink>
+        </nav>
+      </aside>
+    </>
   );
 }
 
