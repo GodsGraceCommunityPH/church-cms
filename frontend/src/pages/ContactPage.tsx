@@ -114,7 +114,7 @@ function ContactPage() {
                 rel="noopener noreferrer"
                 className="inline-block rounded-xl bg-[#556B2F] px-10 py-5 text-center font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-[#6B8E23]"
                 style={{
-                  padding: "5px 5px",
+                  padding: "5px 15px",
                 }}
               >
                 Visit our Facebook
