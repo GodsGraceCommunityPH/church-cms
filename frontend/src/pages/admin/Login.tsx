@@ -147,8 +147,14 @@ function Login() {
 
                 <p className="mt-1 text-sm leading-6 text-slate-600">
                   This portal is for authorized church staff and ministry
-                  leaders. Please contact the <strong>GGCCC IT Ministry</strong>{" "}
-                  if you need an account.
+                  leaders. Please contact the{" "}
+                  <Link
+                    to="/contact"
+                    className="font-semibold text-[#556B2F] transition hover:underline"
+                  >
+                    GGCCC IT Ministry
+                  </Link>{" "}
+                  if you need an account. if you need an account.
                 </p>
               </div>
             </div>
