@@ -89,47 +89,107 @@ function GivePage() {
 
           <div className="grid gap-8 lg:grid-cols-3">
             {/* Cash */}
-            <div className="rounded-3xl border border-slate-200 p-10 text-center shadow-sm">
-              <HandCoins size={42} className="mx-auto mb-6 text-[#556B2F]" />
+            <div
+              className="rounded-3xl border border-slate-200 shadow-sm"
+              style={{
+                padding: "36px 28px",
+              }}
+            >
+              <div
+                style={{
+                  paddingBottom: "24px",
+                }}
+                className="flex justify-center"
+              >
+                <HandCoins size={46} className="text-[#556B2F]" />
+              </div>
 
-              <h3 className="mb-4 text-2xl font-semibold text-slate-900">
-                Cash
-              </h3>
+              <div
+                style={{
+                  maxWidth: "300px",
+                  margin: "0 auto",
+                  textAlign: "center",
+                }}
+              >
+                <h3 className="mb-4 text-2xl font-semibold text-slate-900">
+                  Cash
+                </h3>
 
-              <p className="leading-8 text-slate-600">
-                You may give your tithes and offerings during any worship
-                service.
-              </p>
+                <p className="leading-8 text-slate-600">
+                  You may give your tithes and offerings during any worship
+                  service.
+                </p>
+              </div>
             </div>
 
             {/* Bank */}
-            <div className="rounded-3xl border border-slate-200 p-10 text-center shadow-sm">
-              <Landmark size={42} className="mx-auto mb-6 text-[#556B2F]" />
+            <div
+              className="rounded-3xl border border-slate-200 shadow-sm"
+              style={{
+                padding: "36px 28px",
+              }}
+            >
+              <div
+                style={{
+                  paddingBottom: "24px",
+                }}
+                className="flex justify-center"
+              >
+                <Landmark size={46} className="text-[#556B2F]" />
+              </div>
 
-              <h3 className="mb-4 text-2xl font-semibold text-slate-900">
-                Bank Transfer
-              </h3>
+              <div
+                style={{
+                  maxWidth: "300px",
+                  margin: "0 auto",
+                  textAlign: "center",
+                }}
+              >
+                <h3 className="mb-4 text-2xl font-semibold text-slate-900">
+                  Bank Transfer
+                </h3>
 
-              <p className="leading-8 text-slate-600">
-                <strong>Bank:</strong> Coming Soon
-                <br />
-                <strong>Account Name:</strong> Coming Soon
-                <br />
-                <strong>Account No.:</strong> Coming Soon
-              </p>
+                <p className="leading-8 text-slate-600">
+                  <strong>Bank:</strong> Coming Soon
+                  <br />
+                  <strong>Account Name:</strong> Coming Soon
+                  <br />
+                  <strong>Account No.:</strong> Coming Soon
+                </p>
+              </div>
             </div>
 
             {/* GCash */}
-            <div className="rounded-3xl border border-slate-200 p-10 text-center shadow-sm">
-              <Wallet size={42} className="mx-auto mb-6 text-[#556B2F]" />
+            <div
+              className="rounded-3xl border border-slate-200 shadow-sm"
+              style={{
+                padding: "36px 28px",
+              }}
+            >
+              <div
+                style={{
+                  paddingBottom: "24px",
+                }}
+                className="flex justify-center"
+              >
+                <Wallet size={46} className="text-[#556B2F]" />
+              </div>
 
-              <h3 className="mb-4 text-2xl font-semibold text-slate-900">
-                GCash
-              </h3>
+              <div
+                style={{
+                  maxWidth: "300px",
+                  margin: "0 auto",
+                  textAlign: "center",
+                }}
+              >
+                <h3 className="mb-4 text-2xl font-semibold text-slate-900">
+                  GCash
+                </h3>
 
-              <p className="leading-8 text-slate-600">
-                GCash details and QR code will be available soon.
-              </p>
+                <p className="leading-8 text-slate-600">
+                  GCash details and QR code will be available soon.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -168,7 +228,7 @@ function GivePage() {
               target="_blank"
               className="w-full md:w-64"
             >
-              Watch Sermons
+              Contact Us
             </PrimaryButton>
           </Link>
         </div>
