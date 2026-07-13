@@ -36,9 +36,11 @@ function Welcome() {
           to="/about"
           className="mt-12 inline-flex min-w-[260px] items-center justify-center rounded-xl bg-[#556B2F] px-10 py-4 font-semibold text-white transition duration-300 hover:bg-[#6B8E23]"
         >
-          <PrimaryButton variant="hero" href="#services">
-            Learn More About Us
-          </PrimaryButton>
+          <div className="flex flex-col gap-4 md:flex-row">
+            <PrimaryButton variant="primary" href="#services">
+              Learn More About Us
+            </PrimaryButton>
+          </div>
         </Link>
       </div>
     </section>
