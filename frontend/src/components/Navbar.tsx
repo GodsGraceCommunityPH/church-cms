@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { Menu, X, House, Info, Mail } from "lucide-react";
+import logo from "../assets/ggccc-logo.png";
 
 function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -19,13 +20,26 @@ function Navbar() {
           }}
         >
           {/* Logo */}
-          <Link
-            to="/"
-            onClick={closeMenu}
-            className="text-2xl font-bold text-white"
-          >
-            <span className="lg:hidden">GGCCC</span>
-            <span className="hidden lg:block">God's Grace Community</span>
+          <Link to="/" onClick={closeMenu} className="flex items-center gap-4">
+            <img
+              src={logo}
+              alt="GGCCC Logo"
+              className="h-12 w-12 object-contain"
+            />
+
+            <div className="hidden lg:block">
+              <h1 className="text-xl font-bold text-white leading-none">
+                God's Grace Community
+              </h1>
+
+              <p className="text-xs tracking-[0.2em] text-slate-300">
+                COVENANT CHURCH
+              </p>
+            </div>
+
+            <span className="text-xl font-bold text-white lg:hidden">
+              GGCCC
+            </span>
           </Link>
 
           {/* Desktop */}

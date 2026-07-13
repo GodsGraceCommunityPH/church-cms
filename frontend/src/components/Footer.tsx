@@ -1,3 +1,5 @@
+import whiteLogo from "../assets/ggccc-logo-white.png";
+
 function Footer() {
   return (
     <footer
@@ -15,6 +17,11 @@ function Footer() {
         }}
       >
         {/* Church Name */}
+        <img
+          src={whiteLogo}
+          alt="GGCCC Logo"
+          className="mb-6 h-20 w-20 object-contain"
+        />
         <h2 className="text-2xl font-bold">
           God's Grace Community Covenant Church
         </h2>
