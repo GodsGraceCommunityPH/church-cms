@@ -46,22 +46,23 @@ function Hero() {
             </p>
 
             {/* Buttons */}
-            <div className="flex flex-col gap-4 md:flex-row md:gap-6">
-              {/* Join Us */}
-
-              <PrimaryButton variant="hero" href="#services">
+            <div className="flex flex-col gap-4 md:flex-row">
+              <PrimaryButton
+                variant="primary"
+                href="#services"
+                className="w-full md:w-64"
+              >
                 Join Us This Sunday
               </PrimaryButton>
 
-              {/* Watch Sermons */}
-              <a
+              <PrimaryButton
+                variant="secondary"
                 href="https://www.facebook.com/GGCCCCaloocan"
                 target="_blank"
-                rel="noopener noreferrer"
-                className="w-full rounded-xl border-2 border-[#556B2F] bg-white px-10 py-5 text-center font-semibold text-[#556B2F] transition-all duration-300 hover:bg-[#556B2F] hover:text-white md:min-w-[240px] md:w-auto md:border-[#A3B18A] md:bg-transparent md:text-white md:hover:bg-[#A3B18A] md:hover:text-slate-900"
+                className="w-full md:w-64"
               >
                 Watch Sermons
-              </a>
+              </PrimaryButton>
             </div>
           </div>
         </div>

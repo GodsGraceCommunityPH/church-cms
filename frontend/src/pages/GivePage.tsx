@@ -72,7 +72,7 @@ function GivePage() {
         {/* Ways to Give */}
         <div
           style={{
-            paddingTop: "30px",
+            paddingTop: "180px",
           }}
           className="mt-28"
         >
