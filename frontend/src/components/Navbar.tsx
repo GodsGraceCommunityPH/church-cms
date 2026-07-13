@@ -180,6 +180,23 @@ function Navbar() {
           </NavLink>
 
           <NavLink
+            to="/give"
+            onClick={closeMenu}
+            className={({ isActive }) =>
+              `flex w-[90%] items-center rounded-xl border-l-4 px-5 py-4 transition ${
+                isActive
+                  ? "border-[#556B2F] text-[#DDE5C3]"
+                  : "border-transparent text-white hover:border-[#556B2F] hover:text-[#DDE5C3]"
+              }`
+            }
+          >
+            <div className="flex items-center gap-4">
+              <Mail size={20} />
+              <span className="text-base font-medium">Give</span>
+            </div>
+          </NavLink>
+
+          <NavLink
             to="/admin"
             onClick={closeMenu}
             className={({ isActive }) =>
