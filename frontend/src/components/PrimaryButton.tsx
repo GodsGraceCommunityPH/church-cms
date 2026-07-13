@@ -9,6 +9,7 @@ type PrimaryButtonProps = {
   target?: "_self" | "_blank";
   onClick?: () => void;
   className?: string;
+  type?: "button" | "submit";
 };
 
 function PrimaryButton({
@@ -19,6 +20,7 @@ function PrimaryButton({
   target,
   onClick,
   className = "",
+  type = "button", // <-- Add this
 }: PrimaryButtonProps) {
   const styles = {
     primary:
@@ -51,7 +53,7 @@ function PrimaryButton({
   }
 
   return (
-    <button type="button" onClick={onClick} className={buttonClass}>
+    <button type={type} onClick={onClick} className={buttonClass}>
       {children}
     </button>
   );
