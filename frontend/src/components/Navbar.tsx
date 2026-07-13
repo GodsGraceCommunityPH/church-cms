@@ -70,6 +70,15 @@ function Navbar() {
             >
               Contact
             </NavLink>
+
+            <NavLink
+              to="/give"
+              className={({ isActive }) =>
+                isActive ? "text-[#DDE5C3]" : "transition hover:text-[#DDE5C3]"
+              }
+            >
+              Give
+            </NavLink>
           </div>
 
           {/* Hamburger */}

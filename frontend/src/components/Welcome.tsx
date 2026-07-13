@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import PrimaryButton from "../components/PrimaryButton";
 
 function Welcome() {
   return (
@@ -21,7 +22,7 @@ function Welcome() {
           WELCOME TO GGCCC
         </p>
 
-        <h2 className="mb-8 text-5xl font-bold leading-tight text-slate-900">
+        <h2 className="font-heading mb-8 text-4xl md:text-5xl font-semibold leading-[1.15] tracking-tight text-slate-900">
           You're Always Welcome Here
         </h2>
 
@@ -35,7 +36,9 @@ function Welcome() {
           to="/about"
           className="mt-12 inline-flex min-w-[260px] items-center justify-center rounded-xl bg-[#556B2F] px-10 py-4 font-semibold text-white transition duration-300 hover:bg-[#6B8E23]"
         >
-          Learn More About Us
+          <PrimaryButton variant="hero" href="#services">
+            Learn More About Us
+          </PrimaryButton>
         </Link>
       </div>
     </section>

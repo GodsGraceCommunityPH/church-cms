@@ -1,4 +1,6 @@
 import { MapPin, Mail } from "lucide-react";
+import PrimaryButton from "../components/PrimaryButton";
+import FacebookIcon from "../components/FacebookIcon";
 
 function ContactPage() {
   return (
@@ -23,7 +25,7 @@ function ContactPage() {
             CONTACT US
           </p>
 
-          <h1 className="mb-8 text-5xl font-bold text-slate-900">
+          <h1 className="font-heading mb-8 text-4xl md:text-5xl font-semibold leading-[1.15] tracking-tight text-slate-900">
             We'd Love to Hear From You
           </h1>
 
@@ -96,7 +98,7 @@ function ContactPage() {
             className="flex items-start gap-5 py-8"
           >
             <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#556B2F] font-bold text-white">
-              f
+              <FacebookIcon />
             </div>
 
             <div>
@@ -117,7 +119,15 @@ function ContactPage() {
                   padding: "5px 15px",
                 }}
               >
-                <span>Visit our Facebook</span>
+                <div className="mt-5">
+                  <PrimaryButton
+                    href="https://www.facebook.com/GGCCCCaloocan"
+                    target="_blank"
+                    className="min-w-0 w-auto"
+                  >
+                    Visit our Facebook
+                  </PrimaryButton>
+                </div>
               </a>
             </div>
           </section>

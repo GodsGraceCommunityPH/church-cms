@@ -1,4 +1,5 @@
 import whiteLogo from "../assets/ggccc-logo-white.png";
+import FacebookIcon from "../components/FacebookIcon";
 
 function Footer() {
   return (
@@ -22,7 +23,7 @@ function Footer() {
           alt="GGCCC Logo"
           className="mb-6 h-20 w-20 object-contain"
         />
-        <h2 className="text-2xl font-bold">
+        <h2 className="text-2xl font-semibold">
           God's Grace Community Covenant Church
         </h2>
 
@@ -81,16 +82,17 @@ function Footer() {
             href="https://www.facebook.com/GGCCCCaloocan"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-4 rounded-full bg-[#556B2F] px-8 py-4 font-semibold text-white transition duration-300 hover:bg-[#6B8E23]"
+            className="inline-flex items-center rounded-full bg-[#556B2F] pr-6 transition-all duration-300 hover:bg-[#6B8E23]"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white font-bold text-[#556B2F]">
-              f
+            <div className="m-1 flex h-11 w-11 items-center justify-center rounded-full bg-white text-lg font-bold text-[#556B2F]">
+              <FacebookIcon />
             </div>
 
             <span
               style={{
-                paddingRight: "24px",
+                padding: "10px 20px 10px 10px",
               }}
+              className="px-4 font-semibold text-white"
             >
               Visit our Facebook
             </span>

@@ -5,20 +5,24 @@ import Footer from "./components/Footer";
 import HomePage from "./pages/HomePage";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
+import GivePage from "./pages/GivePage";
+import ScrollToTop from "./components/ScrollToTop";
 
 function App() {
   return (
-    <>
+    <div className="font-body">
+      <ScrollToTop />
       <Navbar />
 
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
+        <Route path="/give" element={<GivePage />} />
       </Routes>
 
       <Footer />
-    </>
+    </div>
   );
 }
 

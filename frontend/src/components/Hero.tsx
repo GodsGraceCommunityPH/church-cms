@@ -1,4 +1,5 @@
 import heroImage from "../assets/hero.jpg";
+import PrimaryButton from "../components/PrimaryButton";
 
 function Hero() {
   return (
@@ -30,8 +31,7 @@ function Hero() {
             <p className="mb-5 text-sm font-semibold uppercase tracking-[0.5em] text-[#A3B18A]">
               JOIN US THIS SUNDAY
             </p>
-
-            <h1 className="mb-8 text-5xl font-bold leading-tight text-white lg:text-6xl">
+            <h1 className="font-heading mb-8 text-5xl font-semibold leading-[1.1] tracking-tight text-white lg:text-6xl">
               God's Grace Community
               <br />
               Covenant Church
@@ -48,12 +48,10 @@ function Hero() {
             {/* Buttons */}
             <div className="flex flex-col gap-4 md:flex-row md:gap-6">
               {/* Join Us */}
-              <a
-                href="#services"
-                className="w-full rounded-xl bg-[#556B2F] px-10 py-5 text-center font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-[#6B8E23] md:min-w-[240px] md:w-auto"
-              >
+
+              <PrimaryButton variant="hero" href="#services">
                 Join Us This Sunday
-              </a>
+              </PrimaryButton>
 
               {/* Watch Sermons */}
               <a

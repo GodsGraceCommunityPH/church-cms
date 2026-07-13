@@ -45,7 +45,7 @@ function ServiceSchedule() {
       >
         {/* Heading */}
         <div className="mb-14 text-center">
-          <h2 className="mb-3 text-5xl font-bold text-slate-900">
+          <h2 className="font-heading mb-8 text-4xl md:text-5xl font-semibold leading-[1.15] tracking-tight text-slate-900">
             Sunday Gatherings
           </h2>
 

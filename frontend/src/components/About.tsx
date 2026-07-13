@@ -17,34 +17,28 @@ function About() {
     <>
       {/* OUR STORY */}
       <section
-        className="bg-white"
+        className="bg-[#F8F7F3]"
         style={{
-          paddingTop: "120px",
+          paddingTop: "140px",
           paddingBottom: "140px",
         }}
       >
         <div
+          className="grid items-center gap-16 lg:grid-cols-2"
           style={{
+            maxWidth: "1400px",
+            margin: "0 auto",
             paddingLeft: "80px",
             paddingRight: "80px",
           }}
         >
-          {/* Church Image */}
-          <div className="order-2 lg:order-2">
-            <img
-              src={churchImage}
-              alt="God's Grace Community Covenant Church"
-              className="h-[620px] w-full rounded-3xl object-cover shadow-2xl"
-            />
-          </div>
-
           {/* Content */}
-          <div className="order-1 lg:order-1">
+          <div>
             <p className="mb-4 text-sm font-semibold uppercase tracking-[0.4em] text-[#A3B18A]">
               OUR STORY
             </p>
 
-            <h2 className="mb-8 text-5xl font-bold leading-tight text-slate-900">
+            <h2 className="font-heading mb-8 text-4xl md:text-5xl font-semibold leading-tight text-slate-900">
               A Place to Grow
               <br />
               in Christ
@@ -62,6 +56,15 @@ function About() {
               community committed to loving God, loving people, and making
               disciples.
             </p>
+          </div>
+
+          {/* Church Image */}
+          <div>
+            <img
+              src={churchImage}
+              alt="God's Grace Community Covenant Church"
+              className="h-[500px] w-full rounded-3xl object-cover shadow-2xl"
+            />
           </div>
         </div>
       </section>
@@ -91,7 +94,7 @@ function About() {
               OUR LEADERSHIP
             </p>
 
-            <h2 className="text-5xl font-bold text-slate-900">
+            <h2 className="font-heading mb-8 text-4xl md:text-5xl font-semibold leading-[1.15] tracking-tight text-slate-900">
               Meet Our Pastors
             </h2>
           </div>
