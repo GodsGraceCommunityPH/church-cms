@@ -4,6 +4,7 @@ import PrimaryButton from "../components/PrimaryButton";
 function Welcome() {
   return (
     <section
+      id="welcome"
       className="bg-white"
       style={{
         paddingTop: "140px",

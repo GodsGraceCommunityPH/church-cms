@@ -1,30 +1,35 @@
 import { Routes, Route } from "react-router-dom";
 
-import Navbar from "./components/Navbar";
-import Footer from "./components/Footer";
+import PublicLayout from "./layouts/PublicLayout";
+import AdminLayout from "./layouts/AdminLayout";
+
 import HomePage from "./pages/HomePage";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
 import GivePage from "./pages/GivePage";
-import ScrollToTop from "./components/ScrollToTop";
-import ChurchInfoBar from "./components/ChurchInfoBar";
+
+import Login from "./pages/admin/Login";
+import Dashboard from "./pages/admin/Dashboard";
 
 function App() {
   return (
-    <div className="font-body">
-      <ScrollToTop />
-      <Navbar />
-
-      <Routes>
+    <Routes>
+      {/* Public Website */}
+      <Route element={<PublicLayout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/give" element={<GivePage />} />
-      </Routes>
+      </Route>
 
-      <ChurchInfoBar />
-      <Footer />
-    </div>
+      {/* Staff Portal Login */}
+      <Route path="/admin" element={<Login />} />
+
+      {/* Admin Portal */}
+      <Route element={<AdminLayout />}>
+        <Route path="/admin/dashboard" element={<Dashboard />} />
+      </Route>
+    </Routes>
   );
 }
 

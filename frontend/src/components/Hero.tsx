@@ -49,7 +49,7 @@ function Hero() {
             <div className="flex flex-col gap-4 md:flex-row">
               <PrimaryButton
                 variant="primary"
-                href="#services"
+                href="#welcome"
                 className="w-full md:w-64"
               >
                 Join Us This Sunday

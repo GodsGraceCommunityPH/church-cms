@@ -163,11 +163,12 @@ function GivePage() {
             className="inline-block rounded-xl bg-[#556B2F] px-10 py-5 font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-[#6B8E23]"
           >
             <PrimaryButton
+              variant="primary"
               href="https://www.facebook.com/GGCCCCaloocan"
               target="_blank"
-              className="min-w-0 w-auto"
+              className="w-full md:w-64"
             >
-              Contact Us
+              Watch Sermons
             </PrimaryButton>
           </Link>
         </div>

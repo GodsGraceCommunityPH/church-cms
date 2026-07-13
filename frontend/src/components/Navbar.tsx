@@ -79,6 +79,17 @@ function Navbar() {
             >
               Give
             </NavLink>
+
+            <NavLink
+              to="/admin"
+              className={({ isActive }) =>
+                `transition-colors hover:text-[#556B2F] ${
+                  isActive ? "font-semibold text-[#556B2F]" : "text-slate-700"
+                }`
+              }
+            >
+              Staff Portal
+            </NavLink>
           </div>
 
           {/* Hamburger */}
@@ -165,6 +176,23 @@ function Navbar() {
             <div className="flex items-center gap-4">
               <Mail size={20} />
               <span className="text-base font-medium">Contact</span>
+            </div>
+          </NavLink>
+
+          <NavLink
+            to="/admin"
+            onClick={closeMenu}
+            className={({ isActive }) =>
+              `flex w-[90%] items-center rounded-xl border-l-4 px-5 py-4 transition ${
+                isActive
+                  ? "border-[#556B2F] text-[#DDE5C3]"
+                  : "border-transparent text-white hover:border-[#556B2F] hover:text-[#DDE5C3]"
+              }`
+            }
+          >
+            <div className="flex items-center gap-4">
+              <Mail size={20} />
+              <span className="text-base font-medium">Staff Portal</span>
             </div>
           </NavLink>
         </nav>
