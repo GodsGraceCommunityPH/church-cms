@@ -103,7 +103,7 @@ function About() {
                 <div key={pastor.name} className="w-[320px] text-center">
                   {/* Draft Image */}
                   <div
-                    className="mb-6 flex h-[300px] w-[300px] items-center justify-center rounded-3xl border-2 border-dashed border-slate-300 bg-slate-100"
+                    className="mb-6 flex h-[300px]  items-center justify-center rounded-3xl border-2 border-dashed border-slate-300 bg-slate-100"
                     style={{
                       marginBottom: "20px",
                     }}
