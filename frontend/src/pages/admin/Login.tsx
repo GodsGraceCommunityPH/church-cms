@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Lock, User } from "lucide-react";
 import PrimaryButton from "../../components/PrimaryButton";
-import { Link } from "react-router-dom";
+// import { Link } from "react-router-dom";
 
 function Login() {
   const [username, setUsername] = useState("");
