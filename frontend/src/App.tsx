@@ -7,6 +7,7 @@ import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
 import GivePage from "./pages/GivePage";
 import ScrollToTop from "./components/ScrollToTop";
+import ChurchInfoBar from "./components/ChurchInfoBar";
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
         <Route path="/give" element={<GivePage />} />
       </Routes>
 
+      <ChurchInfoBar />
       <Footer />
     </div>
   );
