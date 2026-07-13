@@ -76,8 +76,8 @@ function About() {
       >
         <div
           style={{
-            paddingLeft: "80px",
-            paddingRight: "80px",
+            paddingLeft: window.innerWidth < 768 ? "24px" : "80px",
+            paddingRight: window.innerWidth < 768 ? "24px" : "80px",
           }}
         >
           {/* Heading */}
@@ -100,7 +100,10 @@ function About() {
           <div className="flex justify-center">
             <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-3">
               {pastors.map((pastor) => (
-                <div key={pastor.name} className="w-[320px] text-center">
+                <div
+                  key={pastor.name}
+                  className="w-full max-w-[320px] text-center"
+                >
                   {/* Draft Image */}
                   <div
                     className="mb-6 flex h-[300px]  items-center justify-center rounded-3xl border-2 border-dashed border-slate-300 bg-slate-100"
