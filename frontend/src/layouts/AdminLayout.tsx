@@ -1,15 +1,24 @@
 import { Outlet } from "react-router-dom";
 
+import Sidebar from "../components/admin/Sidebar";
+import Topbar from "../components/admin/Topbar";
+
 function AdminLayout() {
   return (
-    <div className="flex min-h-screen bg-slate-100">
-      {/* Sidebar */}
+    <div style={{ display: "flex", minHeight: "100vh" }}>
+      <Sidebar />
 
-      {/* Topbar */}
+      <div style={{ flex: 1 }}>
+        <Topbar />
 
-      <main className="flex-1">
-        <Outlet />
-      </main>
+        <main
+          style={{
+            padding: "32px",
+          }}
+        >
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }
