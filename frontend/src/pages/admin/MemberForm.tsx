@@ -1,5 +1,5 @@
 import { ArrowLeft } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 
 import PrimaryButton from "../../components/PrimaryButton";
@@ -7,11 +7,14 @@ import PrimaryButton from "../../components/PrimaryButton";
 import FormInput from "../../components/forms/FormInput";
 import FormSelect from "../../components/forms/FormSelect";
 import FormTextarea from "../../components/forms/FormTextArea";
+import type { Member } from "../../features/members/member";
+import { members } from "../../features/members/memberStore";
 
 function MemberForm() {
-  const [member, setMember] = useState({
+  const navigate = useNavigate();
+
+  const [member, setMember] = useState<Member>({
     firstName: "",
-    middleName: "",
     lastName: "",
     nickname: "",
     gender: "",
@@ -40,6 +43,16 @@ function MemberForm() {
     }));
   };
 
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    members.push({ ...member });
+
+    console.log("Members:", members);
+
+    navigate("/admin/members");
+  };
+
   return (
     <>
       <Link
@@ -56,7 +69,7 @@ function MemberForm() {
         <p className="text-slate-600">Create a new church member.</p>
       </div>
 
-      <form>
+      <form onSubmit={handleSubmit}>
         {/* Top Row */}
         <div
           className="grid gap-8 lg:grid-cols-2"
@@ -78,14 +91,6 @@ function MemberForm() {
             />
 
             <FormInput
-              label="Middle Name"
-              name="middleName"
-              required
-              value={member.middleName}
-              onChange={handleChange}
-            />
-
-            <FormInput
               label="Last Name"
               name="lastName"
               required
@@ -94,8 +99,8 @@ function MemberForm() {
             />
 
             <FormInput
-              label="Nick Name"
-              name="nickName"
+              label="Nickname"
+              name="nickname"
               required
               value={member.nickname}
               onChange={handleChange}
@@ -105,6 +110,7 @@ function MemberForm() {
               label="Gender"
               name="gender"
               options={["Male", "Female"]}
+              required
               value={member.gender}
               onChange={handleChange}
             />
@@ -213,18 +219,6 @@ function MemberForm() {
 
           <PrimaryButton type="submit">Save Member</PrimaryButton>
         </div>
-
-        <pre
-          style={{
-            marginTop: "32px",
-            padding: "16px",
-            background: "#f8fafc",
-            borderRadius: "12px",
-            overflowX: "auto",
-          }}
-        >
-          {JSON.stringify(member, null, 2)}
-        </pre>
       </form>
     </>
   );
