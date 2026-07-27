@@ -64,20 +64,35 @@ function Members() {
 
   return (
     <>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "32px",
-        }}
-      >
+      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Members</h1>
-          <p className="text-slate-600">Manage church members.</p>
+          <h1
+            style={{
+              paddingLeft: "20px",
+            }}
+            className="text-3xl font-bold"
+          >
+            Members
+          </h1>
+          <p
+            style={{
+              paddingLeft: "20px",
+            }}
+            className="text-slate-600"
+          >
+            Manage church members.
+          </p>
         </div>
-
-        <PrimaryButton to="/admin/members/new">Add Member</PrimaryButton>
+        <div
+          style={{
+            paddingLeft: "50px",
+            paddingRight: "50px",
+          }}
+        >
+          <PrimaryButton to="/admin/members/new" className="w-full">
+            Add Member
+          </PrimaryButton>
+        </div>
       </div>
 
       <div
@@ -85,6 +100,9 @@ function Members() {
         style={{ padding: "32px" }}
       >
         <input
+          style={{
+            paddingLeft: "10px",
+          }}
           type="text"
           placeholder="Search members..."
           className="mb-6 w-full rounded-xl border border-slate-300 px-4 py-3"
@@ -104,9 +122,17 @@ function Members() {
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div
+            style={{
+              paddingTop: "10px",
+            }}
+            className="space-y-4"
+          >
             {members.map((member) => (
               <div
+                style={{
+                  padding: "10px 0 0 10px",
+                }}
                 key={member.id}
                 className="flex items-start justify-between rounded-xl border border-slate-200 p-4"
               >
@@ -123,13 +149,22 @@ function Members() {
                     {member.cellGroup || "-"}
                   </p>
                 </div>
-
-                <button
-                  onClick={() => deleteMember(member.id)}
-                  className="rounded-lg border border-red-300 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                <div
+                  style={{
+                    padding: "10px 10px 0 0",
+                  }}
                 >
-                  Delete
-                </button>
+                  <button
+                    style={{
+                      paddingLeft: "10px",
+                      paddingRight: "10px",
+                    }}
+                    onClick={() => deleteMember(member.id)}
+                    className="rounded-lg border border-red-300 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             ))}
           </div>

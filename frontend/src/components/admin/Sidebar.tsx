@@ -7,76 +7,104 @@ import {
   Settings,
   LogOut,
   ArrowLeft,
+  X,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
-function Sidebar() {
+type SidebarProps = {
+  open: boolean;
+  onClose: () => void;
+};
+
+function Sidebar({ open, onClose }: SidebarProps) {
+  const linkClass =
+    "flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-gray-100";
+
   return (
     <aside
-      style={{
-        width: "280px",
-        padding: "24px",
-        display: "flex",
-        flexDirection: "column",
-        borderRight: "1px solid #e5e7eb",
-      }}
+      className={`
+        fixed top-0 left-0 z-40 h-screen w-72 bg-white border-r
+        transform transition-transform duration-300
+        ${open ? "translate-x-0" : "-translate-x-full"}
+        md:translate-x-0 md:static md:flex
+      `}
     >
-      {/* Logo */}
-      <div style={{ marginBottom: "40px" }}>
-        <h2>GGCCC</h2>
-        <p>Staff Portal</p>
-      </div>
+      <div className="flex h-full w-full flex-col p-6">
+        {/* Mobile Close Button */}
+        <div className="mb-6 flex items-center justify-between md:hidden">
+          <div>
+            <h2 className="text-xl font-bold">GGCCC</h2>
+            <p className="text-sm text-gray-500">Staff Portal</p>
+          </div>
 
-      {/* Navigation */}
-      <nav
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "12px",
-        }}
-      >
-        <NavLink to="/admin/dashboard">
-          <LayoutDashboard size={18} /> Overview
-        </NavLink>
+          <button onClick={onClose}>
+            <X size={24} />
+          </button>
+        </div>
 
-        <NavLink to="/admin/members">
-          <Users size={18} /> Members
-        </NavLink>
+        {/* Desktop Logo */}
+        <div className="mb-10 hidden md:block">
+          <h2 className="text-xl font-bold">GGCCC</h2>
+          <p className="text-gray-500">Staff Portal</p>
+        </div>
 
-        <NavLink to="/admin/cell-groups">
-          <UsersRound size={18} /> Cell Groups
-        </NavLink>
+        <nav className="flex flex-col gap-2">
+          <NavLink
+            className={linkClass}
+            to="/admin/dashboard"
+            onClick={onClose}
+          >
+            <LayoutDashboard size={18} />
+            Overview
+          </NavLink>
 
-        <NavLink to="/admin/ministries">
-          <Music size={18} /> Ministries
-        </NavLink>
+          <NavLink className={linkClass} to="/admin/members" onClick={onClose}>
+            <Users size={18} />
+            Members
+          </NavLink>
 
-        <NavLink to="/admin/giving">
-          <HandCoins size={18} /> Giving
-        </NavLink>
+          <NavLink
+            className={linkClass}
+            to="/admin/cell-groups"
+            onClick={onClose}
+          >
+            <UsersRound size={18} />
+            Cell Groups
+          </NavLink>
 
-        <NavLink to="/admin/settings">
-          <Settings size={18} /> Settings
-        </NavLink>
-      </nav>
+          <NavLink
+            className={linkClass}
+            to="/admin/ministries"
+            onClick={onClose}
+          >
+            <Music size={18} />
+            Ministries
+          </NavLink>
 
-      <div style={{ flex: 1 }} />
+          <NavLink className={linkClass} to="/admin/giving" onClick={onClose}>
+            <HandCoins size={18} />
+            Giving
+          </NavLink>
 
-      {/* Footer */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "12px",
-        }}
-      >
-        <NavLink to="/">
-          <ArrowLeft size={18} /> Back to Website
-        </NavLink>
+          <NavLink className={linkClass} to="/admin/settings" onClick={onClose}>
+            <Settings size={18} />
+            Settings
+          </NavLink>
+        </nav>
 
-        <button>
-          <LogOut size={18} /> Log Out
-        </button>
+        <div className="flex-1" />
+
+        <div className="flex flex-col gap-2">
+          <NavLink className={linkClass} to="/" onClick={onClose}>
+            <ArrowLeft size={18} />
+            Back to Website
+          </NavLink>
+
+          <button className={linkClass}>
+            <LogOut size={18} />
+            Log Out
+          </button>
+        </div>
       </div>
     </aside>
   );
