@@ -9,11 +9,13 @@ import FormSelect from "../../components/forms/FormSelect";
 import FormTextarea from "../../components/forms/FormTextArea";
 import type { Member } from "../../features/members/member";
 import { members } from "../../features/members/memberStore";
+import { supabase } from "../../lib/supabase";
 
 function MemberForm() {
   const navigate = useNavigate();
 
   const [member, setMember] = useState<Member>({
+    id: "",
     firstName: "",
     lastName: "",
     nickname: "",
@@ -43,12 +45,31 @@ function MemberForm() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    members.push({ ...member });
+    const { error } = await supabase.from("members").insert({
+      first_name: member.firstName,
+      last_name: member.lastName,
+      nickname: member.nickname,
+      gender: member.gender,
+      birthday: member.birthday || null,
 
-    console.log("Members:", members);
+      membership_status: member.membershipStatus,
+      cell_group: member.cellGroup,
+
+      mobile: member.mobile,
+      email: member.email,
+      address: member.address,
+
+      remarks: member.remarks,
+    });
+
+    if (error) {
+      console.error(error);
+      alert("Failed to save member.");
+      return;
+    }
 
     navigate("/admin/members");
   };
