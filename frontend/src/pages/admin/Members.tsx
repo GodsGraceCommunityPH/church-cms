@@ -87,6 +87,7 @@ function Members() {
           style={{
             paddingLeft: "50px",
             paddingRight: "50px",
+            marginBottom: "20px",
           }}
         >
           <PrimaryButton to="/admin/members/new" className="w-full">
@@ -97,7 +98,7 @@ function Members() {
 
       <div
         className="rounded-2xl border border-slate-200 bg-white"
-        style={{ padding: "32px" }}
+        style={{ padding: "32px", margin: "20px" }}
       >
         <input
           style={{

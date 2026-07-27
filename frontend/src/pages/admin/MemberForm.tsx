@@ -83,7 +83,9 @@ function MemberForm() {
         Back to Members
       </Link>
 
-      <div style={{ marginTop: "24px", marginBottom: "40px" }}>
+      <div
+        style={{ marginTop: "24px", marginBottom: "40px", paddingLeft: "20px" }}
+      >
         <h1 className="text-3xl font-bold">Add Member</h1>
 
         <p className="text-slate-600">Create a new church member.</p>
@@ -91,10 +93,7 @@ function MemberForm() {
 
       <form onSubmit={handleSubmit}>
         {/* Top Row */}
-        <div
-          className="grid gap-8 lg:grid-cols-2"
-          style={{ marginBottom: "32px" }}
-        >
+        <div className="grid gap-8 lg:grid-cols-2" style={{ margin: "32px" }}>
           {/* Personal Information */}
           <section
             className="rounded-2xl border border-slate-200 bg-white"
@@ -175,7 +174,7 @@ function MemberForm() {
           className="rounded-2xl border border-slate-200 bg-white"
           style={{
             padding: "32px",
-            marginBottom: "32px",
+            margin: "32px",
           }}
         >
           <h2 className="mb-6 text-xl font-semibold">Contact Information</h2>
@@ -209,7 +208,7 @@ function MemberForm() {
           className="rounded-2xl border border-slate-200 bg-white"
           style={{
             padding: "32px",
-            marginBottom: "40px",
+            margin: "32px",
           }}
         >
           <h2 className="mb-6 text-xl font-semibold">Remarks</h2>
@@ -228,16 +227,32 @@ function MemberForm() {
             display: "flex",
             justifyContent: "flex-end",
             gap: "16px",
+            margin: "0 5px 20px 5px",
+            marginBottom: "20px",
           }}
         >
           <Link
             to="/admin/members"
             className="rounded-xl border border-slate-300 px-6 py-3 hover:bg-slate-50"
           >
-            Cancel
+            <p
+              style={{
+                padding: "15px 10px 10px 10px ",
+              }}
+            >
+              Cancel
+            </p>
           </Link>
 
-          <PrimaryButton type="submit">Save Member</PrimaryButton>
+          <PrimaryButton type="submit">
+            <p
+              style={{
+                padding: "10px 10px 10px 10px",
+              }}
+            >
+              Save Member
+            </p>
+          </PrimaryButton>
         </div>
       </form>
     </>
