@@ -120,7 +120,6 @@ function MemberForm() {
             <FormInput
               label="Nickname"
               name="nickname"
-              required
               value={member.nickname}
               onChange={handleChange}
             />
@@ -138,6 +137,7 @@ function MemberForm() {
               label="Birthday"
               name="birthday"
               type="date"
+              required
               value={member.birthday}
               onChange={handleChange}
             />
