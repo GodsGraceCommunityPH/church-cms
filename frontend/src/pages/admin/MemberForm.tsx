@@ -8,7 +8,6 @@ import FormInput from "../../components/forms/FormInput";
 import FormSelect from "../../components/forms/FormSelect";
 import FormTextarea from "../../components/forms/FormTextArea";
 import type { Member } from "../../features/members/member";
-import { members } from "../../features/members/memberStore";
 import { supabase } from "../../lib/supabase";
 
 function MemberForm() {
