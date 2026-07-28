@@ -3,13 +3,21 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
+import type { Member } from "../../features/members/member";
+import { mapMember } from "../../features/members/memberMapper";
+
+import ProfileCard from "../../components/profile/ProfileCard";
+import InfoRow from "../../components/profile/InfoRow";
+
+import { formatDate, calculateAge } from "../../utils/date";
+import { getInitials } from "../../features/members/memberUtils";
 
 export default function MemberProfile() {
   const { id } = useParams();
 
   const navigate = useNavigate();
 
-  const [member, setMember] = useState<any>(null);
+  const [member, setMember] = useState<Member | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -22,11 +30,11 @@ export default function MemberProfile() {
       .select("*")
       .eq("id", id)
       .single();
-
+    console.log(data);
     if (error) {
       console.error(error);
     } else {
-      setMember(data);
+      setMember(mapMember(data));
     }
 
     setLoading(false);
@@ -79,29 +87,46 @@ export default function MemberProfile() {
             width: "90px",
             height: "90px",
             borderRadius: "50%",
-            background: "#ececec",
+            background: "#2563eb",
+            color: "white",
             margin: "0 auto 20px",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
-            fontSize: "36px",
+            fontSize: "30px",
+            fontWeight: "bold",
           }}
         >
-          👤
+          {getInitials(member.firstName, member.lastName)}
         </div>
 
         <h1 style={{ margin: 0 }}>
-          {member.first_name} {member.last_name}
+          {member.firstName} {member.lastName}
         </h1>
 
-        <p
-          style={{
-            marginTop: "10px",
-            color: "#666",
-          }}
-        >
-          {member.membership_status}
-        </p>
+        <ProfileCard title="Personal Information">
+          <InfoRow label="Birthday" value={formatDate(member.birthday)} />
+          <InfoRow label="Age" value={calculateAge(member.birthday)} />
+          <InfoRow
+            label="Nick Name"
+            value={member.nickname ? member.nickname : member.firstName}
+          />
+        </ProfileCard>
+
+        <ProfileCard title="Contact Information">
+          <InfoRow label="Mobile" value={member.mobile} />
+          <InfoRow label="Email" value={member.email} />
+          <InfoRow label="Address" value={member.address} />
+        </ProfileCard>
+
+        <ProfileCard title="Church Information">
+          <InfoRow label="Membership Status" value={member.membershipStatus} />
+          <InfoRow label="Cell Group" value={member.cellGroup} />
+        </ProfileCard>
+
+        <ProfileCard title="Remarks">
+          <InfoRow label="Remarks" value={member.remarks} />
+        </ProfileCard>
       </div>
     </div>
   );

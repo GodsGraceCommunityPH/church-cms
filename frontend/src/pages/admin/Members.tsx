@@ -3,8 +3,11 @@ import { useNavigate } from "react-router-dom";
 import PrimaryButton from "../../components/PrimaryButton";
 import { supabase } from "../../lib/supabase";
 import type { Member } from "../../features/members/member";
+import { mapMember } from "../../features/members/memberMapper";
 
 function Members() {
+  const [search, setSearch] = useState("");
+
   const [members, setMembers] = useState<Member[]>([]);
 
   const navigate = useNavigate();
@@ -24,24 +27,7 @@ function Members() {
       return;
     }
 
-    const formattedMembers: Member[] = data.map((member) => ({
-      id: member.id,
-
-      firstName: member.first_name,
-      lastName: member.last_name,
-      nickname: member.nickname,
-      gender: member.gender,
-      birthday: member.birthday,
-
-      membershipStatus: member.membership_status,
-      cellGroup: member.cell_group,
-
-      mobile: member.mobile,
-      email: member.email,
-      address: member.address,
-
-      remarks: member.remarks,
-    }));
+    const formattedMembers = data.map(mapMember);
 
     setMembers(formattedMembers);
   }
@@ -63,6 +49,16 @@ function Members() {
 
     await loadMembers();
   }
+
+  const filteredMembers = members.filter((member) => {
+    const keyword = search.toLowerCase();
+
+    return (
+      member.firstName.toLowerCase().includes(keyword) ||
+      member.lastName.toLowerCase().includes(keyword) ||
+      member.nickname.toLowerCase().includes(keyword)
+    );
+  });
 
   return (
     <>
@@ -108,10 +104,12 @@ function Members() {
           }}
           type="text"
           placeholder="Search members..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
           className="mb-6 w-full rounded-xl border border-slate-300 px-4 py-3"
         />
 
-        {members.length === 0 ? (
+        {filteredMembers.length === 0 ? (
           <div
             style={{
               padding: "80px 0",
@@ -131,7 +129,7 @@ function Members() {
             }}
             className="space-y-4"
           >
-            {members.map((member) => (
+            {filteredMembers.map((member) => (
               <div
                 style={{
                   padding: "10px 0 0 10px",
@@ -165,7 +163,10 @@ function Members() {
                       paddingLeft: "10px",
                       paddingRight: "10px",
                     }}
-                    onClick={() => deleteMember(member.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteMember(member.id);
+                    }}
                     className="rounded-lg border border-red-300 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                   >
                     Delete

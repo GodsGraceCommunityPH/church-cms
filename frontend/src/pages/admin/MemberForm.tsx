@@ -1,35 +1,78 @@
 import { ArrowLeft } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 import PrimaryButton from "../../components/PrimaryButton";
 
 import FormInput from "../../components/forms/FormInput";
 import FormSelect from "../../components/forms/FormSelect";
 import FormTextarea from "../../components/forms/FormTextArea";
+import { defaultMember } from "../../features/members/member";
 import type { Member } from "../../features/members/member";
+import type { CellGroup } from "../../features/cellGroups/cellGroup";
 import { supabase } from "../../lib/supabase";
 
 function MemberForm() {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEdit = !!id;
 
-  const [member, setMember] = useState<Member>({
-    id: "",
-    firstName: "",
-    lastName: "",
-    nickname: "",
-    gender: "",
-    birthday: "",
+  const [member, setMember] = useState<Member>(defaultMember);
+  const [cellGroups, setCellGroups] = useState<CellGroup[]>([]);
 
-    membershipStatus: "",
-    cellGroup: "",
+  useEffect(() => {
+    loadCellGroups();
 
-    mobile: "",
-    email: "",
-    address: "",
+    if (isEdit) {
+      loadMember();
+    }
+  }, [id]);
 
-    remarks: "",
-  });
+  async function loadMember() {
+    const { data, error } = await supabase
+      .from("members")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setMember({
+      id: data.id,
+      firstName: data.first_name ?? "",
+      lastName: data.last_name ?? "",
+      nickname: data.nickname ?? "",
+      gender: data.gender ?? "",
+      birthday: data.birthday ?? "",
+
+      membershipStatus: data.membership_status ?? "",
+      cellGroup: data.cell_group ?? "",
+
+      mobile: data.mobile ?? "",
+      email: data.email ?? "",
+      address: data.address ?? "",
+
+      remarks: data.remarks ?? "",
+    });
+  }
+
+  async function loadCellGroups() {
+    const { data, error } = await supabase
+      .from("cell_groups")
+      .select("*")
+      .eq("status", "Active")
+      .order("name");
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setCellGroups(data ?? []);
+  }
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -47,7 +90,7 @@ function MemberForm() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const { error } = await supabase.from("members").insert({
+    const payload = {
       first_name: member.firstName,
       last_name: member.lastName,
       nickname: member.nickname,
@@ -62,7 +105,15 @@ function MemberForm() {
       address: member.address,
 
       remarks: member.remarks,
-    });
+    };
+
+    let error;
+
+    if (isEdit) {
+      ({ error } = await supabase.from("members").update(payload).eq("id", id));
+    } else {
+      ({ error } = await supabase.from("members").insert(payload));
+    }
 
     if (error) {
       console.error(error);
@@ -70,7 +121,11 @@ function MemberForm() {
       return;
     }
 
-    navigate("/admin/members");
+    if (isEdit) {
+      navigate(`/admin/members/${id}`);
+    } else {
+      navigate("/admin/members");
+    }
   };
 
   return (
@@ -162,7 +217,7 @@ function MemberForm() {
             <FormSelect
               label="Cell Group"
               name="cellGroup"
-              options={["Victory Cell", "Faith Builders", "Young Adults"]}
+              options={cellGroups.map((group) => group.name)}
               value={member.cellGroup}
               onChange={handleChange}
             />

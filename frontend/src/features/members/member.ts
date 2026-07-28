@@ -16,3 +16,22 @@ export interface Member {
 
   remarks: string;
 }
+
+export const defaultMember: Member = {
+  id: "",
+
+  firstName: "",
+  lastName: "",
+  nickname: "",
+  gender: "",
+  birthday: "",
+
+  membershipStatus: "",
+  cellGroup: "",
+
+  mobile: "",
+  email: "",
+  address: "",
+
+  remarks: "",
+};
