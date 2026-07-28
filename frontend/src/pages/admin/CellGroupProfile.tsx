@@ -128,6 +128,7 @@ export default function CellGroupProfile() {
           <InviteLinkModal
             open={showInviteModal}
             link={inviteLink}
+            groupName={group.name}
             onClose={() => setShowInviteModal(false)}
           />
         </div>
