@@ -11,7 +11,6 @@ export default function CellGroupForm() {
   const navigate = useNavigate();
 
   const [name, setName] = useState("");
-  const [leaderId, setLeaderId] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState("Active");
 
@@ -52,7 +51,6 @@ export default function CellGroupForm() {
         .from("cell_groups")
         .update({
           name,
-          leader_id: leaderId || null,
           description: description || null,
           status,
         })
@@ -60,7 +58,6 @@ export default function CellGroupForm() {
     } else {
       ({ error } = await supabase.from("cell_groups").insert({
         name,
-        leader_id: leaderId || null,
         description: description || null,
         status,
       }));
