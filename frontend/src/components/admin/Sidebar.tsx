@@ -83,7 +83,7 @@ function Sidebar({ open, onClose }: SidebarProps) {
 
           <NavLink className={linkClass} to="/admin/giving" onClick={onClose}>
             <HandCoins size={18} />
-            Giving
+            Finance
           </NavLink>
 
           <NavLink className={linkClass} to="/admin/settings" onClick={onClose}>

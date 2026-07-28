@@ -31,9 +31,20 @@ function MemberForm() {
   async function loadMember() {
     const { data, error } = await supabase
       .from("members")
-      .select("*")
+      .select(
+        `
+    *,
+    cell_group:cell_groups!members_cell_group_id_fkey(
+      id,
+      name
+    )
+  `,
+      )
       .eq("id", id)
       .single();
+
+    console.log("data", data);
+    console.log("error", error);
 
     if (error) {
       console.error(error);
@@ -49,7 +60,8 @@ function MemberForm() {
       birthday: data.birthday ?? "",
 
       membershipStatus: data.membership_status ?? "",
-      cellGroup: data.cell_group ?? "",
+      cellGroupId: data.cell_group_id ?? "",
+      cellGroup: data.cell_groups?.name ?? "",
 
       mobile: data.mobile ?? "",
       email: data.email ?? "",
@@ -98,7 +110,7 @@ function MemberForm() {
       birthday: member.birthday || null,
 
       membership_status: member.membershipStatus,
-      cell_group: member.cellGroup,
+      cell_group_id: member.cellGroupId || null,
 
       mobile: member.mobile,
       email: member.email,
@@ -155,7 +167,6 @@ function MemberForm() {
             style={{ padding: "32px" }}
           >
             <h2 className="mb-6 text-xl font-semibold">Personal Information</h2>
-
             <FormInput
               label="First Name"
               name="firstName"
@@ -163,7 +174,6 @@ function MemberForm() {
               value={member.firstName}
               onChange={handleChange}
             />
-
             <FormInput
               label="Last Name"
               name="lastName"
@@ -171,7 +181,6 @@ function MemberForm() {
               value={member.lastName}
               onChange={handleChange}
             />
-
             <FormInput
               label="Nickname"
               name="nickname"
@@ -182,8 +191,11 @@ function MemberForm() {
             <FormSelect
               label="Gender"
               name="gender"
-              options={["Male", "Female"]}
               required
+              options={[
+                { label: "Male", value: "Male" },
+                { label: "Female", value: "Female" },
+              ]}
               value={member.gender}
               onChange={handleChange}
             />
@@ -204,21 +216,26 @@ function MemberForm() {
             style={{ padding: "32px" }}
           >
             <h2 className="mb-6 text-xl font-semibold">Church Information</h2>
-
             <FormSelect
               label="Membership Status"
               name="membershipStatus"
               required
-              options={["Visitor", "Regular Attendee", "Member"]}
+              options={[
+                { label: "Visitor", value: "Visitor" },
+                { label: "Regular Attendee", value: "Regular Attendee" },
+                { label: "Member", value: "Member" },
+              ]}
               value={member.membershipStatus}
               onChange={handleChange}
             />
-
             <FormSelect
               label="Cell Group"
-              name="cellGroup"
-              options={cellGroups.map((group) => group.name)}
-              value={member.cellGroup}
+              name="cellGroupId"
+              options={cellGroups.map((group) => ({
+                label: group.name,
+                value: group.id,
+              }))}
+              value={member.cellGroupId}
               onChange={handleChange}
             />
           </section>

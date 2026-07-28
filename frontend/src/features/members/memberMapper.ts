@@ -11,7 +11,8 @@ export function mapMember(data: any): Member {
     birthday: data.birthday,
 
     membershipStatus: data.membership_status,
-    cellGroup: data.cell_group,
+    cellGroupId: data.cell_group_id,
+    cellGroup: data.cell_group?.name ?? "",
 
     mobile: data.mobile,
     email: data.email,

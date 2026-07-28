@@ -10,7 +10,7 @@ export default function InfoRow({ label, value }: InfoRowProps) {
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        padding: "14px 0",
+        padding: "10px 0px",
         borderBottom: "1px solid #e5e7eb",
       }}
     >
@@ -26,6 +26,7 @@ export default function InfoRow({ label, value }: InfoRowProps) {
       <span
         style={{
           fontWeight: 600,
+          padding: "14px  20px",
         }}
       >
         {value || "—"}

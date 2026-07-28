@@ -27,9 +27,18 @@ export default function MemberProfile() {
   async function loadMember() {
     const { data, error } = await supabase
       .from("members")
-      .select("*")
+      .select(
+        `
+    *,
+    cell_group:cell_groups!members_cell_group_id_fkey(
+      id,
+      name
+    )
+    `,
+      )
       .eq("id", id)
       .single();
+    console.log("=== LOAD MEMBER V2 ===");
     console.log(data);
     if (error) {
       console.error(error);

@@ -8,6 +8,7 @@ export interface Member {
   birthday: string;
 
   membershipStatus: string;
+  cellGroupId: string;
   cellGroup: string;
 
   mobile: string;
@@ -27,6 +28,7 @@ export const defaultMember: Member = {
   birthday: "",
 
   membershipStatus: "",
+  cellGroupId: "",
   cellGroup: "",
 
   mobile: "",

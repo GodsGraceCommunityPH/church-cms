@@ -1,7 +1,12 @@
+interface SelectOption {
+  label: string;
+  value: string;
+}
+
 interface FormSelectProps {
   label: string;
   name: string;
-  options: string[];
+  options: SelectOption[];
   required?: boolean;
   value: string;
   onChange: React.ChangeEventHandler<HTMLSelectElement>;
@@ -36,8 +41,8 @@ function FormSelect({
         <option value="">Select {label}</option>
 
         {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
+          <option key={option.value} value={option.value}>
+            {option.label}
           </option>
         ))}
       </select>
