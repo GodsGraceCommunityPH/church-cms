@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-
+import { useNavigate } from "react-router-dom";
 import PrimaryButton from "../../components/PrimaryButton";
 import { supabase } from "../../lib/supabase";
 import type { Member } from "../../features/members/member";
 
 function Members() {
   const [members, setMembers] = useState<Member[]>([]);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadMembers();
@@ -133,9 +135,12 @@ function Members() {
               <div
                 style={{
                   padding: "10px 0 0 10px",
+                  cursor: "pointer",
+                  transition: "0.2s",
                 }}
                 key={member.id}
                 className="flex items-start justify-between rounded-xl border border-slate-200 p-4"
+                onClick={() => navigate(`/admin/members/${member.id}`)}
               >
                 <div>
                   <h3 className="font-semibold">

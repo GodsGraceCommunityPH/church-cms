@@ -9,6 +9,7 @@ import CellGroups from "./pages/admin/CellGroups";
 import Ministries from "./pages/admin/Ministries";
 import Giving from "./pages/admin/Giving";
 import Settings from "./pages/admin/Setting";
+import MemberProfile from "./pages/admin/MemberProfile";
 
 import HomePage from "./pages/HomePage";
 import AboutPage from "./pages/AboutPage";
@@ -39,6 +40,7 @@ function App() {
         <Route path="/admin/members" element={<Members />} />
         <Route path="/admin/members/new" element={<MemberForm />} />
         <Route path="/admin/members/:id/edit" element={<MemberForm />} />
+        <Route path="/admin/members/:id" element={<MemberProfile />} />
 
         <Route path="/admin/cell-groups" element={<CellGroups />} />
         <Route path="/admin/ministries" element={<Ministries />} />
