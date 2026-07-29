@@ -61,33 +61,18 @@ function Members() {
   });
 
   return (
-    <>
+    <div
+      style={{
+        padding: "10px 20px 10px 20px",
+        marginBottom: "20px",
+      }}
+    >
       <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1
-            style={{
-              paddingLeft: "20px",
-            }}
-            className="text-3xl font-bold"
-          >
-            Members
-          </h1>
-          <p
-            style={{
-              paddingLeft: "20px",
-            }}
-            className="text-slate-600"
-          >
-            Manage church members.
-          </p>
+          <h1 className="text-3xl font-bold">Members</h1>
+          <p className="text-slate-600">Manage church members.</p>
         </div>
-        <div
-          style={{
-            paddingLeft: "50px",
-            paddingRight: "50px",
-            marginBottom: "20px",
-          }}
-        >
+        <div>
           <PrimaryButton to="/admin/members/new" className="w-full">
             Add Member
           </PrimaryButton>
@@ -96,7 +81,7 @@ function Members() {
 
       <div
         className="rounded-2xl border border-slate-200 bg-white"
-        style={{ padding: "32px", margin: "20px" }}
+        style={{ padding: "20px", margin: "20px" }}
       >
         <input
           style={{
@@ -133,6 +118,7 @@ function Members() {
               <div
                 style={{
                   padding: "10px 0 0 10px",
+                  marginTop: "20px",
                   cursor: "pointer",
                   transition: "0.2s",
                 }}
@@ -177,7 +163,7 @@ function Members() {
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }
 

@@ -7,7 +7,7 @@ type TopbarProps = {
 function Topbar({ onMenuClick }: TopbarProps) {
   return (
     <header className="flex h-[70px] items-center justify-between border-b border-gray-200 bg-white px-4 md:px-8">
-      <div className="flex items-center gap-3">
+      <div style={{ padding: "20px" }} className="flex items-center gap-3">
         {/* Mobile Hamburger */}
         <button
           onClick={onMenuClick}

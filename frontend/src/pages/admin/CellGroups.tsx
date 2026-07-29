@@ -35,13 +35,6 @@ export default function CellGroups() {
   return (
     <>
       {" "}
-      <div style={{ padding: "20px" }}>
-        <Input
-          placeholder="Search cell groups..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
       <div
         style={{ padding: "10px 20px 0 20px" }}
         className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
@@ -55,6 +48,13 @@ export default function CellGroups() {
           <p style={{ padding: "5px 10px" }}>Add Cell Group</p>
         </PrimaryButton>
       </div>
+      <div style={{ padding: "10px 20px 0 20px " }}>
+        <Input
+          placeholder="Search cell groups..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
       <div style={{ padding: "10px 20px 0 20px" }}>
         {cellGroups.length === 0 ? (
           <p>No cell groups yet.</p>
@@ -64,7 +64,7 @@ export default function CellGroups() {
               group.name.toLowerCase().includes(search.toLowerCase()),
             )
             .map((group) => (
-              <div>
+              <div style={{ paddingTop: "20px" }}>
                 <Card
                   key={group.id}
                   onClick={() => navigate(`/admin/cell-groups/${group.id}`)}
