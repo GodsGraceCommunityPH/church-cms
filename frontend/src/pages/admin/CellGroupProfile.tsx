@@ -139,7 +139,7 @@ export default function CellGroupProfile() {
         onClose={() => setShowDeleteModal(false)}
       >
         <p className="mb-6">
-          Are you sure you want to delete <strong>{name}</strong>?
+          Are you sure you want to delete <strong>{group.name}</strong>?
         </p>
 
         <p className="mb-6 text-sm text-slate-500">
