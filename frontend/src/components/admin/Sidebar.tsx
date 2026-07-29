@@ -29,9 +29,15 @@ function Sidebar({ open, onClose }: SidebarProps) {
         md:translate-x-0 md:static md:flex
       `}
     >
-      <div className="flex h-full w-full flex-col p-6">
+      <div
+        style={{ padding: "20px 0 0 20px" }}
+        className="flex h-full w-full flex-col p-6"
+      >
         {/* Mobile Close Button */}
-        <div className="mb-6 flex items-center justify-between md:hidden">
+        <div
+          style={{ paddingRight: "20px" }}
+          className="mb-6 flex items-center justify-between md:hidden"
+        >
           <div>
             <h2 className="text-xl font-bold">GGCCC</h2>
             <p className="text-sm text-gray-500">Staff Portal</p>
@@ -102,7 +108,10 @@ function Sidebar({ open, onClose }: SidebarProps) {
           </div>
         </nav>
 
-        <div className="border-t pt-4 flex flex-col gap-2">
+        <div
+          style={{ marginBottom: "180px" }}
+          className="border-t pt-4 flex flex-col gap-2"
+        >
           <NavLink className={linkClass} to="/" onClick={onClose}>
             <ArrowLeft size={18} />
             Back to Website
