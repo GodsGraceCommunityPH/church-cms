@@ -31,7 +31,7 @@ export default function CellGroupProfile() {
   const [showInviteModal, setShowInviteModal] = useState(false);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [cellGroupToDelete, setCellGroupToDelete] = useState<any>(null);
+  // const [cellGroupToDelete, setCellGroupToDelete] = useState<any>(null);
 
   useEffect(() => {
     loadGroup();
