@@ -6,15 +6,25 @@ import instapayQr from "../assets/instapay-qr.png";
 import { Copy, Check } from "lucide-react";
 
 function GivePage() {
-  const [copied, setCopied] = useState(false);
+  const [copiedField, setCopiedField] = useState("");
 
   async function copyAccountNumber() {
-    await navigator.clipboard.writeText("3143314461925");
+    await navigator.clipboard.writeText("Gods Grace Community Church");
 
-    setCopied(true);
+    setCopiedField("accountName");
 
     setTimeout(() => {
-      setCopied(false);
+      setCopiedField("");
+    }, 2000);
+  }
+
+  async function copyAccountName() {
+    await navigator.clipboard.writeText("Gods Grace Community Church");
+
+    setCopiedField("accountName");
+
+    setTimeout(() => {
+      setCopiedField("");
     }, 2000);
   }
 
@@ -164,10 +174,22 @@ function GivePage() {
                   Bank Transfer
                 </h3>
 
-                <p className="leading-8 text-slate-600">
+                <div className="leading-8 text-slate-600">
                   <strong>Bank:</strong> Metropolitan Bank and Trust Company
                   <br />
                   <strong>Account Name:</strong> Gods Grace Community Church
+                  <button
+                    style={{ paddingLeft: "10px" }}
+                    onClick={copyAccountName}
+                    className="rounded-lg p-2 transition hover:bg-slate-100"
+                    title="Copy account number"
+                  >
+                    {copiedField === "accountName" ? (
+                      <Check size={18} className="text-green-600" />
+                    ) : (
+                      <Copy size={18} />
+                    )}
+                  </button>
                   <br />
                   <strong>Account No.:</strong> 3143314461925
                   <button
@@ -176,13 +198,13 @@ function GivePage() {
                     className="rounded-lg p-2 transition hover:bg-slate-100"
                     title="Copy account number"
                   >
-                    {copied ? (
+                    {copiedField === "accountNumber" ? (
                       <Check size={18} className="text-green-600" />
                     ) : (
                       <Copy size={18} />
                     )}
                   </button>
-                </p>
+                </div>
               </div>
             </div>
           </div>
