@@ -1,8 +1,23 @@
+import { useState } from "react";
 import { HandCoins, Landmark, Wallet, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 import PrimaryButton from "../components/PrimaryButton";
+import instapayQr from "../assets/instapay-qr.png";
+import { Copy, Check } from "lucide-react";
 
 function GivePage() {
+  const [copied, setCopied] = useState(false);
+
+  async function copyAccountNumber() {
+    await navigator.clipboard.writeText("3143314461925");
+
+    setCopied(true);
+
+    setTimeout(() => {
+      setCopied(false);
+    }, 2000);
+  }
+
   return (
     <section
       className="bg-white"
@@ -87,7 +102,7 @@ function GivePage() {
             </h2>
           </div>
 
-          <div className="grid gap-8 lg:grid-cols-3">
+          <div className="grid gap-8 lg:grid-cols-2">
             {/* Cash */}
             <div
               className="rounded-3xl border border-slate-200 shadow-sm"
@@ -150,46 +165,67 @@ function GivePage() {
                 </h3>
 
                 <p className="leading-8 text-slate-600">
-                  <strong>Bank:</strong> Coming Soon
+                  <strong>Bank:</strong> Metropolitan Bank and Trust Company
                   <br />
-                  <strong>Account Name:</strong> Coming Soon
+                  <strong>Account Name:</strong> Gods Grace Community Church
                   <br />
-                  <strong>Account No.:</strong> Coming Soon
+                  <strong>Account No.:</strong> 3143314461925
+                  <button
+                    style={{ paddingLeft: "10px" }}
+                    onClick={copyAccountNumber}
+                    className="rounded-lg p-2 transition hover:bg-slate-100"
+                    title="Copy account number"
+                  >
+                    {copied ? (
+                      <Check size={18} className="text-green-600" />
+                    ) : (
+                      <Copy size={18} />
+                    )}
+                  </button>
                 </p>
               </div>
             </div>
-
-            {/* GCash */}
+          </div>
+          {/* Scan to Give */}
+          <div
+            className="rounded-3xl border border-slate-200 shadow-sm"
+            style={{
+              maxWidth: "600px",
+              margin: "0 auto",
+              marginTop: "20px",
+              textAlign: "center",
+            }}
+          >
             <div
-              className="rounded-3xl border border-slate-200 shadow-sm"
               style={{
-                padding: "36px 28px",
+                paddingBottom: "24px",
+              }}
+              className="flex justify-center"
+            >
+              <Wallet size={46} className="text-[#556B2F]" />
+            </div>
+
+            <div
+              style={{
+                maxWidth: "320px",
+                margin: "0 auto",
+                textAlign: "center",
+                padding: "10px",
               }}
             >
-              <div
-                style={{
-                  paddingBottom: "24px",
-                }}
-                className="flex justify-center"
-              >
-                <Wallet size={46} className="text-[#556B2F]" />
-              </div>
+              <h3 className="mb-4 text-2xl font-semibold text-slate-900">
+                Scan to Give
+              </h3>
 
-              <div
-                style={{
-                  maxWidth: "300px",
-                  margin: "0 auto",
-                  textAlign: "center",
-                }}
-              >
-                <h3 className="mb-4 text-2xl font-semibold text-slate-900">
-                  GCash
-                </h3>
+              <img
+                src={instapayQr}
+                alt="InstaPay QR Code"
+                className="mx-auto mb-6 w-full rounded-xl border"
+              />
 
-                <p className="leading-8 text-slate-600">
-                  GCash details and QR code will be available soon.
-                </p>
-              </div>
+              <p className="leading-8 text-slate-600">
+                Scan using GCash, Maya, or any InstaPay-enabled banking app.
+              </p>
             </div>
           </div>
         </div>

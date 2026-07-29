@@ -5,6 +5,7 @@ import Input from "../../components/ui/Input";
 import Textarea from "../../components/ui/Textarea";
 import Select from "../../components/ui/Select";
 import Button from "../../components/ui/Button";
+import SearchableSelect from "../../components/ui/SearchableSelect";
 import { useParams } from "react-router-dom";
 
 export default function CellGroupForm() {
@@ -122,18 +123,15 @@ export default function CellGroupForm() {
         <div>
           <label>Leader</label>
           <br />
-          <Select
+          <SearchableSelect
             value={leaderMemberId}
-            onChange={(e) => setLeaderMemberId(e.target.value)}
-          >
-            <option value="">Select a leader</option>
-
-            {members.map((member) => (
-              <option key={member.id} value={member.id}>
-                {member.first_name} {member.last_name}
-              </option>
-            ))}
-          </Select>
+            onChange={setLeaderMemberId}
+            placeholder="Select a leader"
+            options={members.map((member) => ({
+              id: member.id,
+              label: `${member.first_name} ${member.last_name}`,
+            }))}
+          />
         </div>
 
         <br />
