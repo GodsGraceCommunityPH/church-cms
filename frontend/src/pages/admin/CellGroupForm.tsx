@@ -13,15 +13,19 @@ export default function CellGroupForm() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState("Active");
+  const [leaderMemberId, setLeaderMemberId] = useState("");
+  const [members, setMembers] = useState<any[]>([]);
 
   const { id } = useParams();
 
   const isEdit = !!id;
 
   useEffect(() => {
-    if (!isEdit) return;
+    loadMembers();
 
-    loadCellGroup();
+    if (isEdit) {
+      loadCellGroup();
+    }
   }, [id]);
 
   async function loadCellGroup() {
@@ -39,6 +43,20 @@ export default function CellGroupForm() {
     setName(data.name);
     setDescription(data.description ?? "");
     setStatus(data.status);
+  }
+
+  async function loadMembers() {
+    const { data, error } = await supabase
+      .from("members")
+      .select("id, first_name, last_name")
+      .order("first_name");
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setMembers(data);
   }
 
   async function saveCellGroup(e: React.FormEvent) {
@@ -102,6 +120,25 @@ export default function CellGroupForm() {
         <br />
 
         <div>
+          <label>Leader</label>
+          <br />
+          <Select
+            value={leaderMemberId}
+            onChange={(e) => setLeaderMemberId(e.target.value)}
+          >
+            <option value="">Select a leader</option>
+
+            {members.map((member) => (
+              <option key={member.id} value={member.id}>
+                {member.first_name} {member.last_name}
+              </option>
+            ))}
+          </Select>
+        </div>
+
+        <br />
+
+        <div>
           <label>Status</label>
           <br />
           <Select value={status} onChange={(e) => setStatus(e.target.value)}>
@@ -109,7 +146,6 @@ export default function CellGroupForm() {
             <option>Inactive</option>
           </Select>
         </div>
-
         <br />
 
         <Button type="submit">
