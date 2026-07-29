@@ -11,7 +11,7 @@ function GivePage() {
   async function copyAccountNumber() {
     await navigator.clipboard.writeText("Gods Grace Community Church");
 
-    setCopiedField("accountName");
+    setCopiedField("accountNumber");
 
     setTimeout(() => {
       setCopiedField("");

@@ -11,6 +11,7 @@ import { defaultMember } from "../../features/members/member";
 import type { Member } from "../../features/members/member";
 import type { CellGroup } from "../../features/cellGroups/cellGroup";
 import { supabase } from "../../lib/supabase";
+import SearchableSelect from "../../components/ui/SearchableSelect";
 
 function MemberForm() {
   const navigate = useNavigate();
@@ -228,15 +229,19 @@ function MemberForm() {
               value={member.membershipStatus}
               onChange={handleChange}
             />
-            <FormSelect
-              label="Cell Group"
-              name="cellGroupId"
-              options={cellGroups.map((group) => ({
-                label: group.name,
-                value: group.id,
-              }))}
+            <SearchableSelect
               value={member.cellGroupId}
-              onChange={handleChange}
+              onChange={(value) =>
+                setMember({
+                  ...member,
+                  cellGroupId: value,
+                })
+              }
+              placeholder="Select Cell Group"
+              options={cellGroups.map((group) => ({
+                id: group.id,
+                label: group.name,
+              }))}
             />
           </section>
         </div>

@@ -54,8 +54,8 @@ export default function SearchableSelect({
         onClick={() => setOpen(!open)}
         style={{
           border: "1px solid #ccc",
-          borderRadius: 6,
-          padding: "10px",
+          borderRadius: 10,
+          // padding: "10px",
           cursor: "pointer",
           background: "white",
         }}

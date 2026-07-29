@@ -5,6 +5,7 @@ import { supabase } from "../../lib/supabase";
 import type { CellGroup } from "../../features/cellGroups/cellGroup";
 import { mapCellGroup } from "../../features/cellGroups/cellGroupMapper";
 import InviteLinkModal from "./InviteLinkModal";
+import Modal from "../../components/Modal";
 
 import ProfileCard from "../../components/profile/ProfileCard";
 import InfoRow from "../../components/profile/InfoRow";
@@ -28,6 +29,9 @@ export default function CellGroupProfile() {
 
   const [inviteLink, setInviteLink] = useState("");
   const [showInviteModal, setShowInviteModal] = useState(false);
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [cellGroupToDelete, setCellGroupToDelete] = useState<any>(null);
 
   useEffect(() => {
     loadGroup();
@@ -54,10 +58,6 @@ export default function CellGroupProfile() {
   if (!group) return <p>Cell Group not found.</p>;
 
   async function deleteCellGroup() {
-    if (!confirm("Are you sure you want to delete this cell group?")) {
-      return;
-    }
-
     const { error } = await supabase.from("cell_groups").delete().eq("id", id);
 
     if (error) {
@@ -117,7 +117,7 @@ export default function CellGroupProfile() {
             Edit
           </Button>
 
-          <Button type="button" onClick={deleteCellGroup}>
+          <Button type="button" onClick={() => setShowDeleteModal(true)}>
             Delete
           </Button>
 
@@ -133,6 +133,35 @@ export default function CellGroupProfile() {
           />
         </div>
       </ProfileCard>
+      <Modal
+        open={showDeleteModal}
+        title="Delete Cell Group"
+        onClose={() => setShowDeleteModal(false)}
+      >
+        <p className="mb-6">
+          Are you sure you want to delete <strong>{name}</strong>?
+        </p>
+
+        <p className="mb-6 text-sm text-slate-500">
+          Members assigned to this cell group will remain in the system.
+        </p>
+
+        <div className="flex justify-end gap-3">
+          <Button type="button" onClick={() => setShowDeleteModal(false)}>
+            Cancel
+          </Button>
+
+          <Button
+            type="button"
+            onClick={async () => {
+              await deleteCellGroup();
+              setShowDeleteModal(false);
+            }}
+          >
+            Delete
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

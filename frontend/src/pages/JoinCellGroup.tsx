@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import JoinMemberForm from "../features/join/components/JoinMemberForm";
+import { useNavigate } from "react-router-dom";
+import Modal from "../components/Modal";
+import Button from "../components/ui/Button";
 
 export default function JoinCellGroup() {
   const { token } = useParams();
@@ -9,6 +12,10 @@ export default function JoinCellGroup() {
   const [loading, setLoading] = useState(true);
   const [groupName, setGroupName] = useState("");
   const [invite, setInvite] = useState<any>(null);
+
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadInvite();
@@ -76,7 +83,7 @@ export default function JoinCellGroup() {
       return;
     }
 
-    alert("Registration submitted!");
+    setShowSuccessModal(true);
   }
 
   return (
@@ -84,7 +91,36 @@ export default function JoinCellGroup() {
       <h1>Join {groupName}</h1>
 
       <p>Welcome! Please fill out the registration form below.</p>
+
       <JoinMemberForm onSubmit={handleJoin} />
+
+      <Modal
+        open={showSuccessModal}
+        title="Registration Submitted"
+        onClose={() => {
+          setShowSuccessModal(false);
+          navigate("/");
+        }}
+      >
+        <p className="mb-6">Thank you for registering!</p>
+
+        <p className="mb-6 text-sm text-slate-500">
+          Your information has been received and will be reviewed by our church
+          staff.
+        </p>
+
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            onClick={() => {
+              setShowSuccessModal(false);
+              navigate("/");
+            }}
+          >
+            Go to Homepage
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

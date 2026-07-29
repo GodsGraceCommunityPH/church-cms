@@ -4,6 +4,8 @@ import PrimaryButton from "../../components/PrimaryButton";
 import { supabase } from "../../lib/supabase";
 import type { Member } from "../../features/members/member";
 import { mapMember } from "../../features/members/memberMapper";
+import Modal from "../../components/Modal";
+import Button from "../../components/ui/Button";
 
 function Members() {
   const [search, setSearch] = useState("");
@@ -11,6 +13,9 @@ function Members() {
   const [members, setMembers] = useState<Member[]>([]);
 
   const navigate = useNavigate();
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [memberToDelete, setMemberToDelete] = useState<any>(null);
 
   useEffect(() => {
     loadMembers();
@@ -32,14 +37,11 @@ function Members() {
     setMembers(formattedMembers);
   }
 
-  async function deleteMember(id: string) {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this member?",
-    );
-
-    if (!confirmed) return;
-
-    const { error } = await supabase.from("members").delete().eq("id", id);
+  async function deleteMember() {
+    const { error } = await supabase
+      .from("members")
+      .delete()
+      .eq("id", memberToDelete.id);
 
     if (error) {
       console.error(error);
@@ -61,20 +63,27 @@ function Members() {
   });
 
   return (
-    <div
-      style={{
-        padding: "10px 20px 10px 20px",
-        marginBottom: "20px",
-      }}
-    >
-      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div>
+      <div
+        style={{
+          padding: "10px 20px 10px 20px",
+          marginBottom: "20px",
+        }}
+        className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+      >
         <div>
           <h1 className="text-3xl font-bold">Members</h1>
           <p className="text-slate-600">Manage church members.</p>
         </div>
         <div>
           <PrimaryButton to="/admin/members/new" className="w-full">
-            Add Member
+            <p
+              style={{
+                padding: "10px 20px 10px 20px",
+              }}
+            >
+              Add Member
+            </p>
           </PrimaryButton>
         </div>
       </div>
@@ -151,7 +160,8 @@ function Members() {
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      deleteMember(member.id);
+                      setMemberToDelete(member);
+                      setShowDeleteModal(true);
                     }}
                     className="rounded-lg border border-red-300 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                   >
@@ -163,6 +173,50 @@ function Members() {
           </div>
         )}
       </div>
+
+      <Modal
+        open={showDeleteModal}
+        title="Delete Member"
+        onClose={() => {
+          setShowDeleteModal(false);
+          setMemberToDelete(null);
+        }}
+      >
+        <p className="mb-6">
+          Are you sure you want to delete{" "}
+          <strong>
+            {memberToDelete?.firstName} {memberToDelete?.lastName}
+          </strong>
+          ?
+        </p>
+
+        <p className="mb-6 text-sm text-slate-500">
+          This action cannot be undone.
+        </p>
+
+        <div className="flex justify-end gap-3">
+          <Button
+            type="button"
+            onClick={() => {
+              setShowDeleteModal(false);
+              setMemberToDelete(null);
+            }}
+          >
+            Cancel
+          </Button>
+
+          <Button
+            type="button"
+            onClick={async () => {
+              await deleteMember();
+              setShowDeleteModal(false);
+              setMemberToDelete(null);
+            }}
+          >
+            Delete
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }
