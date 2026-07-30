@@ -10,6 +10,9 @@ import Modal from "../../components/Modal";
 import ProfileCard from "../../components/profile/ProfileCard";
 import InfoRow from "../../components/profile/InfoRow";
 
+import TransferMemberModal from "../../components/TransferMemberModal";
+import RemoveMemberModal from "../../components/RemoveMemberModal";
+
 import {
   getInvite,
   createInvite,
@@ -31,11 +34,34 @@ export default function CellGroupProfile() {
   const [showInviteModal, setShowInviteModal] = useState(false);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  // const [cellGroupToDelete, setCellGroupToDelete] = useState<any>(null);
+  const [members, setMembers] = useState<any[]>([]);
+
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<any>(null);
+
+  const [cellGroups, setCellGroups] = useState<any[]>([]);
 
   useEffect(() => {
     loadGroup();
+    loadMembers();
+    loadCellGroups();
   }, []);
+
+  async function loadCellGroups() {
+    const { data, error } = await supabase
+      .from("cell_groups")
+      .select("*")
+      .neq("id", id)
+      .order("name");
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setCellGroups(data ?? []);
+  }
 
   async function loadGroup() {
     const { data, error } = await supabase
@@ -53,6 +79,21 @@ export default function CellGroupProfile() {
     setLoading(false);
   }
 
+  async function loadMembers() {
+    const { data, error } = await supabase
+      .from("members")
+      .select("*")
+      .eq("cell_group_id", id)
+      .order("last_name");
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setMembers(data ?? []);
+  }
+
   if (loading) return <p>Loading...</p>;
 
   if (!group) return <p>Cell Group not found.</p>;
@@ -62,6 +103,7 @@ export default function CellGroupProfile() {
 
     if (error) {
       console.error(error);
+      alert("Unable to delete the cell group.");
       return;
     }
 
@@ -97,6 +139,11 @@ export default function CellGroupProfile() {
     setShowInviteModal(true);
   }
 
+  console.log({
+    showTransferModal,
+    showRemoveModal,
+  });
+
   return (
     <div style={{ padding: 30, maxWidth: 900, margin: "0 auto" }}>
       <button onClick={() => navigate("/admin/cell-groups")}>← Back</button>
@@ -117,7 +164,11 @@ export default function CellGroupProfile() {
             Edit
           </Button>
 
-          <Button type="button" onClick={() => setShowDeleteModal(true)}>
+          <Button
+            type="button"
+            disabled={members.length > 0}
+            onClick={() => setShowDeleteModal(true)}
+          >
             Delete
           </Button>
 
@@ -132,6 +183,71 @@ export default function CellGroupProfile() {
             onClose={() => setShowInviteModal(false)}
           />
         </div>
+
+        {members.length > 0 && (
+          <p
+            style={{
+              marginTop: "12px",
+              color: "#dc2626",
+              fontSize: "14px",
+            }}
+          >
+            This cell group cannot be deleted while it has{" "}
+            <strong>{members.length}</strong>{" "}
+            {members.length === 1 ? "member" : "members"} assigned. Transfer or
+            remove them first.
+          </p>
+        )}
+      </ProfileCard>
+      <ProfileCard title={`Members (${members.length})`}>
+        {members.length === 0 ? (
+          <p>No members assigned to this cell group.</p>
+        ) : (
+          members.map((member) => (
+            <div
+              key={member.id}
+              style={{
+                padding: "12px 0",
+                borderBottom: "1px solid #e5e7eb",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div>
+                <div style={{ fontWeight: 600 }}>
+                  {member.first_name} {member.last_name}
+                </div>
+
+                <div style={{ color: "#64748b", fontSize: 14 }}>
+                  {member.mobile || "No mobile number"}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "8px" }}>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setSelectedMember(member);
+                    setShowTransferModal(true);
+                  }}
+                >
+                  Transfer
+                </Button>
+
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setSelectedMember(member);
+                    setShowRemoveModal(true);
+                  }}
+                >
+                  Remove
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
       </ProfileCard>
       <Modal
         open={showDeleteModal}
@@ -162,6 +278,26 @@ export default function CellGroupProfile() {
           </Button>
         </div>
       </Modal>
+      <TransferMemberModal
+        open={showTransferModal}
+        member={selectedMember}
+        groups={cellGroups}
+        onClose={() => setShowTransferModal(false)}
+        onTransferred={() => {
+          loadMembers();
+          loadGroup();
+        }}
+      />
+
+      <RemoveMemberModal
+        open={showRemoveModal}
+        member={selectedMember}
+        onClose={() => setShowRemoveModal(false)}
+        onRemoved={() => {
+          loadMembers();
+          loadGroup();
+        }}
+      />
     </div>
   );
 }

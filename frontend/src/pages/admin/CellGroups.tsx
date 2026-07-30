@@ -64,9 +64,8 @@ export default function CellGroups() {
               group.name.toLowerCase().includes(search.toLowerCase()),
             )
             .map((group) => (
-              <div style={{ paddingTop: "20px" }}>
+              <div key={group.id} style={{ paddingTop: "20px" }}>
                 <Card
-                  key={group.id}
                   onClick={() => navigate(`/admin/cell-groups/${group.id}`)}
                   className="mb-4"
                 >

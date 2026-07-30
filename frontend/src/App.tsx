@@ -13,7 +13,6 @@ import MemberProfile from "./pages/admin/MemberProfile";
 import CellGroupForm from "./pages/admin/CellGroupForm";
 import CellGroupProfile from "./pages/admin/CellGroupProfile";
 import JoinCellGroup from "./pages/JoinCellGroup";
-import CellGroupDetail from "./pages/cellGroupDetail/CellGroupDetail";
 
 import HomePage from "./pages/HomePage";
 import AboutPage from "./pages/AboutPage";
@@ -50,7 +49,6 @@ function App() {
         <Route path="/admin/cell-groups/new" element={<CellGroupForm />} />
         <Route path="/admin/cell-groups/:id/edit" element={<CellGroupForm />} />
         <Route path="/admin/cell-groups/:id" element={<CellGroupProfile />} />
-        <Route path="/cell-groups/:id" element={<CellGroupDetail />} />
         <Route path="/join/:token" element={<JoinCellGroup />} />
         <Route path="/admin/ministries" element={<Ministries />} />
         <Route path="/admin/giving" element={<Giving />} />
