@@ -56,9 +56,9 @@ function Members() {
     const keyword = search.toLowerCase();
 
     return (
-      member.firstName.toLowerCase().includes(keyword) ||
-      member.lastName.toLowerCase().includes(keyword) ||
-      member.nickname.toLowerCase().includes(keyword)
+      (member.firstName ?? "").toLowerCase().includes(keyword) ||
+      (member.lastName ?? "").toLowerCase().includes(keyword) ||
+      (member.nickname ?? "").toLowerCase().includes(keyword)
     );
   });
 
