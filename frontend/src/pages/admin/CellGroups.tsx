@@ -21,13 +21,21 @@ export default function CellGroups() {
   async function loadCellGroups() {
     const { data, error } = await supabase
       .from("cell_groups")
-      .select("*")
+      .select(
+        `
+      *,
+      members!members_cell_group_id_fkey (
+        id
+      )
+    `,
+      )
       .order("name");
 
     if (error) {
       console.error(error);
       return;
     }
+    console.log(mapCellGroup(data[1]));
 
     setCellGroups(data.map(mapCellGroup));
   }
@@ -75,6 +83,11 @@ export default function CellGroups() {
                         <h2 className="text-lg font-semibold text-slate-900">
                           {group.name}
                         </h2>
+
+                        <p className="text-sm text-slate-500">
+                          👥 {group.memberCount}{" "}
+                          {group.memberCount === 1 ? "member" : "members"}
+                        </p>
 
                         <p className="mt-2 text-sm text-slate-600">
                           {group.description || "No description"}
