@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import {
   getPendingTrainingEnrollments,
-  assignPendingToTrainingCycle,
   trainingErrorMessage,
   updateEnrollmentStatus,
   type PendingTrainingEnrollment,
@@ -15,7 +14,6 @@ function waitingDays(value: string) {
 }
 
 export default function PendingTraining() {
-  const navigate = useNavigate();
   const [items, setItems] = useState<PendingTrainingEnrollment[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -61,13 +59,6 @@ export default function PendingTraining() {
                   <p className="text-sm text-slate-600">{item.programName} · Waiting {waitingDays(item.enrolledAt)} days</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button
-                    onClick={() => void assignPendingToTrainingCycle(item.id, true).then((cycleId) =>
-                      navigate(`/admin/training/${item.programSlug}/cycles/${cycleId}`),
-                    )}
-                  >
-                    Start Training
-                  </Button>
                   <Button
                     variant="danger"
                     onClick={() => {

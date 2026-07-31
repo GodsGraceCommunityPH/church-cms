@@ -95,8 +95,8 @@ export default function Training() {
             >
               <h2 className="text-xl font-semibold">{program.name}</h2>
               <dl className="mt-7 grid grid-cols-2 gap-x-6 gap-y-5" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "22px 30px", marginTop: 26 }}>
-                <Stat label="Current training" value={program.activeBatches} />
-                <Stat label="Students training" value={program.inProgress} />
+                <Stat label="Current Class" value={program.activeBatches} />
+                <Stat label="Students Enrolled" value={program.inProgress} />
                 <Stat label="Ready to graduate" value={program.readyForGraduation} />
                 <Stat label="Completed" value={program.completed} />
               </dl>

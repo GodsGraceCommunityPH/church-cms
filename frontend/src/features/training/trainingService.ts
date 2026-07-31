@@ -71,6 +71,8 @@ export interface MemberTrainingProfile {
   sessions: TrainingSessionAttendance[];
   notes: TrainingNote[];
   remedials: TrainingRemedial[];
+  requiredSessions: number;
+  excusedCounts: boolean;
 }
 
 export interface TrainingBatchOption {
@@ -335,6 +337,10 @@ export async function getMemberTrainingProfile(
     ...enrollmentRecord,
     members: memberResult.data,
   };
+  const { data: batchConfiguration, error: batchConfigurationError } = enrollmentRecord.batch_id
+    ? await supabase.from("training_batches").select("required_sessions, excused_counts").eq("id", enrollmentRecord.batch_id).single()
+    : { data: null, error: null };
+  if (batchConfigurationError) throw batchConfigurationError;
 
   const [sessionResult, attendanceResult, notesResult, remedialResult] =
     await Promise.all([
@@ -415,6 +421,8 @@ export async function getMemberTrainingProfile(
       status: item.status,
       notes: item.notes,
     })),
+    requiredSessions: batchConfiguration?.required_sessions ?? sessionResult.data?.length ?? 0,
+    excusedCounts: batchConfiguration?.excused_counts ?? false,
   };
 }
 
@@ -518,17 +526,19 @@ export async function saveAttendance(
   sessionId: string,
   status: string,
 ) {
-  const { error } = await supabase.from("training_attendance").upsert(
-    { member_training_id: enrollmentId, session_id: sessionId, status },
-    { onConflict: "member_training_id,session_id" },
-  );
-  if (error) throw new Error("Attendance could not be saved. Please try again.");
+  const { error } = await supabase.rpc("record_training_attendance", { p_enrollment_id: enrollmentId, p_session_id: sessionId, p_status: status });
+  if (error) throw error;
 }
 
 export async function addTrainingNote(enrollmentId: string, note: string) {
   const { error } = await supabase
     .from("training_notes")
     .insert({ member_training_id: enrollmentId, note });
+  if (error) throw error;
+}
+
+export async function updateTrainingNote(noteId: string, note: string) {
+  const { error } = await supabase.from("training_notes").update({ note, updated_at: new Date().toISOString() }).eq("id", noteId);
   if (error) throw error;
 }
 
@@ -554,7 +564,18 @@ export async function completeTraining(
     p_enrollment_id: enrollmentId,
     p_next_training_id: null,
     p_recommendation_text: null,
+    p_admin_override: false,
   });
+  if (error) throw error;
+}
+
+export async function overrideCompleteTraining(enrollmentId: string) {
+  const { error } = await supabase.rpc("complete_training_enrollment", { p_enrollment_id: enrollmentId, p_next_training_id: null, p_recommendation_text: null, p_admin_override: true });
+  if (error) throw error;
+}
+
+export async function reopenTrainingEnrollment(enrollmentId: string) {
+  const { error } = await supabase.rpc("reopen_training_enrollment", { p_enrollment_id: enrollmentId });
   if (error) throw error;
 }
 
@@ -572,6 +593,10 @@ export interface TrainingBatch {
   startsOn: string | null;
   endsOn: string | null;
   studentCount: number;
+  requiredSessions: number;
+  cadenceDays: number;
+  excusedCounts: boolean;
+  attendanceProgress: number;
 }
 
 export interface MemberTrainingJourneyItem {
@@ -616,7 +641,7 @@ export async function getPendingTrainingEnrollments() {
 export async function getProgramBatches(trainingId: string) {
   const { data: batches, error } = await supabase
     .from("training_batches")
-    .select("id, training_id, name, trainer_user_id, status, starts_on, ends_on")
+    .select("id, training_id, name, trainer_user_id, status, starts_on, ends_on, required_sessions, cadence_days, excused_counts")
     .eq("training_id", trainingId)
     .order("starts_on", { ascending: false });
   if (error) throw error;
@@ -624,11 +649,20 @@ export async function getProgramBatches(trainingId: string) {
   const { data: enrollments, error: enrollmentError } = batchIds.length
     ? await supabase
         .from("member_trainings")
-        .select("batch_id")
+        .select("batch_id, workflow_status")
         .in("batch_id", batchIds)
         .is("archived_at", null)
     : { data: [], error: null };
   if (enrollmentError) throw enrollmentError;
+  const { data: sessions, error: sessionError } = batchIds.length
+    ? await supabase.from("training_sessions").select("id, batch_id").in("batch_id", batchIds)
+    : { data: [], error: null };
+  if (sessionError) throw sessionError;
+  const sessionIds = (sessions ?? []).map((session) => session.id);
+  const { data: recordedAttendance, error: attendanceError } = sessionIds.length
+    ? await supabase.from("training_attendance").select("session_id").in("session_id", sessionIds)
+    : { data: [], error: null };
+  if (attendanceError) throw attendanceError;
   const trainerIds = Array.from(
     new Set((batches ?? []).map((batch) => batch.trainer_user_id).filter(Boolean)),
   );
@@ -648,8 +682,12 @@ export async function getProgramBatches(trainingId: string) {
     startsOn: batch.starts_on,
     endsOn: batch.ends_on,
     studentCount: (enrollments ?? []).filter(
-      (enrollment) => enrollment.batch_id === batch.id,
+      (enrollment) => enrollment.batch_id === batch.id && ["pending_enrollment", "in_progress", "for_remedial", "ready_for_completion"].includes(enrollment.workflow_status),
     ).length,
+    requiredSessions: batch.required_sessions ?? 10,
+    cadenceDays: batch.cadence_days ?? 7,
+    excusedCounts: batch.excused_counts ?? false,
+    attendanceProgress: new Set((recordedAttendance ?? []).filter((record) => (sessions ?? []).some((session) => session.id === record.session_id && session.batch_id === batch.id)).map((record) => record.session_id)).size,
   })) as TrainingBatch[];
 }
 
@@ -700,6 +738,22 @@ export async function getOrCreateTrainingCycle(trainingId: string) {
   return data as TrainingBatch & { training_id: string };
 }
 
+export async function createConfiguredTrainingCycle(trainingId: string, startDate: string, requiredSessions: number) {
+  const { data, error } = await supabase.rpc("create_training_cycle", { p_training_id: trainingId, p_start_date: startDate, p_required_sessions: requiredSessions, p_cadence_days: 7 });
+  if (error) throw error;
+  return data as TrainingBatch & { id: string };
+}
+
+export async function startTrainingCycle(cycleId: string) {
+  const { error } = await supabase.rpc("start_training_cycle", { p_cycle_id: cycleId });
+  if (error) throw error;
+}
+
+export async function updateTrainingSession(sessionId: string, title: string, sessionDate: string) {
+  const { error } = await supabase.from("training_sessions").update({ title, session_date: sessionDate || null }).eq("id", sessionId);
+  if (error) throw error;
+}
+
 export async function deleteCancelledTrainingCycle(cycleId: string) {
   const { error } = await supabase.rpc("delete_cancelled_training_cycle", { p_cycle_id: cycleId });
   if (error) throw error;
@@ -746,7 +800,7 @@ export async function archiveImportedTrainingEnrollments() {
 export async function getTrainingBatchWorkspace(batchId: string) {
   const { data: batch, error: batchError } = await supabase
     .from("training_batches")
-    .select("id, training_id, name, trainer_user_id, status, starts_on, ends_on")
+    .select("id, training_id, name, trainer_user_id, status, starts_on, ends_on, required_sessions, cadence_days, excused_counts")
     .eq("id", batchId)
     .single();
   if (batchError) throw batchError;
@@ -799,6 +853,10 @@ export async function getTrainingBatchWorkspace(batchId: string) {
       startsOn: batch.starts_on,
       endsOn: batch.ends_on,
       studentCount: enrollmentResult.data?.length ?? 0,
+      requiredSessions: batch.required_sessions ?? 10,
+      cadenceDays: batch.cadence_days ?? 7,
+      excusedCounts: batch.excused_counts ?? false,
+      attendanceProgress: new Set((attendance ?? []).map((item) => item.session_id)).size,
     } as TrainingBatch,
     program,
     enrollments: (enrollmentResult.data ?? []).map(mapEnrollment),

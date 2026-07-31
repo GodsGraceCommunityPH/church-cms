@@ -1,18 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Select from "../../components/ui/Select";
 import Modal from "../../components/Modal";
 import { useAuth } from "../../features/auth/auth";
 import {
-  createTrainingSession,
+  completeTraining,
+  overrideCompleteTraining,
+  reopenTrainingEnrollment,
   completeTrainingCycle,
   enrollBatchStudents,
   getAvailableMembers,
   getTrainingBatchWorkspace,
   saveAttendance,
   resetTrainingCycleForDemo,
+  startTrainingCycle,
+  updateTrainingSession,
   trainingErrorMessage,
   trainingStatusLabel,
 } from "../../features/training/trainingService";
@@ -20,6 +24,7 @@ import {
 export default function TrainingBatch() {
   const { batchId, programSlug } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { hasPermission } = useAuth();
   const [workspace, setWorkspace] = useState<Awaited<ReturnType<typeof getTrainingBatchWorkspace>> | null>(null);
@@ -31,7 +36,6 @@ export default function TrainingBatch() {
   const [enrolling, setEnrolling] = useState(false);
   const [enrollmentError, setEnrollmentError] = useState("");
   const [savingAttendance, setSavingAttendance] = useState("");
-  const [sessionName, setSessionName] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -56,6 +60,10 @@ export default function TrainingBatch() {
   const activeCycle = workspace
     ? ["open", "ongoing"].includes(workspace.batch.status)
     : false;
+  const classStarted = workspace?.batch.status === "ongoing";
+  const activeStudents = workspace?.enrollments.filter((student) => ["pending_enrollment", "in_progress", "for_remedial", "ready_for_completion"].includes(student.status)) ?? [];
+  const completedStudents = workspace?.enrollments.filter((student) => student.status === "completed") ?? [];
+  const attendanceCount = (studentId: string) => workspace?.attendance.filter((item) => item.member_training_id === studentId && (["present", "late"].includes(item.status) || (workspace.batch.excusedCounts && item.status === "excused"))).length ?? 0;
 
   const openStudentPicker = useCallback(async () => {
     if (!workspace) return;
@@ -89,7 +97,7 @@ export default function TrainingBatch() {
       <header>
         <Link to={`/admin/training/${programSlug}`} className="text-sm font-medium text-olive-700 hover:underline">← Back to {workspace.program.name}</Link>
         <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
-          <div><p className="text-sm font-medium text-olive-700">{workspace.program.name}</p><h1 className="mt-1 text-3xl font-bold">{activeCycle ? "Current Training" : "Previous Training Run"}</h1></div>
+          <div><p className="text-sm font-medium text-olive-700">{workspace.program.name}</p><h1 className="mt-1 text-3xl font-bold">{activeCycle ? "Current Class" : "Previous Class"}</h1></div>
           {hasPermission("training.enroll") && activeCycle && (
             <Button
               disabled={loadingMembers}
@@ -106,6 +114,7 @@ export default function TrainingBatch() {
       {activeCycle && (
         <div className="flex justify-end" style={{ display: "flex", justifyContent: "flex-end", gap: 12, flexWrap: "wrap" }}>
           <Button variant="secondary" onClick={() => { setNotice(""); void load().then((loaded) => { if (loaded) setNotice("Training data reloaded from Supabase."); }); }}>Reload Data</Button>
+          {workspace.batch.status === "open" && hasPermission("training.enroll") && <Button onClick={() => { if (!window.confirm("Start this class? All pending students will move to In Progress and attendance will open.")) return; void startTrainingCycle(workspace.batch.id).then(load).catch((reason) => setError(trainingErrorMessage(reason))); }}>Start Class</Button>}
           {hasPermission("admin.settings") && (
             <Button variant="secondary" onClick={() => {
               if (!window.confirm("Reset this current Training cycle for the demo? Active students will be cancelled and the cycle will move to history. Nothing will be deleted.")) return;
@@ -137,12 +146,12 @@ export default function TrainingBatch() {
       <div>
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" style={{ padding: 26, border: "1px solid #dbe3ec", borderRadius: 18, background: "#fff", boxShadow: "0 2px 8px rgba(15,23,42,.06)" }}>
           <h2 className="text-lg font-semibold">Sessions</h2>
-          {hasPermission("training.enroll") && activeCycle && <form className="mt-5 flex flex-col gap-3 sm:flex-row" onSubmit={(event) => { event.preventDefault(); if (!sessionName.trim()) return; void createTrainingSession(workspace.batch.id, sessionName.trim(), null).then(() => { setSessionName(""); return load(); }); }}><Input value={sessionName} onChange={(event) => setSessionName(event.target.value)} placeholder="Week 1" /><Button type="submit">Add Session</Button></form>}
+          <p style={{ color: "#64748b", margin: "8px 0 0" }}>{workspace.sessions.length} required sessions · Attendance opens when the class starts.</p>
           <div className="mt-6 space-y-5">{workspace.sessions.length === 0 ? <p className="text-slate-500">No sessions configured.</p> : workspace.sessions.map((session) => (
-            <article key={session.id} className="rounded-xl border border-slate-200 p-5"><p className="font-semibold">{session.title}</p><div className="mt-4 space-y-3">{workspace.enrollments.map((student) => {
+            <article key={session.id} className="rounded-xl border border-slate-200 p-5"><div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}><p className="font-semibold">{session.title} <span style={{ color: "#64748b", fontWeight: 400 }}>· {session.session_date ? new Date(session.session_date).toLocaleDateString("en-PH") : "Date not recorded"}</span></p>{hasPermission("training.enroll") && activeCycle && <Button variant="secondary" onClick={() => { const title = window.prompt("Session title", session.title); if (!title) return; const date = window.prompt("Session date (YYYY-MM-DD)", session.session_date?.slice(0,10) ?? "") ?? ""; void updateTrainingSession(session.id,title,date).then(load).catch((reason) => setError(trainingErrorMessage(reason))); }}>Edit Session</Button>}</div><div className="mt-4 space-y-3">{activeStudents.map((student) => {
               const attendance = workspace.attendance.find((item) => item.member_training_id === student.id && item.session_id === session.id);
               const saveKey = `${student.id}:${session.id}`;
-              return <div key={student.id} className="flex flex-col gap-3 rounded-lg bg-slate-50 p-3 text-sm sm:flex-row sm:items-center" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(150px, 190px)", alignItems: "center", gap: 16, width: "100%", maxWidth: 620, padding: "11px 14px", borderRadius: 10, background: "#f8fafc", boxSizing: "border-box" }}><Link to={`/admin/training/${programSlug}/members/${student.id}`} className="font-medium hover:text-olive-700" style={{ color: "inherit", textDecoration: "none", fontWeight: 600 }}>{student.firstName} {student.lastName}</Link>{hasPermission("training.attendance") ? <Select className="sm:w-44" style={{ width: "100%" }} value={attendance?.status ?? ""} disabled={savingAttendance === saveKey} onChange={(event) => { setSavingAttendance(saveKey); setError(""); void saveAttendance(student.id, session.id, event.target.value).then(load).catch(() => setError("Attendance could not be saved. Please try again.")).finally(() => setSavingAttendance("")); }}><option value="" disabled>Select attendance</option><option value="present">Present</option><option value="absent">Absent</option><option value="late">Late</option><option value="excused">Excused</option></Select> : <span>{attendance ? trainingStatusLabel(attendance.status) : "Not recorded"}</span>}</div>;
+              return <div key={student.id} className="flex flex-col gap-3 rounded-lg bg-slate-50 p-3 text-sm sm:flex-row sm:items-center" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(150px, 190px)", alignItems: "center", gap: 16, width: "100%", maxWidth: 620, padding: "11px 14px", borderRadius: 10, background: "#f8fafc", boxSizing: "border-box" }}><Link to={`/admin/training/${programSlug}/members/${student.id}`} className="font-medium hover:text-olive-700" style={{ color: "inherit", textDecoration: "none", fontWeight: 600 }}>{student.firstName} {student.lastName}</Link>{hasPermission("training.attendance") ? <Select className="sm:w-44" style={{ width: "100%" }} value={attendance?.status ?? ""} disabled={!classStarted || savingAttendance === saveKey} onChange={(event) => { setSavingAttendance(saveKey); setError(""); void saveAttendance(student.id, session.id, event.target.value).then(load).catch((reason) => setError(trainingErrorMessage(reason))).finally(() => setSavingAttendance("")); }}><option value="" disabled>Select attendance</option><option value="present">Present</option><option value="absent">Absent</option><option value="late">Late</option><option value="excused">Excused</option></Select> : <span>{attendance ? trainingStatusLabel(attendance.status) : "Not recorded"}</span>}</div>;
             })}</div></article>
           ))}</div>
         </section>
@@ -150,11 +159,13 @@ export default function TrainingBatch() {
       </div>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" style={{ padding: 26, border: "1px solid #dbe3ec", borderRadius: 18, background: "#fff", boxShadow: "0 2px 8px rgba(15,23,42,.06)" }}>
-        <h2 className="text-lg font-semibold">Students ({workspace.enrollments.length})</h2>
-        <div className="mt-5 grid gap-4 sm:grid-cols-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 16, marginTop: 20 }}>{workspace.enrollments.map((student) => (
-          <Link key={student.id} to={`/admin/training/${programSlug}/members/${student.id}`} className="rounded-xl border border-slate-200 p-5 shadow-sm transition hover:border-olive-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive-600" style={{ display: "block", minHeight: 86, padding: 20, border: "1px solid #dbe3ec", borderRadius: 14, background: "#fff", color: "inherit", textDecoration: "none", boxShadow: "0 2px 6px rgba(15,23,42,.07)", boxSizing: "border-box" }}><p className="font-semibold" style={{ margin: 0, fontSize: 17 }}>{student.firstName} {student.lastName}</p><p className="mt-2 text-sm capitalize text-slate-500" style={{ margin: "9px 0 0", color: "#64748b" }}>{student.status.replaceAll("_", " ")}</p></Link>
+        <h2 className="text-lg font-semibold">Students Enrolled ({activeStudents.length})</h2>
+        <div className="mt-5 grid gap-4 sm:grid-cols-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 16, marginTop: 20 }}>{activeStudents.map((student) => (
+          <article key={student.id} style={{ padding: 20, border: "1px solid #dbe3ec", borderRadius: 14, background: "#fff", boxShadow: "0 2px 6px rgba(15,23,42,.07)" }}><Link to={`/admin/training/${programSlug}/members/${student.id}`} state={{ returnTo: location.pathname }} style={{ color: "inherit", textDecoration: "none" }}><p style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{student.firstName} {student.lastName}</p><p style={{ margin: "8px 0 0", color: "#64748b" }}>{student.status.replaceAll("_", " ")}</p><p style={{ margin: "8px 0 0", fontWeight: 600 }}>Attendance: {attendanceCount(student.id)} / {workspace.batch.requiredSessions}</p></Link>{attendanceCount(student.id) >= workspace.batch.requiredSessions && hasPermission("training.complete") && <Button style={{ marginTop: 14 }} onClick={() => void completeTraining(student.id).then(load).catch((reason) => setError(trainingErrorMessage(reason)))}>Complete Student</Button>}{attendanceCount(student.id) < workspace.batch.requiredSessions && hasPermission("admin.settings") && <Button variant="secondary" style={{ marginTop: 14 }} onClick={() => { if (!window.confirm("Exceptional override: complete this student before attendance requirements are satisfied?")) return; void overrideCompleteTraining(student.id).then(load).catch((reason) => setError(trainingErrorMessage(reason))); }}>Override Completion</Button>}</article>
         ))}</div>
       </section>
+
+      {completedStudents.length > 0 && <section style={{ padding: 24, border: "1px solid #dbe3ec", borderRadius: 18, background: "#fff" }}><h2 style={{ marginTop: 0 }}>Completed Students ({completedStudents.length})</h2><div style={{ display: "grid", gap: 12 }}>{completedStudents.map((student) => <article key={student.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", padding: 16, border: "1px solid #e2e8f0", borderRadius: 12 }}><Link to={`/admin/training/${programSlug}/members/${student.id}`} state={{ returnTo: location.pathname }}>{student.firstName} {student.lastName}</Link>{hasPermission("admin.settings") && <Button variant="secondary" onClick={() => { if (!window.confirm("Reopen this completed student as In Progress? Attendance, notes, and history will be preserved.")) return; void reopenTrainingEnrollment(student.id).then(load).catch((reason) => setError(trainingErrorMessage(reason))); }}>Reopen Training</Button>}</article>)}</div></section>}
 
       <Modal open={showStudents} title="Add Students" onClose={() => setShowStudents(false)}>
         <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search members..." />

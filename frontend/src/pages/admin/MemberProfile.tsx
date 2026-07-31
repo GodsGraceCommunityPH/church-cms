@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -20,6 +20,8 @@ export default function MemberProfile() {
   const { id } = useParams();
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo = (location.state as { returnTo?: string } | null)?.returnTo;
 
   const [member, setMember] = useState<Member | null>(null);
   const [loading, setLoading] = useState(true);
@@ -88,7 +90,7 @@ export default function MemberProfile() {
           marginBottom: "25px",
         }}
       >
-        <button onClick={() => navigate("/admin/members")} style={{ border: "1px solid #cbd5e1", borderRadius: "8px", background: "white", padding: "10px 14px", color: "#334155", cursor: "pointer" }}>
+        <button onClick={() => navigate(returnTo ?? "/admin/members")} style={{ border: "1px solid #cbd5e1", borderRadius: "8px", background: "white", padding: "10px 14px", color: "#334155", cursor: "pointer" }}>
           ← Back to Members
         </button>
 
