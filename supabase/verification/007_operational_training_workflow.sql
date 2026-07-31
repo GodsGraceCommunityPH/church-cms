@@ -5,11 +5,11 @@ select count(*) = 76 as all_legacy_rows_preserved
 from public.member_trainings;
 
 select
-  count(*) filter (where status = 'pending_enrollment') = 12
+  count(*) filter (where workflow_status = 'pending_enrollment') = 12
     as pending_count_matches,
-  count(*) filter (where status = 'in_progress') = 30
+  count(*) filter (where workflow_status = 'in_progress') = 30
     as active_count_matches,
-  count(*) filter (where status = 'completed') = 34
+  count(*) filter (where workflow_status = 'completed') = 34
     as completed_count_matches,
   count(*) = 76 as total_count_matches
 from public.member_trainings;
@@ -31,7 +31,8 @@ where lower(trim(t.name)) = 'sol 2';
 select not exists (
   select 1
   from public.member_trainings
-  where status not in (
+  where workflow_status is null
+     or workflow_status not in (
     'pending_enrollment',
     'in_progress',
     'for_remedial',
@@ -41,6 +42,21 @@ select not exists (
     'cancelled'
   )
 ) as all_statuses_valid;
+
+select
+  count(*) filter (
+    where status::text = 'Not Started'
+      and workflow_status = 'pending_enrollment'
+  ) = 12 as legacy_pending_enum_preserved,
+  count(*) filter (
+    where status::text = 'In Progress'
+      and workflow_status = 'in_progress'
+  ) = 30 as legacy_active_enum_preserved,
+  count(*) filter (
+    where status::text = 'Completed'
+      and workflow_status = 'completed'
+  ) = 34 as legacy_completed_enum_preserved
+from public.member_trainings;
 
 select
   to_regclass('public.training_batches') is not null as batches_created,

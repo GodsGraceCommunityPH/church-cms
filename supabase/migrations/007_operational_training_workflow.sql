@@ -1,51 +1,45 @@
 begin;
 
--- Preserve the source label before normalizing the legacy workflow status.
+-- Preserve the legacy enum and derive an independent workflow state.
 alter table public.member_trainings
   add column if not exists legacy_status text,
+  add column if not exists workflow_status text,
   add column if not exists batch_id uuid,
   add column if not exists started_at timestamptz,
   add column if not exists updated_at timestamptz not null default now();
 
 update public.member_trainings
-set legacy_status = status
-where legacy_status is null
-  and status in ('Not Started', 'In Progress', 'Completed');
+set legacy_status = status::text
+where legacy_status is null;
 
 update public.member_trainings
-set status = case status
-  when 'Not Started' then 'pending_enrollment'
-  when 'In Progress' then 'in_progress'
-  when 'Completed' then 'completed'
-  else status
+set workflow_status = case status::text
+  when 'Not Started' then 'pending_enrollment'::text
+  when 'In Progress' then 'in_progress'::text
+  when 'Completed' then 'completed'::text
+  else null::text
 end
-where status in ('Not Started', 'In Progress', 'Completed');
+where workflow_status is null;
 
 do $$
 begin
   if exists (
     select 1
     from public.member_trainings
-    where status not in (
-      'pending_enrollment',
-      'in_progress',
-      'for_remedial',
-      'ready_for_completion',
-      'completed',
-      'withdrawn',
-      'cancelled'
-    )
+    where workflow_status is null
   ) then
-    raise exception 'Unmapped member_trainings statuses remain; migration stopped.';
+    raise exception 'Unmapped member_trainings legacy statuses remain; migration stopped.';
   end if;
 end;
 $$;
 
 alter table public.member_trainings
-  drop constraint if exists member_trainings_status_check;
+  alter column workflow_status set not null;
 alter table public.member_trainings
-  add constraint member_trainings_status_check check (
-    status in (
+  drop constraint if exists member_trainings_workflow_status_check;
+alter table public.member_trainings
+  add constraint member_trainings_workflow_status_check check (
+    workflow_status in (
       'pending_enrollment',
       'in_progress',
       'for_remedial',
@@ -55,6 +49,8 @@ alter table public.member_trainings
       'cancelled'
     )
   );
+create index if not exists member_trainings_workflow_status_idx
+  on public.member_trainings (workflow_status);
 
 create table if not exists public.training_batches (
   id uuid primary key default gen_random_uuid(),
@@ -70,9 +66,22 @@ create table if not exists public.training_batches (
   unique (training_id, name)
 );
 
-alter table public.member_trainings
-  add constraint member_trainings_batch_id_fkey
-  foreign key (batch_id) references public.training_batches(id) on delete set null;
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.member_trainings'::regclass
+      and conname = 'member_trainings_batch_id_fkey'
+  ) then
+    alter table public.member_trainings
+      add constraint member_trainings_batch_id_fkey
+      foreign key (batch_id)
+      references public.training_batches(id)
+      on delete set null;
+  end if;
+end;
+$$;
 
 create table if not exists public.training_requirements (
   id uuid primary key default gen_random_uuid(),
@@ -183,13 +192,18 @@ security invoker
 set search_path = ''
 as $$
 begin
-  if old.status is distinct from new.status then
+  if old.workflow_status is distinct from new.workflow_status then
     insert into public.member_training_status_history (
       member_training_id,
       previous_status,
       new_status,
       changed_by
-    ) values (new.id, old.status, new.status, auth.uid());
+    ) values (
+      new.id,
+      old.workflow_status,
+      new.workflow_status,
+      auth.uid()
+    );
   end if;
   new.updated_at = now();
   return new;
@@ -358,7 +372,7 @@ begin
   end if;
 
   update public.member_trainings
-  set status = 'completed',
+  set workflow_status = 'completed',
       completed_at = coalesce(completed_at, now())
   where id = p_enrollment_id;
 

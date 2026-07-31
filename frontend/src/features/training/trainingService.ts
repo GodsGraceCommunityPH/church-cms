@@ -110,7 +110,7 @@ interface TrainingRow {
 
 interface MemberTrainingRow {
   training_id: string;
-  status: string | null;
+  workflow_status: string | null;
 }
 
 export function normalizeTrainingStatus(status: string) {
@@ -156,7 +156,7 @@ export function trainingStatusLabel(status: string) {
 export async function getTrainingOverview(): Promise<TrainingProgramSummary[]> {
   const [trainingsResult, enrollmentResult] = await Promise.all([
     supabase.from("trainings").select("id, name"),
-    supabase.from("member_trainings").select("training_id, status"),
+    supabase.from("member_trainings").select("training_id, workflow_status"),
   ]);
   if (trainingsResult.error) throw trainingsResult.error;
   if (enrollmentResult.error) throw enrollmentResult.error;
@@ -175,10 +175,10 @@ export async function getTrainingOverview(): Promise<TrainingProgramSummary[]> {
       ...program,
       totalEnrolled: programEnrollments.length,
       completed: programEnrollments.filter((item) =>
-        isCompletedTrainingStatus(item.status ?? ""),
+        isCompletedTrainingStatus(item.workflow_status ?? ""),
       ).length,
       inProgress: programEnrollments.filter((item) =>
-        isInProgressTrainingStatus(item.status ?? ""),
+        isInProgressTrainingStatus(item.workflow_status ?? ""),
       ).length,
     };
   });
@@ -190,7 +190,7 @@ function mapEnrollment(item: any): TrainingEnrollment {
     memberId: item.member_id,
     firstName: item.members?.first_name ?? "",
     lastName: item.members?.last_name ?? "",
-    status: asWorkflowStatus(item.status),
+    status: asWorkflowStatus(item.workflow_status),
     enrolledAt: item.created_at,
     startedAt: item.started_at,
     completedAt: item.completed_at,
@@ -203,7 +203,7 @@ function mapEnrollment(item: any): TrainingEnrollment {
 const ENROLLMENT_SELECT = `
   id,
   member_id,
-  status,
+  workflow_status,
   created_at,
   started_at,
   completed_at,
@@ -363,7 +363,7 @@ export async function updateEnrollmentStatus(
   enrollmentId: string,
   status: TrainingWorkflowStatus,
 ) {
-  const values: Record<string, string | null> = { status };
+  const values: Record<string, string | null> = { workflow_status: status };
   if (status === "in_progress") values.started_at = new Date().toISOString();
   if (status !== "completed") values.completed_at = null;
   const { error } = await supabase
