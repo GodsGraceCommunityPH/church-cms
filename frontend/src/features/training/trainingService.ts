@@ -535,7 +535,13 @@ export async function assignEnrollmentBatch(
 export async function getAssignableTrainers() {
   const { data, error } = await supabase
     .from("users")
-    .select("id, display_name, user_roles(roles(code))")
+    .select(`
+      id,
+      display_name,
+      user_roles!user_roles_user_id_fkey (
+        roles ( code )
+      )
+    `)
     .eq("is_active", true)
     .order("display_name");
   if (error) throw error;
