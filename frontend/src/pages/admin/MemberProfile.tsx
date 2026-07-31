@@ -135,6 +135,7 @@ export default function MemberProfile() {
       </div>
 
       <ProfileCard title="Personal Information">
+        <InfoRow label="Gender" value={member.gender || "—"} />
         <InfoRow label="Birthday" value={formatDate(member.birthday)} />
         <InfoRow label="Age" value={calculateAge(member.birthday)} />
         <InfoRow

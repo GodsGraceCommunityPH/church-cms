@@ -10,6 +10,13 @@ export default function MemberFilters({ value, onChange }: MemberFiltersProps) {
       value={value}
       onChange={(event) => onChange(event.target.value)}
       className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm"
+      style={{
+        minWidth: "180px",
+        background: "white",
+        border: "1px solid #cbd5e1",
+        borderRadius: "12px",
+        padding: "12px 16px",
+      }}
     >
       <option value="">All statuses</option>
       <option value="Visitor">Visitor</option>

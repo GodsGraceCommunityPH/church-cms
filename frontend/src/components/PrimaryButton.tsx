@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Link } from "react-router-dom";
 
 type PrimaryButtonProps = {
@@ -10,6 +10,7 @@ type PrimaryButtonProps = {
   onClick?: () => void;
   className?: string;
   type?: "button" | "submit";
+  style?: CSSProperties;
 };
 
 function PrimaryButton({
@@ -21,6 +22,7 @@ function PrimaryButton({
   onClick,
   className = "",
   type = "button", // <-- Add this
+  style,
 }: PrimaryButtonProps) {
   const styles = {
     primary:
@@ -33,7 +35,7 @@ function PrimaryButton({
 
   if (to) {
     return (
-      <Link to={to} className={buttonClass} onClick={onClick}>
+      <Link to={to} className={buttonClass} onClick={onClick} style={style}>
         {children}
       </Link>
     );
@@ -46,6 +48,7 @@ function PrimaryButton({
         target={target}
         rel={target === "_blank" ? "noopener noreferrer" : undefined}
         className={buttonClass}
+        style={style}
       >
         {children}
       </a>
@@ -53,7 +56,7 @@ function PrimaryButton({
   }
 
   return (
-    <button type={type} onClick={onClick} className={buttonClass}>
+    <button type={type} onClick={onClick} className={buttonClass} style={style}>
       {children}
     </button>
   );

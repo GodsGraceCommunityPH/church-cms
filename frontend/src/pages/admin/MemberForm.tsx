@@ -131,7 +131,13 @@ function MemberForm() {
       return;
     }
 
-    navigate("/admin/members");
+    navigate("/admin/members", {
+      state: {
+        successMessage: isEdit
+          ? "Member updated successfully."
+          : "Member created successfully.",
+      },
+    });
   };
 
   if (isLoading) {

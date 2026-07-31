@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import PrimaryButton from "../../components/PrimaryButton";
 import Button from "../../components/ui/Button";
 import Modal from "../../components/Modal";
-import MemberFilters from "../../features/members/MemberFilters";
 import MemberSearch from "../../features/members/MemberSearch";
 import MemberTable from "../../features/members/MemberTable";
 import type { Member } from "../../features/members/member";
@@ -12,12 +11,15 @@ import { useMembers } from "../../features/members/useMembers";
 
 function Members() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { members, loading, error, loadMembers } = useMembers();
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
   const [memberToDeactivate, setMemberToDeactivate] = useState<Member | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [successMessage, setSuccessMessage] = useState(
+    () => location.state?.successMessage ?? "",
+  );
 
   const filteredMembers = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -28,11 +30,9 @@ function Members() {
         member.firstName.toLowerCase().includes(keyword) ||
         member.lastName.toLowerCase().includes(keyword) ||
         member.nickname.toLowerCase().includes(keyword);
-      const matchesStatus = !status || member.membershipStatus === status;
-
-      return matchesSearch && matchesStatus;
+      return matchesSearch;
     });
-  }, [members, search, status]);
+  }, [members, search]);
 
   async function handleDeactivate() {
     if (!memberToDeactivate) return;
@@ -44,6 +44,7 @@ function Members() {
       await deactivateMember(memberToDeactivate.id);
       setMemberToDeactivate(null);
       await loadMembers();
+      setSuccessMessage("Member archived successfully.");
     } catch {
       setActionError("Unable to deactivate this member. Please try again.");
     } finally {
@@ -52,19 +53,58 @@ function Members() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="space-y-8">
+      <div
+        className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "24px",
+          margin: "8px 24px 32px",
+        }}
+      >
         <div>
-          <h1 className="text-3xl font-bold">Members</h1>
-          <p className="text-slate-600">Manage people known by the church.</p>
+          <h1 className="text-3xl font-bold" style={{ fontSize: "30px", margin: 0 }}>
+            Members
+          </h1>
+          <p className="text-slate-600" style={{ margin: "8px 0 0" }}>
+            Manage people known by the church.
+          </p>
         </div>
-        <PrimaryButton to="/admin/members/new">Add Member</PrimaryButton>
+        <PrimaryButton
+          to="/admin/members/new"
+          className="shrink-0"
+          style={{ marginRight: "24px" }}
+        >
+          Add Member
+        </PrimaryButton>
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5">
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row">
+      <section
+        className="rounded-2xl border border-slate-200 bg-white p-6"
+        style={{
+          background: "white",
+          border: "1px solid #e2e8f0",
+          borderRadius: "16px",
+          padding: "24px",
+          margin: "0 24px",
+        }}
+      >
+        {successMessage && (
+          <div className="mb-5 flex items-center justify-between rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            <p>{successMessage}</p>
+            <button
+              type="button"
+              onClick={() => setSuccessMessage("")}
+              className="font-medium underline"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+        <div className="mb-8" style={{ marginBottom: "32px" }}>
           <MemberSearch value={search} onChange={setSearch} />
-          <MemberFilters value={status} onChange={setStatus} />
         </div>
 
         {loading ? (
@@ -82,7 +122,7 @@ function Members() {
             <p className="mt-2 text-slate-500">
               {members.length === 0
                 ? "Add the first person known by the church."
-                : "Try adjusting the search or status filter."}
+                : "Try adjusting the search."}
             </p>
           </div>
         ) : (

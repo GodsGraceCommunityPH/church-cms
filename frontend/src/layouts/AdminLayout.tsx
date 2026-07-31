@@ -24,7 +24,7 @@ function AdminLayout() {
       <div className="flex flex-1 flex-col">
         <Topbar onMenuClick={() => setSidebarOpen(true)} />
 
-        <main className="flex-1 p-4 md:p-8">
+        <main className="flex-1 px-6 py-8 md:px-8 md:py-10">
           <Outlet />
         </main>
       </div>
