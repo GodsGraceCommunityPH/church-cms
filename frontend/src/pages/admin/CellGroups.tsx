@@ -6,6 +6,7 @@ import PrimaryButton from "../../components/PrimaryButton";
 import { useNavigate } from "react-router-dom";
 import Card from "../../components/ui/Card";
 import Input from "../../components/ui/Input";
+import { Users } from "lucide-react";
 
 export default function CellGroups() {
   const [cellGroups, setCellGroups] = useState<CellGroup[]>([]);
@@ -84,8 +85,9 @@ export default function CellGroups() {
                           {group.name}
                         </h2>
 
-                        <p className="text-sm text-slate-500">
-                          👥 {group.memberCount}{" "}
+                        <p className="mt-1 flex items-center gap-1 text-sm text-slate-500">
+                          <Users size={14} />
+                          {group.memberCount}{" "}
                           {group.memberCount === 1 ? "member" : "members"}
                         </p>
 

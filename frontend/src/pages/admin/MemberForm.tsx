@@ -12,6 +12,11 @@ import type { Member } from "../../features/members/member";
 import type { CellGroup } from "../../features/cellGroups/cellGroup";
 import { supabase } from "../../lib/supabase";
 import SearchableSelect from "../../components/ui/SearchableSelect";
+import {
+  createMember,
+  getMember,
+  updateMember,
+} from "../../features/members/memberService";
 
 function MemberForm() {
   const navigate = useNavigate();
@@ -20,56 +25,34 @@ function MemberForm() {
 
   const [member, setMember] = useState<Member>(defaultMember);
   const [cellGroups, setCellGroups] = useState<CellGroup[]>([]);
+  const [isLoading, setIsLoading] = useState(isEdit);
+  const [memberLoadError, setMemberLoadError] = useState("");
+  const [cellGroupLoadError, setCellGroupLoadError] = useState("");
+  const [formError, setFormError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    loadCellGroups();
+    void loadCellGroups();
 
     if (isEdit) {
-      loadMember();
+      void loadMember();
+    } else {
+      setIsLoading(false);
     }
   }, [id]);
 
   async function loadMember() {
-    const { data, error } = await supabase
-      .from("members")
-      .select(
-        `
-    *,
-    cell_group:cell_groups!members_cell_group_id_fkey(
-      id,
-      name
-    )
-  `,
-      )
-      .eq("id", id)
-      .single();
-
-    console.log("data", data);
-    console.log("error", error);
-
-    if (error) {
-      console.error(error);
+    if (!id) {
       return;
     }
 
-    setMember({
-      id: data.id,
-      firstName: data.first_name ?? "",
-      lastName: data.last_name ?? "",
-      nickname: data.nickname ?? "",
-      gender: data.gender ?? "",
-      birthday: data.birthday ?? "",
-
-      membershipStatus: data.membership_status ?? "",
-      cellGroupId: data.cell_group_id ?? "",
-      cellGroup: data.cell_groups?.name ?? "",
-
-      mobile: data.mobile ?? "",
-      email: data.email ?? "",
-      address: data.address ?? "",
-
-      remarks: data.remarks ?? "",
-    });
+    try {
+      setMember(await getMember(id));
+    } catch {
+      setMemberLoadError("Unable to load member details. Please return to the member list and try again.");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   async function loadCellGroups() {
@@ -80,7 +63,7 @@ function MemberForm() {
       .order("name");
 
     if (error) {
-      console.error(error);
+      setCellGroupLoadError("Unable to load cell groups. You can still save the member without an assignment.");
       return;
     }
 
@@ -103,43 +86,68 @@ function MemberForm() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    if (isSaving) {
+      return;
+    }
+
+    setFormError("");
+
+    const firstName = member.firstName.trim();
+    const lastName = member.lastName.trim();
+
+    if (!firstName || !lastName || !member.gender || !member.membershipStatus) {
+      setFormError("Complete all required fields before saving the member.");
+      return;
+    }
+
     const payload = {
-      first_name: member.firstName,
-      last_name: member.lastName,
-      nickname: member.nickname,
+      first_name: firstName,
+      last_name: lastName,
+      nickname: member.nickname.trim(),
       gender: member.gender,
       birthday: member.birthday || null,
 
       membership_status: member.membershipStatus,
       cell_group_id: member.cellGroupId || null,
 
-      mobile: member.mobile,
-      email: member.email,
-      address: member.address,
+      mobile: member.mobile.trim(),
+      email: member.email.trim(),
+      address: member.address.trim(),
 
-      remarks: member.remarks,
+      remarks: member.remarks.trim(),
     };
 
-    let error;
+    setIsSaving(true);
 
-    if (isEdit) {
-      ({ error } = await supabase.from("members").update(payload).eq("id", id));
-    } else {
-      ({ error } = await supabase.from("members").insert(payload));
-    }
-
-    if (error) {
-      console.error(error);
-      alert("Failed to save member.");
+    try {
+      if (isEdit && id) {
+        await updateMember(id, payload);
+      } else {
+        await createMember(payload);
+      }
+    } catch {
+      setFormError("Unable to save the member. Please try again.");
+      setIsSaving(false);
       return;
     }
 
-    if (isEdit) {
-      navigate(`/admin/members/${id}`);
-    } else {
-      navigate("/admin/members");
-    }
+    navigate("/admin/members");
   };
+
+  if (isLoading) {
+    return <p className="p-5">Loading member details...</p>;
+  }
+
+  if (memberLoadError && isEdit) {
+    return (
+      <div className="space-y-4 p-5">
+        <p className="text-red-600">{memberLoadError}</p>
+        <Link to="/admin/members" className="text-slate-600 underline">
+          Back to Members
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -154,12 +162,24 @@ function MemberForm() {
       <div
         style={{ marginTop: "24px", marginBottom: "40px", paddingLeft: "20px" }}
       >
-        <h1 className="text-3xl font-bold">Add Member</h1>
+        <h1 className="text-3xl font-bold">{isEdit ? "Edit Member" : "Add Member"}</h1>
 
-        <p className="text-slate-600">Create a new church member.</p>
+        <p className="text-slate-600">
+          {isEdit ? "Update this member's information." : "Create a new church member."}
+        </p>
       </div>
 
       <form onSubmit={handleSubmit}>
+        {formError && (
+          <p className="mx-8 mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            {formError}
+          </p>
+        )}
+        {cellGroupLoadError && (
+          <p className="mx-8 mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
+            {cellGroupLoadError}
+          </p>
+        )}
         {/* Top Row */}
         <div className="grid gap-8 lg:grid-cols-2" style={{ margin: "32px" }}>
           {/* Personal Information */}
@@ -205,7 +225,6 @@ function MemberForm() {
               label="Birthday"
               name="birthday"
               type="date"
-              required
               value={member.birthday}
               onChange={handleChange}
             />
@@ -225,6 +244,7 @@ function MemberForm() {
                 { label: "Visitor", value: "Visitor" },
                 { label: "Regular Attendee", value: "Regular Attendee" },
                 { label: "Member", value: "Member" },
+                { label: "Inactive", value: "Inactive" },
               ]}
               value={member.membershipStatus}
               onChange={handleChange}
@@ -327,7 +347,7 @@ function MemberForm() {
                 padding: "10px 10px 10px 10px",
               }}
             >
-              Save Member
+              {isSaving ? "Saving..." : "Save Member"}
             </p>
           </PrimaryButton>
         </div>

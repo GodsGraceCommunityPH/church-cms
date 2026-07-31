@@ -2,9 +2,8 @@ import { useNavigate } from "react-router-dom";
 
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
 import type { Member } from "../../features/members/member";
-import { mapMember } from "../../features/members/memberMapper";
+import { getMember } from "../../features/members/memberService";
 
 import ProfileCard from "../../components/profile/ProfileCard";
 import InfoRow from "../../components/profile/InfoRow";
@@ -19,34 +18,25 @@ export default function MemberProfile() {
 
   const [member, setMember] = useState<Member | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    loadMember();
-  }, []);
+    void loadMember();
+  }, [id]);
 
   async function loadMember() {
-    const { data, error } = await supabase
-      .from("members")
-      .select(
-        `
-    *,
-    cell_group:cell_groups!members_cell_group_id_fkey(
-      id,
-      name
-    )
-    `,
-      )
-      .eq("id", id)
-      .single();
-    console.log("=== LOAD MEMBER V2 ===");
-    console.log(data);
-    if (error) {
-      console.error(error);
-    } else {
-      setMember(mapMember(data));
+    if (!id) {
+      setLoading(false);
+      return;
     }
 
-    setLoading(false);
+    try {
+      setMember(await getMember(id));
+    } catch {
+      setLoadError("Unable to load member details. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (loading) {
@@ -54,7 +44,7 @@ export default function MemberProfile() {
   }
 
   if (!member) {
-    return <p style={{ padding: 20 }}>Member not found.</p>;
+    return <p style={{ padding: 20 }}>{loadError || "Member not found."}</p>;
   }
 
   return (
@@ -65,6 +55,7 @@ export default function MemberProfile() {
         margin: "0 auto",
       }}
     >
+      {/* Top Buttons */}
       <div
         style={{
           display: "flex",
@@ -82,11 +73,13 @@ export default function MemberProfile() {
         </button>
       </div>
 
+      {/* Header */}
       <div
         style={{
           background: "white",
           borderRadius: "12px",
           padding: "40px",
+          marginBottom: "20px",
           boxShadow: "0 2px 10px rgba(0,0,0,0.08)",
           textAlign: "center",
         }}
@@ -109,34 +102,65 @@ export default function MemberProfile() {
           {getInitials(member.firstName, member.lastName)}
         </div>
 
-        <h1 style={{ margin: 0 }}>
+        <h1
+          style={{
+            margin: 0,
+            marginBottom: "10px",
+            fontSize: "30px",
+          }}
+        >
           {member.firstName} {member.lastName}
         </h1>
 
-        <ProfileCard title="Personal Information">
-          <InfoRow label="Birthday" value={formatDate(member.birthday)} />
-          <InfoRow label="Age" value={calculateAge(member.birthday)} />
-          <InfoRow
-            label="Nick Name"
-            value={member.nickname ? member.nickname : member.firstName}
-          />
-        </ProfileCard>
+        <p
+          style={{
+            margin: "0 0 6px",
+            color: "#666",
+            fontSize: "16px",
+            fontWeight: 500,
+          }}
+        >
+          {member.membershipStatus}
+        </p>
 
-        <ProfileCard title="Contact Information">
-          <InfoRow label="Mobile" value={member.mobile} />
-          <InfoRow label="Email" value={member.email} />
-          <InfoRow label="Address" value={member.address} />
-        </ProfileCard>
-
-        <ProfileCard title="Church Information">
-          <InfoRow label="Membership Status" value={member.membershipStatus} />
-          <InfoRow label="Cell Group" value={member.cellGroup} />
-        </ProfileCard>
-
-        <ProfileCard title="Remarks">
-          <InfoRow label="Remarks" value={member.remarks} />
-        </ProfileCard>
+        <p
+          style={{
+            margin: 0,
+            color: "#888",
+            fontSize: "14px",
+          }}
+        >
+          {member.cellGroup || "No Cell Group"}
+        </p>
       </div>
+
+      <ProfileCard title="Personal Information">
+        <InfoRow label="Birthday" value={formatDate(member.birthday)} />
+        <InfoRow label="Age" value={calculateAge(member.birthday)} />
+        <InfoRow
+          label="Nick Name"
+          value={member.nickname ? member.nickname : member.firstName}
+        />
+      </ProfileCard>
+
+      <ProfileCard title="Contact Information">
+        <InfoRow label="Mobile" value={member.mobile} />
+        <InfoRow label="Email" value={member.email} />
+        <InfoRow label="Address" value={member.address} />
+      </ProfileCard>
+
+      <ProfileCard title="Church Information">
+        <InfoRow label="Membership Status" value={member.membershipStatus} />
+
+        <InfoRow
+          label="Cell Group"
+          value={member.cellGroup || "Not Assigned"}
+        />
+      </ProfileCard>
+
+      <ProfileCard title="Remarks">
+        <InfoRow label="Remarks" value={member.remarks} />
+      </ProfileCard>
     </div>
   );
 }
