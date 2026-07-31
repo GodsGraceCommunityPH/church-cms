@@ -55,7 +55,7 @@ export default function SearchableSelect({
         style={{
           border: "1px solid #ccc",
           borderRadius: 10,
-          // padding: "10px",
+          padding: "12px 16px",
           cursor: "pointer",
           background: "white",
         }}

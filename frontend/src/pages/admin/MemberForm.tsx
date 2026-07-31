@@ -141,14 +141,14 @@ function MemberForm() {
   };
 
   if (isLoading) {
-    return <p className="p-5">Loading member details...</p>;
+    return <p className="p-5" style={{ margin: 0, padding: "20px" }}>Loading member details...</p>;
   }
 
   if (memberLoadError && isEdit) {
     return (
-      <div className="space-y-4 p-5">
-        <p className="text-red-600">{memberLoadError}</p>
-        <Link to="/admin/members" className="text-slate-600 underline">
+      <div className="space-y-4 p-5" style={{ padding: "20px" }}>
+        <p className="text-red-600" style={{ color: "#dc2626" }}>{memberLoadError}</p>
+        <Link to="/admin/members" className="text-slate-600 underline" style={{ color: "#475569" }}>
           Back to Members
         </Link>
       </div>
@@ -160,13 +160,14 @@ function MemberForm() {
       <Link
         to="/admin/members"
         className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900"
+        style={{ display: "inline-flex", alignItems: "center", gap: "8px", color: "#475569" }}
       >
         <ArrowLeft size={18} />
         Back to Members
       </Link>
 
       <div
-        style={{ marginTop: "24px", marginBottom: "40px", paddingLeft: "20px" }}
+        style={{ margin: "24px 0 32px" }}
       >
         <h1 className="text-3xl font-bold">{isEdit ? "Edit Member" : "Add Member"}</h1>
 
@@ -177,21 +178,21 @@ function MemberForm() {
 
       <form onSubmit={handleSubmit}>
         {formError && (
-          <p className="mx-8 mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          <p className="mx-8 mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700" style={{ margin: "0 0 16px", border: "1px solid #fecaca", borderRadius: "8px", background: "#fef2f2", padding: "12px", color: "#b91c1c" }}>
             {formError}
           </p>
         )}
         {cellGroupLoadError && (
-          <p className="mx-8 mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
+          <p className="mx-8 mb-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-700" style={{ margin: "0 0 16px", border: "1px solid #fde68a", borderRadius: "8px", background: "#fffbeb", padding: "12px", color: "#b45309" }}>
             {cellGroupLoadError}
           </p>
         )}
         {/* Top Row */}
-        <div className="grid gap-8 lg:grid-cols-2" style={{ margin: "32px" }}>
+        <div className="grid gap-8 lg:grid-cols-2" style={{ display: "grid", gap: "24px", margin: "24px 0" }}>
           {/* Personal Information */}
           <section
             className="rounded-2xl border border-slate-200 bg-white"
-            style={{ padding: "32px" }}
+            style={{ padding: "24px" }}
           >
             <h2 className="mb-6 text-xl font-semibold">Personal Information</h2>
             <FormInput
@@ -239,7 +240,7 @@ function MemberForm() {
           {/* Church Information */}
           <section
             className="rounded-2xl border border-slate-200 bg-white"
-            style={{ padding: "32px" }}
+            style={{ padding: "24px" }}
           >
             <h2 className="mb-6 text-xl font-semibold">Church Information</h2>
             <FormSelect
@@ -276,8 +277,8 @@ function MemberForm() {
         <section
           className="rounded-2xl border border-slate-200 bg-white"
           style={{
-            padding: "32px",
-            margin: "32px",
+            padding: "24px",
+            margin: "24px 0",
           }}
         >
           <h2 className="mb-6 text-xl font-semibold">Contact Information</h2>
@@ -310,8 +311,8 @@ function MemberForm() {
         <section
           className="rounded-2xl border border-slate-200 bg-white"
           style={{
-            padding: "32px",
-            margin: "32px",
+            padding: "24px",
+            margin: "24px 0",
           }}
         >
           <h2 className="mb-6 text-xl font-semibold">Remarks</h2>
@@ -329,32 +330,21 @@ function MemberForm() {
           style={{
             display: "flex",
             justifyContent: "flex-end",
+            flexWrap: "wrap",
             gap: "16px",
-            margin: "0 5px 20px 5px",
-            marginBottom: "20px",
+            margin: "0 0 24px",
           }}
         >
           <Link
             to="/admin/members"
             className="rounded-xl border border-slate-300 px-6 py-3 hover:bg-slate-50"
+            style={{ display: "inline-flex", alignItems: "center", minHeight: "48px", boxSizing: "border-box", border: "1px solid #cbd5e1", borderRadius: "12px", padding: "12px 24px", color: "#334155", textDecoration: "none" }}
           >
-            <p
-              style={{
-                padding: "15px 10px 10px 10px ",
-              }}
-            >
-              Cancel
-            </p>
+            Cancel
           </Link>
 
           <PrimaryButton type="submit">
-            <p
-              style={{
-                padding: "10px 10px 10px 10px",
-              }}
-            >
-              {isSaving ? "Saving..." : "Save Member"}
-            </p>
+            {isSaving ? "Saving..." : "Save Member"}
           </PrimaryButton>
         </div>
       </form>
