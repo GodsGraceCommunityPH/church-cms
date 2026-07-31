@@ -58,37 +58,48 @@ export default function Training() {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <article className="flex flex-col rounded-2xl border border-amber-200 bg-amber-50 p-5">
+        <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          <Link
+            to="/admin/training/pending"
+            aria-label="Open Pending Enrollment"
+            onKeyDown={(event) => {
+              if (event.key === " ") {
+                event.preventDefault();
+                event.currentTarget.click();
+              }
+            }}
+            className="group flex min-h-56 cursor-pointer flex-col rounded-2xl border border-amber-200 bg-amber-50 p-7 text-inherit shadow-sm transition hover:-translate-y-0.5 hover:border-amber-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+          >
             <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Queue</p>
-            <h2 className="mt-1 text-xl font-semibold">Pending Enrollment</h2>
-            <p className="mt-2 flex-1 text-sm text-slate-600">
-              Assign waiting members to a batch and begin their Training journey.
+            <h2 className="mt-3 text-xl font-semibold">Pending Enrollment</h2>
+            <p className="mt-4 flex-1 text-sm leading-6 text-slate-600">
+              Review waiting members and move them into their approved Training program.
             </p>
-            <Link
-              to="/admin/training/pending"
-              className="mt-6 inline-flex min-h-10 items-center justify-center rounded-lg bg-amber-700 px-4 py-2 text-sm font-medium text-white hover:bg-amber-800"
-            >
-              Open pending queue
-            </Link>
-          </article>
+            <span className="mt-6 text-sm font-semibold text-amber-800 group-hover:text-amber-900">View pending enrollment →</span>
+          </Link>
 
           {programs.map((program) => (
-            <article key={program.slug} className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5">
+            <Link
+              key={program.slug}
+              to={`/admin/training/${program.slug}`}
+              aria-label={`Open ${program.name} Training program`}
+              onKeyDown={(event) => {
+                if (event.key === " ") {
+                  event.preventDefault();
+                  event.currentTarget.click();
+                }
+              }}
+              className="group flex min-h-56 cursor-pointer flex-col rounded-2xl border border-slate-200 bg-white p-7 text-inherit shadow-sm transition hover:-translate-y-0.5 hover:border-olive-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive-600 focus-visible:ring-offset-2"
+            >
               <h2 className="text-xl font-semibold">{program.name}</h2>
-              <dl className="mt-5 grid grid-cols-2 gap-4">
+              <dl className="mt-7 grid grid-cols-2 gap-x-6 gap-y-5">
                 <Stat label="Current training" value={program.activeBatches} />
                 <Stat label="Students training" value={program.inProgress} />
                 <Stat label="Ready to graduate" value={program.readyForGraduation} />
                 <Stat label="Completed" value={program.completed} />
               </dl>
-              <Link
-                to={`/admin/training/${program.slug}`}
-                className="mt-6 inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-              >
-                Open program
-              </Link>
-            </article>
+              <span className="mt-7 text-sm font-semibold text-olive-700 group-hover:text-olive-900">View program →</span>
+            </Link>
           ))}
         </div>
       )}

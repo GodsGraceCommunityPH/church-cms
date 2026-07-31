@@ -52,15 +52,13 @@ export default function TrainingProgram() {
   const currentCycle = cycles.find((cycle) => ["open", "ongoing"].includes(cycle.status));
   const previousCycles = cycles.filter((cycle) => !["open", "ongoing"].includes(cycle.status));
 
-  async function openCurrentCycle(addStudents = false) {
+  async function openCurrentCycle() {
     if (!trainingId) return;
     setStarting(true);
     setError("");
     try {
       const cycle = currentCycle ?? await getOrCreateTrainingCycle(trainingId);
-      navigate(
-        `/admin/training/${programSlug}/cycles/${cycle.id}${addStudents ? "?addStudents=1" : ""}`,
-      );
+      navigate(`/admin/training/${programSlug}/cycles/${cycle.id}`);
     } catch (reason) {
       setError(trainingErrorMessage(reason));
     } finally {
@@ -79,39 +77,49 @@ export default function TrainingProgram() {
       {error && <p className="rounded-xl bg-red-50 p-3 text-red-700">{error}</p>}
       {loading ? <p className="py-12 text-center text-slate-500">Loading Training...</p> : (
         <>
-          <section className="rounded-2xl border border-slate-200 bg-white p-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
+          {currentCycle ? (
+            <Link
+              to={`/admin/training/${programSlug}/cycles/${currentCycle.id}`}
+              aria-label={`Manage current ${configuredProgram.name} Training`}
+              onKeyDown={(event) => {
+                if (event.key === " ") {
+                  event.preventDefault();
+                  event.currentTarget.click();
+                }
+              }}
+              className="group block cursor-pointer rounded-2xl border border-slate-200 bg-white p-8 text-inherit shadow-sm transition hover:-translate-y-0.5 hover:border-olive-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive-600 focus-visible:ring-offset-2"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-8">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-olive-700">Current Training</p>
-                {currentCycle ? (
-                  <>
-                    <h2 className="mt-1 text-2xl font-semibold">{configuredProgram.name}</h2>
-                    <dl className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
+                    <h2 className="mt-3 text-2xl font-semibold">{configuredProgram.name}</h2>
+                    <dl className="mt-7 grid grid-cols-2 gap-x-10 gap-y-5 text-sm sm:grid-cols-3">
                       <div><dt className="text-slate-500">Start date</dt><dd>{formatDate(currentCycle.startsOn)}</dd></div>
                       <div><dt className="text-slate-500">Students</dt><dd>{currentCycle.studentCount}</dd></div>
                       <div><dt className="text-slate-500">Status</dt><dd className="capitalize">{currentCycle.status}</dd></div>
                     </dl>
-                  </>
-                ) : (
-                  <><h2 className="mt-1 text-xl font-semibold">No active Training</h2><p className="mt-2 text-slate-500">Start a new cycle when the program is ready to receive students.</p></>
-                )}
               </div>
+                <span className="text-sm font-semibold text-olive-700 group-hover:text-olive-900">Manage Training →</span>
+              </div>
+            </Link>
+          ) : (
+            <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-8">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Current Training</p>
+              <h2 className="mt-3 text-xl font-semibold">No active Training</h2>
+              <p className="mt-3 max-w-xl leading-6 text-slate-500">Start a new Training cycle when this program is ready to receive students.</p>
               {hasPermission("training.enroll") && (
-                <div className="flex flex-wrap gap-2">
-                  <Button disabled={starting} onClick={() => void openCurrentCycle(!currentCycle)}>
-                    {currentCycle ? "+ Add Students" : "Start New Training"}
-                  </Button>
-                  {currentCycle && <Button variant="secondary" onClick={() => void openCurrentCycle(false)}>Manage Training</Button>}
-                </div>
+                <Button className="mt-6" disabled={starting} onClick={() => void openCurrentCycle()}>
+                  Start New Training
+                </Button>
               )}
-            </div>
-          </section>
+            </section>
+          )}
 
           <section>
             <h2 className="text-xl font-semibold">Previous Training Runs</h2>
             {previousCycles.length === 0 ? <p className="mt-3 rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">No previous runs recorded.</p> : (
               <div className="mt-3 space-y-3">{previousCycles.map((cycle) => (
-                <Link key={cycle.id} to={`/admin/training/${programSlug}/cycles/${cycle.id}`} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 hover:border-olive-400">
+                <Link key={cycle.id} to={`/admin/training/${programSlug}/cycles/${cycle.id}`} className="flex flex-wrap items-center justify-between gap-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-olive-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive-600 focus-visible:ring-offset-2">
                   <div><p className="font-semibold">{formatDate(cycle.startsOn)} – {formatDate(cycle.endsOn)}</p><p className="text-sm text-slate-500">{cycle.studentCount} students</p></div>
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold capitalize">{cycle.status}</span>
                 </Link>
