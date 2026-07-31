@@ -95,6 +95,13 @@ function normalizedProgramName(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+function programNamesMatch(left: string, right: string) {
+  const normalizedLeft = normalizedProgramName(left);
+  const normalizedRight = normalizedProgramName(right);
+  if (!normalizedLeft || !normalizedRight) return false;
+  return normalizedLeft === normalizedRight || normalizedLeft.includes(normalizedRight) || normalizedRight.includes(normalizedLeft);
+}
+
 interface MemberTrainingRow {
   training_id: string;
   workflow_status: string | null;
@@ -178,7 +185,7 @@ export async function getTrainingOverview(): Promise<TrainingProgramSummary[]> {
 
   return TRAINING_PROGRAMS.map((program) => {
     const training = trainings.find(
-      (item) => normalizedProgramName(item.name) === normalizedProgramName(program.name),
+      (item) => programNamesMatch(item.name, program.name),
     );
     const programEnrollments = training
       ? enrollments.filter((item) => item.training_id === training.id)
@@ -240,7 +247,7 @@ export async function getTrainingProgramDetail(
     .select("id, name");
   if (programError) throw programError;
   const program = (programs ?? []).find(
-    (item) => normalizedProgramName(item.name) === normalizedProgramName(programName),
+    (item) => programNamesMatch(item.name, programName),
   );
   if (!program) throw new Error(`Training program "${programName}" was not found in Supabase.`);
 
@@ -628,7 +635,7 @@ export async function getPendingTrainingEnrollments() {
   if (error) throw error;
   return (data ?? []).map((item: any) => {
     const program = TRAINING_PROGRAMS.find(
-      (entry) => normalizedProgramName(entry.name) === normalizedProgramName(item.trainings?.name ?? ""),
+      (entry) => programNamesMatch(entry.name, item.trainings?.name ?? ""),
     );
     return {
       ...mapEnrollment(item),
@@ -754,6 +761,11 @@ export async function updateTrainingSession(sessionId: string, title: string, se
   if (error) throw error;
 }
 
+export async function deleteTrainingSession(sessionId: string) {
+  const { error } = await supabase.rpc("delete_unrecorded_training_session", { p_session_id: sessionId });
+  if (error) throw error;
+}
+
 export async function deleteCancelledTrainingCycle(cycleId: string) {
   const { error } = await supabase.rpc("delete_cancelled_training_cycle", { p_cycle_id: cycleId });
   if (error) throw error;
@@ -835,11 +847,13 @@ export async function getTrainingBatchWorkspace(batchId: string) {
     trainerName = trainer.display_name;
   }
   const enrollmentIds = (enrollmentResult.data ?? []).map((item) => item.id);
-  const { data: attendance, error: attendanceError } = enrollmentIds.length
+  const currentSessionIds = (sessionResult.data ?? []).map((session) => session.id);
+  const { data: attendance, error: attendanceError } = enrollmentIds.length && currentSessionIds.length
     ? await supabase
         .from("training_attendance")
         .select("member_training_id, session_id, status")
         .in("member_training_id", enrollmentIds)
+        .in("session_id", currentSessionIds)
     : { data: [], error: null };
   if (attendanceError) throw attendanceError;
 
@@ -895,7 +909,7 @@ export async function getMemberTrainingJourney(memberId: string) {
   if (error) throw error;
   return (data ?? []).map((item: any) => {
     const program = TRAINING_PROGRAMS.find(
-      (entry) => entry.name.toLowerCase() === item.trainings?.name?.toLowerCase(),
+      (entry) => programNamesMatch(entry.name, item.trainings?.name ?? ""),
     );
     return {
       enrollmentId: item.id,

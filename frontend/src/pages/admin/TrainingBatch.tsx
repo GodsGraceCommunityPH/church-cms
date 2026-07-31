@@ -17,6 +17,7 @@ import {
   resetTrainingCycleForDemo,
   startTrainingCycle,
   updateTrainingSession,
+  deleteTrainingSession,
   trainingErrorMessage,
   trainingStatusLabel,
 } from "../../features/training/trainingService";
@@ -38,6 +39,9 @@ export default function TrainingBatch() {
   const [savingAttendance, setSavingAttendance] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [selectedSession, setSelectedSession] = useState<{ id: string; title: string; session_date: string | null } | null>(null);
+  const [sessionTitle, setSessionTitle] = useState("");
+  const [sessionDate, setSessionDate] = useState("");
 
   const load = useCallback(async () => {
     if (!batchId) return false;
@@ -63,7 +67,7 @@ export default function TrainingBatch() {
   const classStarted = workspace?.batch.status === "ongoing";
   const activeStudents = workspace?.enrollments.filter((student) => ["pending_enrollment", "in_progress", "for_remedial", "ready_for_completion"].includes(student.status)) ?? [];
   const completedStudents = workspace?.enrollments.filter((student) => student.status === "completed") ?? [];
-  const attendanceCount = (studentId: string) => workspace?.attendance.filter((item) => item.member_training_id === studentId && (["present", "late"].includes(item.status) || (workspace.batch.excusedCounts && item.status === "excused"))).length ?? 0;
+  const attendanceCount = (studentId: string) => new Set(workspace?.attendance.filter((item) => item.member_training_id === studentId && (["present", "late"].includes(item.status) || (workspace.batch.excusedCounts && item.status === "excused"))).map((item) => item.session_id) ?? []).size;
 
   const openStudentPicker = useCallback(async () => {
     if (!workspace) return;
@@ -130,6 +134,8 @@ export default function TrainingBatch() {
           {hasPermission("training.complete") && (
           <Button
             variant="secondary"
+            disabled={activeStudents.length > 0}
+            title={activeStudents.length > 0 ? "Complete or cancel every active student first." : undefined}
             onClick={() => {
               if (!window.confirm("Complete this Training cycle? All students must already be graduated, withdrawn, or cancelled.")) return;
               void completeTrainingCycle(workspace.batch.id)
@@ -142,13 +148,14 @@ export default function TrainingBatch() {
           )}
         </div>
       )}
+      {activeCycle && activeStudents.length > 0 && hasPermission("training.complete") && <p style={{ margin: 0, color: "#64748b", textAlign: "right" }}>The class can close after all active students are completed, withdrawn, or cancelled.</p>}
 
       <div>
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" style={{ padding: 26, border: "1px solid #dbe3ec", borderRadius: 18, background: "#fff", boxShadow: "0 2px 8px rgba(15,23,42,.06)" }}>
           <h2 className="text-lg font-semibold">Sessions</h2>
           <p style={{ color: "#64748b", margin: "8px 0 0" }}>{workspace.sessions.length} required sessions · Attendance opens when the class starts.</p>
           <div className="mt-6 space-y-5">{workspace.sessions.length === 0 ? <p className="text-slate-500">No sessions configured.</p> : workspace.sessions.map((session) => (
-            <article key={session.id} className="rounded-xl border border-slate-200 p-5"><div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}><p className="font-semibold">{session.title} <span style={{ color: "#64748b", fontWeight: 400 }}>· {session.session_date ? new Date(session.session_date).toLocaleDateString("en-PH") : "Date not recorded"}</span></p>{hasPermission("training.enroll") && activeCycle && <Button variant="secondary" onClick={() => { const title = window.prompt("Session title", session.title); if (!title) return; const date = window.prompt("Session date (YYYY-MM-DD)", session.session_date?.slice(0,10) ?? "") ?? ""; void updateTrainingSession(session.id,title,date).then(load).catch((reason) => setError(trainingErrorMessage(reason))); }}>Edit Session</Button>}</div><div className="mt-4 space-y-3">{activeStudents.map((student) => {
+            <article key={session.id} tabIndex={hasPermission("training.enroll") && activeCycle ? 0 : undefined} role={hasPermission("training.enroll") && activeCycle ? "button" : undefined} onClick={() => { if (!hasPermission("training.enroll") || !activeCycle) return; setSelectedSession(session); setSessionTitle(session.title); setSessionDate(session.session_date?.slice(0,10) ?? ""); }} onKeyDown={(event) => { if (["Enter"," "].includes(event.key)) event.currentTarget.click(); }} className="rounded-xl border border-slate-200 p-5" style={{ cursor: hasPermission("training.enroll") && activeCycle ? "pointer" : "default" }}><div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}><p className="font-semibold">{session.title} <span style={{ color: "#64748b", fontWeight: 400 }}>· {session.session_date ? new Date(session.session_date).toLocaleDateString("en-PH") : "Date not recorded"}</span></p><span style={{ color: "#64748b" }}>Click to manage</span></div><div className="mt-4 space-y-3" onClick={(event) => event.stopPropagation()}>{activeStudents.map((student) => {
               const attendance = workspace.attendance.find((item) => item.member_training_id === student.id && item.session_id === session.id);
               const saveKey = `${student.id}:${session.id}`;
               return <div key={student.id} className="flex flex-col gap-3 rounded-lg bg-slate-50 p-3 text-sm sm:flex-row sm:items-center" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(150px, 190px)", alignItems: "center", gap: 16, width: "100%", maxWidth: 620, padding: "11px 14px", borderRadius: 10, background: "#f8fafc", boxSizing: "border-box" }}><Link to={`/admin/training/${programSlug}/members/${student.id}`} className="font-medium hover:text-olive-700" style={{ color: "inherit", textDecoration: "none", fontWeight: 600 }}>{student.firstName} {student.lastName}</Link>{hasPermission("training.attendance") ? <Select className="sm:w-44" style={{ width: "100%" }} value={attendance?.status ?? ""} disabled={!classStarted || savingAttendance === saveKey} onChange={(event) => { setSavingAttendance(saveKey); setError(""); void saveAttendance(student.id, session.id, event.target.value).then(load).catch((reason) => setError(trainingErrorMessage(reason))).finally(() => setSavingAttendance("")); }}><option value="" disabled>Select attendance</option><option value="present">Present</option><option value="absent">Absent</option><option value="late">Late</option><option value="excused">Excused</option></Select> : <span>{attendance ? trainingStatusLabel(attendance.status) : "Not recorded"}</span>}</div>;
@@ -212,6 +219,9 @@ export default function TrainingBatch() {
         >
           {enrolling ? "Enrolling Students..." : `Enroll Selected (${selected.size})`}
         </Button>
+      </Modal>
+      <Modal open={Boolean(selectedSession)} title="Manage Session" onClose={() => setSelectedSession(null)}>
+        <div style={{ display: "grid", gap: 14 }}><label>Session Name<Input value={sessionTitle} onChange={(event) => setSessionTitle(event.target.value)} /></label><label>Session Date<Input type="date" value={sessionDate} onChange={(event) => setSessionDate(event.target.value)} /></label><div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}><Button variant="secondary" onClick={() => setSelectedSession(null)}>Cancel</Button><Button variant="danger" onClick={() => { if (!selectedSession || !window.confirm("Remove this session? Sessions with attendance history cannot be removed.")) return; void deleteTrainingSession(selectedSession.id).then(() => { setSelectedSession(null); return load(); }).catch((reason) => setError(trainingErrorMessage(reason))); }}>Remove Session</Button><Button disabled={!sessionTitle.trim()} onClick={() => { if (!selectedSession) return; void updateTrainingSession(selectedSession.id,sessionTitle.trim(),sessionDate).then(() => { setSelectedSession(null); return load(); }).catch((reason) => setError(trainingErrorMessage(reason))); }}>Save Changes</Button></div></div>
       </Modal>
     </div>
   );
