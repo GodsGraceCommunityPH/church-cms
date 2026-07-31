@@ -699,6 +699,14 @@ export async function completeTrainingCycle(cycleId: string) {
   if (error) throw error;
 }
 
+export async function resetTrainingCycleForDemo(cycleId: string) {
+  const { data, error } = await supabase.rpc("reset_training_cycle_for_demo", {
+    p_cycle_id: cycleId,
+  });
+  if (error) throw error;
+  return data as number;
+}
+
 export async function assignPendingToTrainingCycle(
   enrollmentId: string,
   startTraining: boolean,

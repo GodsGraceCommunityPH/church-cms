@@ -18,8 +18,8 @@ export default function Training() {
   const { hasPermission } = useAuth();
 
   return (
-    <div className="space-y-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
+    <div className="space-y-8" style={{ display: "grid", gap: 28 }}>
+      <header className="flex flex-wrap items-start justify-between gap-4" style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
         <div>
           <h1 className="text-3xl font-bold">Training</h1>
           <p className="mt-2 text-slate-600">
@@ -58,7 +58,7 @@ export default function Training() {
           </Button>
         </div>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 22 }}>
           <Link
             to="/admin/training/pending"
             aria-label="Open Pending Enrollment"
@@ -69,6 +69,7 @@ export default function Training() {
               }
             }}
             className="group flex min-h-56 cursor-pointer flex-col rounded-2xl border border-amber-200 bg-amber-50 p-7 text-inherit shadow-sm transition hover:-translate-y-0.5 hover:border-amber-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2"
+            style={{ display: "flex", minHeight: 240, flexDirection: "column", padding: 28, border: "1px solid #f3d36b", borderRadius: 18, background: "#fffbeb", color: "inherit", textDecoration: "none", boxShadow: "0 2px 8px rgba(15,23,42,.08)", boxSizing: "border-box" }}
           >
             <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Queue</p>
             <h2 className="mt-3 text-xl font-semibold">Pending Enrollment</h2>
@@ -90,9 +91,10 @@ export default function Training() {
                 }
               }}
               className="group flex min-h-56 cursor-pointer flex-col rounded-2xl border border-slate-200 bg-white p-7 text-inherit shadow-sm transition hover:-translate-y-0.5 hover:border-olive-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive-600 focus-visible:ring-offset-2"
+              style={{ display: "flex", minHeight: 240, flexDirection: "column", padding: 28, border: "1px solid #dbe3ec", borderRadius: 18, background: "#fff", color: "inherit", textDecoration: "none", boxShadow: "0 2px 8px rgba(15,23,42,.08)", boxSizing: "border-box" }}
             >
               <h2 className="text-xl font-semibold">{program.name}</h2>
-              <dl className="mt-7 grid grid-cols-2 gap-x-6 gap-y-5">
+              <dl className="mt-7 grid grid-cols-2 gap-x-6 gap-y-5" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "22px 30px", marginTop: 26 }}>
                 <Stat label="Current training" value={program.activeBatches} />
                 <Stat label="Students training" value={program.inProgress} />
                 <Stat label="Ready to graduate" value={program.readyForGraduation} />

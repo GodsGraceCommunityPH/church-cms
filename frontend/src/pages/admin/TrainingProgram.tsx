@@ -67,7 +67,7 @@ export default function TrainingProgram() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ display: "grid", gap: 26 }}>
       <header>
         <Link to="/admin/training" className="text-sm font-medium text-olive-700 hover:underline">← Back to Training</Link>
         <h1 className="mt-4 text-3xl font-bold">{configuredProgram.name}</h1>
@@ -88,18 +88,17 @@ export default function TrainingProgram() {
                 }
               }}
               className="group block cursor-pointer rounded-2xl border border-slate-200 bg-white p-8 text-inherit shadow-sm transition hover:-translate-y-0.5 hover:border-olive-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive-600 focus-visible:ring-offset-2"
+              style={{ display: "block", padding: 30, border: "1px solid #dbe3ec", borderRadius: 18, background: "#fff", color: "inherit", textDecoration: "none", boxShadow: "0 2px 8px rgba(15,23,42,.08)" }}
             >
-              <div className="flex flex-wrap items-start justify-between gap-8">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-olive-700">Current Training</p>
-                    <h2 className="mt-3 text-2xl font-semibold">{configuredProgram.name}</h2>
-                    <dl className="mt-7 grid grid-cols-2 gap-x-10 gap-y-5 text-sm sm:grid-cols-3">
+              <div>
+                    <h2 className="text-2xl font-semibold" style={{ margin: 0 }}>{configuredProgram.name}</h2>
+                    <dl className="mt-7 grid grid-cols-2 gap-x-10 gap-y-5 text-sm sm:grid-cols-3" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 24, marginTop: 26 }}>
                       <div><dt className="text-slate-500">Start date</dt><dd>{formatDate(currentCycle.startsOn)}</dd></div>
                       <div><dt className="text-slate-500">Students</dt><dd>{currentCycle.studentCount}</dd></div>
                       <div><dt className="text-slate-500">Status</dt><dd className="capitalize">{currentCycle.status}</dd></div>
                     </dl>
               </div>
-                <span className="text-sm font-semibold text-olive-700 group-hover:text-olive-900">Manage Training →</span>
               </div>
             </Link>
           ) : (
