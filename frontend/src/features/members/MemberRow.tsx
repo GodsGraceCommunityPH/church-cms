@@ -38,6 +38,13 @@ export default function MemberRow({
                 onDeactivate(member);
               }}
               className="rounded-lg border border-red-300 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+              style={{
+                background: "white",
+                border: "1px solid #fca5a5",
+                borderRadius: "8px",
+                color: "#dc2626",
+                padding: "8px 12px",
+              }}
             >
               Deactivate
             </button>

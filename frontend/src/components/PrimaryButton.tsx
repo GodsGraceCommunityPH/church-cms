@@ -32,10 +32,20 @@ function PrimaryButton({
   };
 
   const buttonClass = `${styles[variant]} ${className}`;
+  const buttonStyle: CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "48px",
+    padding: "12px 24px",
+    boxSizing: "border-box",
+    whiteSpace: "nowrap",
+    ...style,
+  };
 
   if (to) {
     return (
-      <Link to={to} className={buttonClass} onClick={onClick} style={style}>
+      <Link to={to} className={buttonClass} onClick={onClick} style={buttonStyle}>
         {children}
       </Link>
     );
@@ -48,7 +58,7 @@ function PrimaryButton({
         target={target}
         rel={target === "_blank" ? "noopener noreferrer" : undefined}
         className={buttonClass}
-        style={style}
+        style={buttonStyle}
       >
         {children}
       </a>
@@ -56,7 +66,7 @@ function PrimaryButton({
   }
 
   return (
-    <button type={type} onClick={onClick} className={buttonClass} style={style}>
+    <button type={type} onClick={onClick} className={buttonClass} style={buttonStyle}>
       {children}
     </button>
   );

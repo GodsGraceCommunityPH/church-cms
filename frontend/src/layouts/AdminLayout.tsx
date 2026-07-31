@@ -6,6 +6,7 @@ import Topbar from "../components/admin/Topbar";
 
 function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -18,7 +19,12 @@ function AdminLayout() {
       )}
 
       {/* Sidebar */}
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar
+        open={sidebarOpen}
+        collapsed={sidebarCollapsed}
+        onClose={() => setSidebarOpen(false)}
+        onToggleCollapse={() => setSidebarCollapsed((current) => !current)}
+      />
 
       {/* Main */}
       <div className="flex flex-1 flex-col">

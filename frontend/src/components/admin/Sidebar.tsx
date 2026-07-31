@@ -7,18 +7,29 @@ import {
   Settings,
   LogOut,
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   X,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 type SidebarProps = {
   open: boolean;
+  collapsed: boolean;
   onClose: () => void;
+  onToggleCollapse: () => void;
 };
 
-function Sidebar({ open, onClose }: SidebarProps) {
+function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
   const linkClass =
     "flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-gray-100";
+  const linkStyle = {
+    alignItems: "center",
+    display: "flex",
+    gap: collapsed ? "0" : "12px",
+    justifyContent: collapsed ? "center" : "flex-start",
+    padding: "10px 12px",
+  };
 
   return (
     <aside
@@ -28,9 +39,10 @@ function Sidebar({ open, onClose }: SidebarProps) {
         ${open ? "translate-x-0" : "-translate-x-full"}
         md:translate-x-0 md:static md:flex
       `}
+      style={collapsed ? { width: "72px" } : undefined}
     >
       <div
-        style={{ padding: "20px 0 0 20px" }}
+        style={{ padding: collapsed ? "20px 12px 0" : "20px 0 0 20px" }}
         className="flex h-full w-full flex-col p-6"
       >
         {/* Mobile Close Button */}
@@ -49,9 +61,23 @@ function Sidebar({ open, onClose }: SidebarProps) {
         </div>
 
         {/* Desktop Logo */}
-        <div className="mb-10 hidden md:block">
-          <h2 className="text-xl font-bold">GGCCC</h2>
-          <p className="text-gray-500">Staff Portal</p>
+        <div
+          className="mb-10 hidden md:block"
+          style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", paddingRight: "20px" }}
+        >
+          <div>
+            <h2 className="text-xl font-bold">{collapsed ? "G" : "GGCCC"}</h2>
+            {!collapsed && <p className="text-gray-500">Staff Portal</p>}
+          </div>
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="hidden md:inline-flex"
+            style={{ alignItems: "center", background: "transparent", border: "none", borderRadius: "6px", display: "inline-flex", justifyContent: "center", padding: "8px" }}
+          >
+            {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+          </button>
         </div>
 
         <nav className="flex-1 overflow-y-auto">
@@ -60,50 +86,66 @@ function Sidebar({ open, onClose }: SidebarProps) {
               className={linkClass}
               to="/admin/dashboard"
               onClick={onClose}
+              style={linkStyle}
+              title={collapsed ? "Overview" : undefined}
             >
               <LayoutDashboard size={18} />
-              Overview
+              {!collapsed && "Overview"}
             </NavLink>
 
             <NavLink
               className={linkClass}
               to="/admin/members"
               onClick={onClose}
+              style={linkStyle}
+              title={collapsed ? "Members" : undefined}
             >
               <Users size={18} />
-              Members
+              {!collapsed && "Members"}
             </NavLink>
 
             <NavLink
               className={linkClass}
               to="/admin/cell-groups"
               onClick={onClose}
+              style={linkStyle}
+              title={collapsed ? "Cell Groups" : undefined}
             >
               <UsersRound size={18} />
-              Cell Groups
+              {!collapsed && "Cell Groups"}
             </NavLink>
 
             <NavLink
               className={linkClass}
               to="/admin/ministries"
               onClick={onClose}
+              style={linkStyle}
+              title={collapsed ? "Ministries" : undefined}
             >
               <Music size={18} />
-              Ministries
+              {!collapsed && "Ministries"}
             </NavLink>
 
-            <NavLink className={linkClass} to="/admin/giving" onClick={onClose}>
+            <NavLink
+              className={linkClass}
+              to="/admin/giving"
+              onClick={onClose}
+              style={linkStyle}
+              title={collapsed ? "Finance" : undefined}
+            >
               <HandCoins size={18} />
-              Finance
+              {!collapsed && "Finance"}
             </NavLink>
 
             <NavLink
               className={linkClass}
               to="/admin/settings"
               onClick={onClose}
+              style={linkStyle}
+              title={collapsed ? "Settings" : undefined}
             >
               <Settings size={18} />
-              Settings
+              {!collapsed && "Settings"}
             </NavLink>
           </div>
         </nav>
@@ -112,14 +154,20 @@ function Sidebar({ open, onClose }: SidebarProps) {
           style={{ marginBottom: "180px" }}
           className="border-t pt-4 flex flex-col gap-2"
         >
-          <NavLink className={linkClass} to="/" onClick={onClose}>
+          <NavLink
+            className={linkClass}
+            to="/"
+            onClick={onClose}
+            style={linkStyle}
+            title={collapsed ? "Back to Website" : undefined}
+          >
             <ArrowLeft size={18} />
-            Back to Website
+            {!collapsed && "Back to Website"}
           </NavLink>
 
-          <button className={linkClass}>
+          <button className={linkClass} style={linkStyle} title={collapsed ? "Log Out" : undefined}>
             <LogOut size={18} />
-            Log Out
+            {!collapsed && "Log Out"}
           </button>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, CSSProperties, ReactNode } from "react";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
@@ -12,6 +12,7 @@ export default function Button({
   to,
   variant = "primary",
   className = "",
+  style,
   ...props
 }: ButtonProps) {
   const baseClasses =
@@ -25,17 +26,27 @@ export default function Button({
   };
 
   const classes = `${baseClasses} ${variantClasses[variant]} ${className}`;
+  const buttonStyle: CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "40px",
+    padding: "10px 16px",
+    boxSizing: "border-box",
+    whiteSpace: "nowrap",
+    ...style,
+  };
 
   if (to) {
     return (
-      <Link to={to} className={classes}>
+      <Link to={to} className={classes} style={buttonStyle}>
         {children}
       </Link>
     );
   }
 
   return (
-    <button style={{ padding: "10px" }} className={classes} {...props}>
+    <button style={buttonStyle} className={classes} {...props}>
       {children}
     </button>
   );
