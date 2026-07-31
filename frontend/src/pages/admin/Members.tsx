@@ -60,8 +60,9 @@ function Members() {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          flexWrap: "wrap",
           gap: "24px",
-          margin: "8px 24px 32px",
+          margin: "8px 0 32px",
         }}
       >
         <div>
@@ -75,25 +76,38 @@ function Members() {
         <PrimaryButton
           to="/admin/members/new"
           className="shrink-0"
-          style={{ marginRight: "24px" }}
         >
           Add Member
         </PrimaryButton>
       </div>
 
       <section
-        className="rounded-2xl border border-slate-200 bg-white p-6"
+        className="rounded-2xl border border-slate-200 bg-white"
         style={{
           background: "white",
           border: "1px solid #e2e8f0",
           borderRadius: "16px",
-          padding: "24px",
-          margin: "0 24px",
+          padding: "14px",
+          margin: 0,
         }}
       >
         {successMessage && (
-          <div className="mb-5 flex items-center justify-between rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            <p>{successMessage}</p>
+          <div
+            className="mb-5 flex items-center justify-between rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+              marginBottom: "20px",
+              border: "1px solid #a7f3d0",
+              borderRadius: "8px",
+              background: "#ecfdf5",
+              padding: "12px 16px",
+              color: "#065f46",
+            }}
+          >
+            <p style={{ margin: 0 }}>{successMessage}</p>
             <button
               type="button"
               onClick={() => setSuccessMessage("")}
@@ -108,18 +122,18 @@ function Members() {
         </div>
 
         {loading ? (
-          <p className="py-12 text-center text-slate-500">Loading members...</p>
+          <p className="py-12 text-center text-slate-500" style={{ margin: 0, padding: "48px 16px", textAlign: "center", color: "#64748b" }}>Loading members...</p>
         ) : error ? (
-          <div className="py-12 text-center">
-            <p className="text-red-600">{error}</p>
+          <div className="py-12 text-center" style={{ padding: "48px 16px", textAlign: "center" }}>
+            <p className="text-red-600" style={{ margin: 0, color: "#dc2626" }}>{error}</p>
             <Button className="mt-4" variant="secondary" onClick={() => void loadMembers()}>
               Try again
             </Button>
           </div>
         ) : filteredMembers.length === 0 ? (
-          <div className="py-16 text-center">
-            <h2 className="text-xl font-semibold">No members found</h2>
-            <p className="mt-2 text-slate-500">
+          <div className="py-16 text-center" style={{ padding: "64px 16px", textAlign: "center" }}>
+            <h2 className="text-xl font-semibold" style={{ margin: 0, fontSize: "20px" }}>No members found</h2>
+            <p className="mt-2 text-slate-500" style={{ margin: "8px 0 0", color: "#64748b" }}>
               {members.length === 0
                 ? "Add the first person known by the church."
                 : "Try adjusting the search."}
