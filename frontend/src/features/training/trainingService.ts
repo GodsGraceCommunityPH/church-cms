@@ -57,16 +57,11 @@ export interface TrainingNote {
 
 export interface TrainingRemedial {
   id: string;
+  sessionId: string | null;
+  sessionTitle: string;
   scheduledFor: string;
   status: string;
   notes: string | null;
-}
-
-export interface AdvancementEligibility {
-  status: string;
-  recommendation: string | null;
-  nextProgram: string;
-  recommendedAt: string;
 }
 
 export interface MemberTrainingProfile {
@@ -76,7 +71,6 @@ export interface MemberTrainingProfile {
   sessions: TrainingSessionAttendance[];
   notes: TrainingNote[];
   remedials: TrainingRemedial[];
-  advancement: AdvancementEligibility[];
 }
 
 export interface TrainingBatchOption {
@@ -142,7 +136,6 @@ export function trainingStatusLabel(status: string) {
 }
 
 export function trainingErrorMessage(error: unknown) {
-  if (error instanceof Error) return error.message;
   if (error && typeof error === "object") {
     const value = error as {
       code?: string;
@@ -150,10 +143,12 @@ export function trainingErrorMessage(error: unknown) {
       details?: string;
       hint?: string;
     };
-    const message = value.message ?? value.details ?? "Unknown Supabase error";
-    return value.code ? `${value.code}: ${message}` : message;
+    if (value.code === "42501") return "You do not have permission to perform this Training action.";
+    if (value.code === "23505") return "This Training record already exists.";
+    if (value.code?.startsWith("PGRST")) return "Training data could not be loaded. Please refresh and try again.";
   }
-  return "Unknown Training error";
+  if (error instanceof Error && error.message.startsWith("Attendance")) return error.message;
+  return "The Training request could not be completed. Please try again.";
 }
 
 export async function getTrainingOverview(): Promise<TrainingProgramSummary[]> {
@@ -314,7 +309,7 @@ export async function getMemberTrainingProfile(
   if (enrollmentError) throw enrollmentError;
   const enrollmentRecord = enrollment as any;
 
-  const [memberResult, programResult, batchResult] = await Promise.all([
+  const [memberResult, programResult] = await Promise.all([
     supabase
       .from("members")
       .select("first_name, last_name")
@@ -325,37 +320,16 @@ export async function getMemberTrainingProfile(
       .select("id, name")
       .eq("id", enrollmentRecord.training_id)
       .single(),
-    enrollmentRecord.batch_id
-      ? supabase
-          .from("training_batches")
-          .select("id, name, trainer_user_id")
-          .eq("id", enrollmentRecord.batch_id)
-          .single()
-      : Promise.resolve({ data: null, error: null }),
   ]);
   if (memberResult.error) throw memberResult.error;
   if (programResult.error) throw programResult.error;
-  if (batchResult.error) throw batchResult.error;
-
-  let trainerName: string | null = null;
-  if (batchResult.data?.trainer_user_id) {
-    const { data: trainer, error: trainerError } = await supabase
-      .from("users")
-      .select("display_name")
-      .eq("id", batchResult.data.trainer_user_id)
-      .single();
-    if (trainerError) throw trainerError;
-    trainerName = trainer.display_name;
-  }
   const programRecord = programResult.data;
   const hydratedEnrollment = {
     ...enrollmentRecord,
     members: memberResult.data,
-    batchName: batchResult.data?.name ?? null,
-    trainerName,
   };
 
-  const [sessionResult, attendanceResult, notesResult, remedialResult, advancementResult] =
+  const [sessionResult, attendanceResult, notesResult, remedialResult] =
     await Promise.all([
       enrollmentRecord.batch_id
         ? supabase
@@ -375,13 +349,9 @@ export async function getMemberTrainingProfile(
         .order("created_at", { ascending: false }),
       supabase
         .from("training_remedials")
-        .select("id, scheduled_for, status, notes")
+        .select("id, session_id, scheduled_for, status, notes")
         .eq("member_training_id", enrollmentId)
         .order("scheduled_for", { ascending: false }),
-      supabase
-        .from("training_advancement_eligibility")
-        .select("status, recommendation, recommended_at, next_training_id")
-        .eq("source_member_training_id", enrollmentId),
     ]);
 
   for (const result of [
@@ -389,7 +359,6 @@ export async function getMemberTrainingProfile(
     attendanceResult,
     notesResult,
     remedialResult,
-    advancementResult,
   ]) {
     if (result.error) throw result.error;
   }
@@ -407,19 +376,8 @@ export async function getMemberTrainingProfile(
   const noteAuthorsById = new Map(
     (noteAuthors ?? []).map((item: any) => [item.id, item.display_name]),
   );
-  const nextTrainingIds = Array.from(
-    new Set(
-      (advancementResult.data ?? [])
-        .map((item: any) => item.next_training_id)
-        .filter(Boolean),
-    ),
-  );
-  const { data: nextPrograms, error: nextProgramError } = nextTrainingIds.length
-    ? await supabase.from("trainings").select("id, name").in("id", nextTrainingIds)
-    : { data: [], error: null };
-  if (nextProgramError) throw nextProgramError;
-  const nextProgramsById = new Map(
-    (nextPrograms ?? []).map((item: any) => [item.id, item.name]),
+  const sessionTitles = new Map(
+    (sessionResult.data ?? []).map((session: any) => [session.id, session.title]),
   );
 
   return {
@@ -444,15 +402,11 @@ export async function getMemberTrainingProfile(
     })),
     remedials: (remedialResult.data ?? []).map((item: any) => ({
       id: item.id,
+      sessionId: item.session_id,
+      sessionTitle: sessionTitles.get(item.session_id) ?? "Session not recorded",
       scheduledFor: item.scheduled_for,
       status: item.status,
       notes: item.notes,
-    })),
-    advancement: (advancementResult.data ?? []).map((item: any) => ({
-      status: item.status,
-      recommendation: item.recommendation,
-      nextProgram: nextProgramsById.get(item.next_training_id) ?? "Not recorded",
-      recommendedAt: item.recommended_at,
     })),
   };
 }
@@ -561,7 +515,7 @@ export async function saveAttendance(
     { member_training_id: enrollmentId, session_id: sessionId, status },
     { onConflict: "member_training_id,session_id" },
   );
-  if (error) throw error;
+  if (error) throw new Error("Attendance could not be saved. Please try again.");
 }
 
 export async function addTrainingNote(enrollmentId: string, note: string) {
@@ -573,11 +527,13 @@ export async function addTrainingNote(enrollmentId: string, note: string) {
 
 export async function scheduleRemedial(
   enrollmentId: string,
+  sessionId: string,
   scheduledFor: string,
   notes: string,
 ) {
   const { error } = await supabase.from("training_remedials").insert({
     member_training_id: enrollmentId,
+    session_id: sessionId,
     scheduled_for: scheduledFor,
     notes: notes || null,
   });
@@ -586,33 +542,13 @@ export async function scheduleRemedial(
 
 export async function completeTraining(
   enrollmentId: string,
-  nextTrainingId: string | null,
-  recommendation: string,
 ) {
   const { error } = await supabase.rpc("complete_training_enrollment", {
     p_enrollment_id: enrollmentId,
-    p_next_training_id: nextTrainingId,
-    p_recommendation_text: recommendation || null,
+    p_next_training_id: null,
+    p_recommendation_text: null,
   });
   if (error) throw error;
-}
-
-export async function getNextProgram(
-  currentProgramName: string,
-): Promise<{ id: string; name: string } | null> {
-  const sequence = TRAINING_PROGRAMS.map((program) => program.name);
-  const currentIndex = sequence.findIndex(
-    (name) => name.toLowerCase() === currentProgramName.toLowerCase(),
-  );
-  const nextName = currentIndex >= 0 ? sequence[currentIndex + 1] : undefined;
-  if (!nextName) return null;
-  const { data, error } = await supabase
-    .from("trainings")
-    .select("id, name")
-    .eq("name", nextName)
-    .single();
-  if (error) throw error;
-  return data;
 }
 
 export interface PendingTrainingEnrollment extends TrainingEnrollment {
@@ -823,6 +759,15 @@ export async function getTrainingBatchWorkspace(batchId: string) {
     if (error) throw error;
     trainerName = trainer.display_name;
   }
+  const enrollmentIds = (enrollmentResult.data ?? []).map((item) => item.id);
+  const { data: attendance, error: attendanceError } = enrollmentIds.length
+    ? await supabase
+        .from("training_attendance")
+        .select("member_training_id, session_id, status")
+        .in("member_training_id", enrollmentIds)
+    : { data: [], error: null };
+  if (attendanceError) throw attendanceError;
+
   return {
     batch: {
       id: batch.id,
@@ -837,6 +782,7 @@ export async function getTrainingBatchWorkspace(batchId: string) {
     program,
     enrollments: (enrollmentResult.data ?? []).map(mapEnrollment),
     sessions: sessionResult.data ?? [],
+    attendance: attendance ?? [],
   };
 }
 
