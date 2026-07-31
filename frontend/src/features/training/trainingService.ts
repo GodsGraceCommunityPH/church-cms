@@ -589,10 +589,13 @@ export async function createTrainingBatch(
   trainingId: string,
   name: string,
 ) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("training_batches")
-    .insert({ training_id: trainingId, name, status: "open" });
+    .insert({ training_id: trainingId, name, status: "open" })
+    .select("id")
+    .single();
   if (error) throw error;
+  return data.id;
 }
 
 export async function saveAttendance(

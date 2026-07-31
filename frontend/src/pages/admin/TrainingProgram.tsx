@@ -2,14 +2,18 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
+import Select from "../../components/ui/Select";
 import { useAuth } from "../../features/auth/auth";
 import { getTrainingProgram } from "../../features/training/trainingPrograms";
 import {
   createTrainingBatch,
+  assignBatchTrainer,
+  getAssignableTrainers,
   getProgramBatches,
   getTrainingProgramDetail,
   trainingErrorMessage,
   type TrainingBatch,
+  type TrainerOption,
 } from "../../features/training/trainingService";
 
 function formatDate(value: string | null) {
@@ -28,6 +32,8 @@ export default function TrainingProgram() {
   const [trainingId, setTrainingId] = useState("");
   const [batches, setBatches] = useState<TrainingBatch[]>([]);
   const [newBatchName, setNewBatchName] = useState("");
+  const [trainerId, setTrainerId] = useState("");
+  const [trainers, setTrainers] = useState<TrainerOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -40,12 +46,15 @@ export default function TrainingProgram() {
       const program = await getTrainingProgramDetail(configuredProgram.name);
       setTrainingId(program.id);
       setBatches(await getProgramBatches(program.id));
+      if (hasPermission("training.enroll")) {
+        setTrainers(await getAssignableTrainers());
+      }
     } catch (reason) {
       setError(trainingErrorMessage(reason));
     } finally {
       setLoading(false);
     }
-  }, [configuredProgram]);
+  }, [configuredProgram, hasPermission]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -67,12 +76,21 @@ export default function TrainingProgram() {
             if (!newBatchName.trim()) return;
             setSaving(true);
             void createTrainingBatch(trainingId, newBatchName.trim())
-              .then(() => { setNewBatchName(""); return load(); })
+              .then(async (batchId) => {
+                if (trainerId) await assignBatchTrainer(batchId, trainerId);
+                setNewBatchName("");
+                setTrainerId("");
+                return load();
+              })
               .catch((reason) => setError(trainingErrorMessage(reason)))
               .finally(() => setSaving(false));
           }}
         >
           <Input value={newBatchName} onChange={(event) => setNewBatchName(event.target.value)} placeholder={`${configuredProgram.name} - August 2026`} />
+          <Select value={trainerId} onChange={(event) => setTrainerId(event.target.value)}>
+            <option value="">Trainer (optional)</option>
+            {trainers.map((trainer) => <option key={trainer.id} value={trainer.id}>{trainer.name}</option>)}
+          </Select>
           <Button type="submit" disabled={saving || !newBatchName.trim()}>Create Batch</Button>
         </form>
       )}
