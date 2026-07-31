@@ -130,7 +130,9 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
             </NavLink>
 
             <NavLink
-              className={linkClass}
+              className={({ isActive }) =>
+                `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`
+              }
               to="/admin/ministries"
               onClick={onClose}
               style={linkStyle}

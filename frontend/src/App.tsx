@@ -7,6 +7,8 @@ import Members from "./pages/admin/Members";
 import MemberForm from "./pages/admin/MemberForm";
 import CellGroups from "./pages/admin/CellGroups";
 import Ministries from "./pages/admin/Ministries";
+import MinistryForm from "./pages/admin/MinistryForm";
+import MinistryProfile from "./pages/admin/MinistryProfile";
 import Giving from "./pages/admin/Giving";
 import Settings from "./pages/admin/Setting";
 import MemberProfile from "./pages/admin/MemberProfile";
@@ -58,6 +60,9 @@ function App() {
         <Route path="/admin/cell-groups/:id" element={<CellGroupProfile />} />
         <Route path="/join/:token" element={<JoinCellGroup />} />
         <Route path="/admin/ministries" element={<Ministries />} />
+        <Route path="/admin/ministries/new" element={<MinistryForm />} />
+        <Route path="/admin/ministries/:id/edit" element={<MinistryForm />} />
+        <Route path="/admin/ministries/:id" element={<MinistryProfile />} />
         <Route path="/admin/giving" element={<Giving />} />
         <Route path="/admin/settings" element={<Settings />} />
       </Route>
