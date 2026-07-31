@@ -69,6 +69,15 @@ export default function Training() {
           </p>
         </div>
       ) : (
+        <>
+          {programs.some((program) => program.totalEnrolled === null) && (
+            <p
+              className="rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-800"
+              style={{ margin: 0, padding: "12px 16px" }}
+            >
+              Training statistics are awaiting the Supabase overview function.
+            </p>
+          )}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {programs.map((program) => (
               <article
@@ -98,6 +107,7 @@ export default function Training() {
               </article>
             ))}
           </div>
+        </>
       )}
     </div>
   );

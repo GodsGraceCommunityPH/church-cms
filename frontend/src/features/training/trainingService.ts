@@ -19,6 +19,15 @@ interface TrainingOverviewRow {
 export async function getTrainingOverview(): Promise<TrainingProgramSummary[]> {
   const { data, error } = await supabase.rpc("get_training_overview_stats");
 
+  if (error?.code === "PGRST202") {
+    return TRAINING_PROGRAMS.map((program) => ({
+      ...program,
+      totalEnrolled: null,
+      completed: null,
+      inProgress: null,
+    }));
+  }
+
   if (error) throw error;
 
   const stats = (data ?? []) as TrainingOverviewRow[];
