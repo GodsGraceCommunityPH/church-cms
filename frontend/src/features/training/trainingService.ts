@@ -16,6 +16,8 @@ export interface TrainingProgramSummary {
   totalEnrolled: number | null;
   completed: number | null;
   inProgress: number | null;
+  activeBatches: number;
+  readyForGraduation: number;
 }
 
 export interface TrainingEnrollment {
@@ -111,6 +113,7 @@ interface TrainingRow {
 interface MemberTrainingRow {
   training_id: string;
   workflow_status: string | null;
+  batch_id: string | null;
 }
 
 export function normalizeTrainingStatus(status: string) {
@@ -169,12 +172,20 @@ export function trainingErrorMessage(error: unknown) {
 }
 
 export async function getTrainingOverview(): Promise<TrainingProgramSummary[]> {
-  const [trainingsResult, enrollmentResult] = await Promise.all([
+  const [trainingsResult, enrollmentResult, batchResult] = await Promise.all([
     supabase.from("trainings").select("id, name"),
-    supabase.from("member_trainings").select("training_id, workflow_status"),
+    supabase
+      .from("member_trainings")
+      .select("training_id, workflow_status, batch_id")
+      .is("archived_at", null),
+    supabase
+      .from("training_batches")
+      .select("id, training_id, status")
+      .in("status", ["open", "ongoing"]),
   ]);
   if (trainingsResult.error) throw trainingsResult.error;
   if (enrollmentResult.error) throw enrollmentResult.error;
+  if (batchResult.error) throw batchResult.error;
   const trainings = (trainingsResult.data ?? []) as TrainingRow[];
   const enrollments = (enrollmentResult.data ?? []) as MemberTrainingRow[];
 
@@ -194,6 +205,14 @@ export async function getTrainingOverview(): Promise<TrainingProgramSummary[]> {
       ).length,
       inProgress: programEnrollments.filter((item) =>
         isInProgressTrainingStatus(item.workflow_status ?? ""),
+      ).length,
+      activeBatches: training
+        ? (batchResult.data ?? []).filter(
+            (batch) => batch.training_id === training.id,
+          ).length
+        : 0,
+      readyForGraduation: programEnrollments.filter(
+        (item) => item.workflow_status === "ready_for_completion",
       ).length,
     };
   });
@@ -240,6 +259,7 @@ export async function getTrainingProgramDetail(
     .from("member_trainings")
     .select(ENROLLMENT_SELECT)
     .eq("training_id", program.id)
+    .is("archived_at", null)
     .order("created_at", { ascending: false });
   if (enrollmentError) throw enrollmentError;
 
@@ -654,4 +674,251 @@ export async function getNextProgram(
     .single();
   if (error) throw error;
   return data;
+}
+
+export interface PendingTrainingEnrollment extends TrainingEnrollment {
+  programName: string;
+  programSlug: string;
+}
+
+export interface TrainingBatch {
+  id: string;
+  trainingId: string;
+  name: string;
+  trainerName: string | null;
+  status: string;
+  startsOn: string | null;
+  endsOn: string | null;
+  studentCount: number;
+}
+
+export interface MemberTrainingJourneyItem {
+  enrollmentId: string;
+  programName: string;
+  programSlug: string;
+  status: TrainingWorkflowStatus;
+  batchName: string | null;
+  completedAt: string | null;
+}
+
+export async function getPendingTrainingEnrollments() {
+  const { data, error } = await supabase
+    .from("member_trainings")
+    .select(`
+      id,
+      member_id,
+      workflow_status,
+      created_at,
+      started_at,
+      completed_at,
+      batch_id,
+      members ( first_name, last_name ),
+      trainings ( name )
+    `)
+    .eq("workflow_status", "pending_enrollment")
+    .is("archived_at", null)
+    .order("created_at");
+  if (error) throw error;
+  return (data ?? []).map((item: any) => {
+    const program = TRAINING_PROGRAMS.find(
+      (entry) => entry.name.toLowerCase() === item.trainings?.name?.toLowerCase(),
+    );
+    return {
+      ...mapEnrollment(item),
+      programName: item.trainings?.name ?? "Not recorded",
+      programSlug: program?.slug ?? "",
+    };
+  }) as PendingTrainingEnrollment[];
+}
+
+export async function getProgramBatches(trainingId: string) {
+  const { data: batches, error } = await supabase
+    .from("training_batches")
+    .select("id, training_id, name, trainer_user_id, status, starts_on, ends_on")
+    .eq("training_id", trainingId)
+    .order("starts_on", { ascending: false });
+  if (error) throw error;
+  const batchIds = (batches ?? []).map((batch) => batch.id);
+  const { data: enrollments, error: enrollmentError } = batchIds.length
+    ? await supabase
+        .from("member_trainings")
+        .select("batch_id")
+        .in("batch_id", batchIds)
+        .is("archived_at", null)
+    : { data: [], error: null };
+  if (enrollmentError) throw enrollmentError;
+  const trainerIds = Array.from(
+    new Set((batches ?? []).map((batch) => batch.trainer_user_id).filter(Boolean)),
+  );
+  const { data: trainers, error: trainerError } = trainerIds.length
+    ? await supabase.from("users").select("id, display_name").in("id", trainerIds)
+    : { data: [], error: null };
+  if (trainerError) throw trainerError;
+  const trainerNames = new Map(
+    (trainers ?? []).map((trainer) => [trainer.id, trainer.display_name]),
+  );
+  return (batches ?? []).map((batch) => ({
+    id: batch.id,
+    trainingId: batch.training_id,
+    name: batch.name,
+    trainerName: trainerNames.get(batch.trainer_user_id) ?? null,
+    status: batch.status,
+    startsOn: batch.starts_on,
+    endsOn: batch.ends_on,
+    studentCount: (enrollments ?? []).filter(
+      (enrollment) => enrollment.batch_id === batch.id,
+    ).length,
+  })) as TrainingBatch[];
+}
+
+export async function getAvailableMembers(trainingId: string) {
+  const [{ data: members, error: memberError }, { data: existing, error: existingError }] =
+    await Promise.all([
+      supabase
+        .from("members")
+        .select("id, first_name, last_name")
+        .eq("status", "active")
+        .order("first_name"),
+      supabase
+        .from("member_trainings")
+        .select("member_id")
+        .eq("training_id", trainingId)
+        .is("archived_at", null)
+        .not("workflow_status", "in", '("withdrawn","cancelled")'),
+    ]);
+  if (memberError) throw memberError;
+  if (existingError) throw existingError;
+  const existingIds = new Set((existing ?? []).map((item) => item.member_id));
+  return (members ?? []).filter((member) => !existingIds.has(member.id));
+}
+
+export async function enrollBatchStudents(batchId: string, memberIds: string[]) {
+  const { data, error } = await supabase.rpc("enroll_training_batch_students", {
+    p_batch_id: batchId,
+    p_member_ids: memberIds,
+  });
+  if (error) throw error;
+  return data as number;
+}
+
+export async function archiveImportedTrainingEnrollments() {
+  const { data, error } = await supabase.rpc(
+    "archive_imported_training_enrollments",
+  );
+  if (error) throw error;
+  return data as number;
+}
+
+export async function getTrainingBatchWorkspace(batchId: string) {
+  const { data: batch, error: batchError } = await supabase
+    .from("training_batches")
+    .select("id, training_id, name, trainer_user_id, status, starts_on, ends_on")
+    .eq("id", batchId)
+    .single();
+  if (batchError) throw batchError;
+  const [programResult, enrollmentResult, sessionResult, requirementResult] =
+    await Promise.all([
+      supabase.from("trainings").select("id, name").eq("id", batch.training_id).single(),
+      supabase
+        .from("member_trainings")
+        .select(ENROLLMENT_SELECT)
+        .eq("batch_id", batchId)
+        .is("archived_at", null)
+        .order("created_at"),
+      supabase
+        .from("training_sessions")
+        .select("id, title, session_date, display_order")
+        .eq("batch_id", batchId)
+        .order("display_order"),
+      supabase
+        .from("training_requirements")
+        .select("id, name, description, requirement_type, display_order")
+        .eq("training_id", batch.training_id)
+        .eq("is_active", true)
+        .order("display_order"),
+    ]);
+  for (const result of [programResult, enrollmentResult, sessionResult, requirementResult]) {
+    if (result.error) throw result.error;
+  }
+  if (!programResult.data) throw new Error("Training program not found.");
+  const program = programResult.data;
+  let trainerName: string | null = null;
+  if (batch.trainer_user_id) {
+    const { data: trainer, error } = await supabase
+      .from("users")
+      .select("display_name")
+      .eq("id", batch.trainer_user_id)
+      .single();
+    if (error) throw error;
+    trainerName = trainer.display_name;
+  }
+  return {
+    batch: {
+      id: batch.id,
+      trainingId: batch.training_id,
+      name: batch.name,
+      trainerName,
+      status: batch.status,
+      startsOn: batch.starts_on,
+      endsOn: batch.ends_on,
+      studentCount: enrollmentResult.data?.length ?? 0,
+    } as TrainingBatch,
+    program,
+    enrollments: (enrollmentResult.data ?? []).map(mapEnrollment),
+    sessions: sessionResult.data ?? [],
+    requirements: requirementResult.data ?? [],
+  };
+}
+
+export async function createTrainingSession(
+  batchId: string,
+  title: string,
+  sessionDate: string | null,
+) {
+  const { error } = await supabase.from("training_sessions").insert({
+    batch_id: batchId,
+    title,
+    session_date: sessionDate || null,
+  });
+  if (error) throw error;
+}
+
+export async function createTrainingRequirement(
+  trainingId: string,
+  name: string,
+) {
+  const { error } = await supabase.from("training_requirements").insert({
+    training_id: trainingId,
+    name,
+  });
+  if (error) throw error;
+}
+
+export async function getMemberTrainingJourney(memberId: string) {
+  const { data, error } = await supabase
+    .from("member_trainings")
+    .select(`
+      id,
+      workflow_status,
+      completed_at,
+      trainings ( name ),
+      training_batches ( name )
+    `)
+    .eq("member_id", memberId)
+    .is("archived_at", null)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((item: any) => {
+    const program = TRAINING_PROGRAMS.find(
+      (entry) => entry.name.toLowerCase() === item.trainings?.name?.toLowerCase(),
+    );
+    return {
+      enrollmentId: item.id,
+      programName: item.trainings?.name ?? "Not recorded",
+      programSlug: program?.slug ?? "",
+      status: asWorkflowStatus(item.workflow_status),
+      batchName: item.training_batches?.name ?? null,
+      completedAt: item.completed_at,
+    };
+  }) as MemberTrainingJourneyItem[];
 }

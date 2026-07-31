@@ -26,6 +26,8 @@ import Dashboard from "./pages/admin/Dashboard";
 import Training from "./pages/admin/Training";
 import TrainingProgram from "./pages/admin/TrainingProgram";
 import MemberTrainingProfile from "./pages/admin/MemberTrainingProfile";
+import PendingTraining from "./pages/admin/PendingTraining";
+import TrainingBatch from "./pages/admin/TrainingBatch";
 import {
   PermissionRoute,
   ProtectedRoute,
@@ -51,9 +53,14 @@ function App() {
         <Route path="/admin/dashboard" element={<Dashboard />} />
         <Route element={<PermissionRoute permission="training.view" />}>
         <Route path="/admin/training" element={<Training />} />
+        <Route path="/admin/training/pending" element={<PendingTraining />} />
         <Route
           path="/admin/training/:programSlug"
           element={<TrainingProgram />}
+        />
+        <Route
+          path="/admin/training/:programSlug/batches/:batchId"
+          element={<TrainingBatch />}
         />
         <Route
           path="/admin/training/:programSlug/members/:enrollmentId"

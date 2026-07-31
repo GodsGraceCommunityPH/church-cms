@@ -176,22 +176,32 @@ export default function MemberTrainingProfile() {
 
       <section className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:grid-cols-2 lg:grid-cols-4">
         <div><p className="text-sm text-slate-500">Enrollment date</p><p className="font-medium">{formatDate(enrollment.enrolledAt)}</p></div>
-        <div><p className="text-sm text-slate-500">Start date</p><p className="font-medium">{formatDate(enrollment.startedAt)}</p></div>
+        {enrollment.status !== "pending_enrollment" && <div><p className="text-sm text-slate-500">Start date</p><p className="font-medium">{formatDate(enrollment.startedAt)}</p></div>}
         <div><p className="text-sm text-slate-500">Class / batch</p><p className="font-medium">{enrollment.batchName ?? "Not recorded"}</p></div>
-        <div><p className="text-sm text-slate-500">Assigned trainer</p><p className="font-medium">{enrollment.trainerName ?? "Not recorded"}</p></div>
-        <div><p className="text-sm text-slate-500">Completion date</p><p className="font-medium">{formatDate(enrollment.completedAt)}</p></div>
+        {enrollment.status === "completed" && <div><p className="text-sm text-slate-500">Completion date</p><p className="font-medium">{formatDate(enrollment.completedAt)}</p></div>}
       </section>
 
       {canManage && (
         <section className="rounded-2xl border border-slate-200 bg-white p-5">
           <h2 className="text-lg font-semibold">Administrator actions</h2>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button disabled={saving} onClick={() => void changeStatus("in_progress")}>Start Training</Button>
-            <Button disabled={saving} variant="secondary" onClick={() => void changeStatus("pending_enrollment")}>Return to Pending</Button>
-            <Button disabled={saving} variant="secondary" onClick={() => void changeStatus("ready_for_completion")}>Ready for Completion</Button>
-            {canComplete && <Button disabled={saving} onClick={() => void changeStatus("completed")}>Complete Training</Button>}
-            <Button disabled={saving} variant="danger" onClick={() => void changeStatus("withdrawn")}>Withdraw</Button>
-            <Button disabled={saving} variant="danger" onClick={() => void changeStatus("cancelled")}>Cancel Enrollment</Button>
+            {enrollment.status === "pending_enrollment" && <>
+              <Button disabled={saving} onClick={() => void changeStatus("in_progress")}>Start Training</Button>
+              <Button disabled={saving} variant="danger" onClick={() => void changeStatus("withdrawn")}>Withdraw</Button>
+              <Button disabled={saving} variant="danger" onClick={() => void changeStatus("cancelled")}>Cancel Enrollment</Button>
+            </>}
+            {["in_progress", "for_remedial"].includes(enrollment.status) && <>
+              <Button disabled={saving} onClick={() => void changeStatus("ready_for_completion")}>Mark Ready for Graduation</Button>
+              <Button disabled={saving} variant="secondary" onClick={() => void changeStatus("pending_enrollment")}>Return to Pending</Button>
+              <Button disabled={saving} variant="danger" onClick={() => void changeStatus("withdrawn")}>Withdraw</Button>
+            </>}
+            {enrollment.status === "ready_for_completion" && <>
+              {canComplete && <Button disabled={saving} onClick={() => void changeStatus("completed")}>Graduate Student</Button>}
+              <Button disabled={saving} variant="secondary" onClick={() => void changeStatus("in_progress")}>Return to Training</Button>
+            </>}
+            {enrollment.status === "completed" && canRecommend && (
+              <Button disabled={saving} onClick={() => void changeStatus("completed")}>Recommend for Next Program</Button>
+            )}
           </div>
           <label className="mt-5 block text-sm font-medium">
             Assign class or batch
