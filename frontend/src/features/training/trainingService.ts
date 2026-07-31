@@ -9,63 +9,30 @@ export interface TrainingProgramSummary {
   inProgress: number | null;
 }
 
-interface TrainingRow {
-  id: string;
-  name: string;
-}
-
-interface MemberTrainingRow {
-  training_id: string;
-  status: string | null;
-}
-
-function normalize(value: string) {
-  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+interface TrainingOverviewRow {
+  training_name: string;
+  total_enrolled: number;
+  completed: number;
+  in_progress: number;
 }
 
 export async function getTrainingOverview(): Promise<TrainingProgramSummary[]> {
-  const [trainingsResult, memberTrainingsResult] = await Promise.all([
-    supabase.from("trainings").select("id, name"),
-    supabase.from("member_trainings").select("training_id, status"),
-  ]);
+  const { data, error } = await supabase.rpc("get_training_overview_stats");
 
-  if (trainingsResult.error) throw trainingsResult.error;
-  if (memberTrainingsResult.error) throw memberTrainingsResult.error;
+  if (error) throw error;
 
-  const trainings = (trainingsResult.data ?? []) as TrainingRow[];
-  const memberTrainings = (memberTrainingsResult.data ??
-    []) as MemberTrainingRow[];
+  const stats = (data ?? []) as TrainingOverviewRow[];
 
   return TRAINING_PROGRAMS.map((program) => {
-    const training = trainings.find(
-      (item) => normalize(item.name) === normalize(program.name),
+    const programStats = stats.find(
+      (item) => item.training_name === program.name,
     );
-    const enrollments = training
-      ? memberTrainings.filter((item) => item.training_id === training.id)
-      : [];
-    const completed = enrollments.filter((item) =>
-      ["complete", "completed", "graduated"].includes(
-        normalize(item.status ?? ""),
-      ),
-    ).length;
-    const inProgress = enrollments.filter(
-      (item) =>
-        ![
-          "complete",
-          "completed",
-          "graduated",
-          "withdrawn",
-          "cancelled",
-          "canceled",
-          "inactive",
-        ].includes(normalize(item.status ?? "")),
-    ).length;
 
     return {
       ...program,
-      totalEnrolled: enrollments.length,
-      completed,
-      inProgress,
+      totalEnrolled: Number(programStats?.total_enrolled ?? 0),
+      completed: Number(programStats?.completed ?? 0),
+      inProgress: Number(programStats?.in_progress ?? 0),
     };
   });
 }
