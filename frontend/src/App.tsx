@@ -21,6 +21,8 @@ import GivePage from "./pages/GivePage";
 
 import Login from "./pages/admin/Login";
 import Dashboard from "./pages/admin/Dashboard";
+import Training from "./pages/admin/Training";
+import TrainingProgram from "./pages/admin/TrainingProgram";
 
 function App() {
   return (
@@ -39,6 +41,11 @@ function App() {
       {/* Admin Portal */}
       <Route element={<AdminLayout />}>
         <Route path="/admin/dashboard" element={<Dashboard />} />
+        <Route path="/admin/training" element={<Training />} />
+        <Route
+          path="/admin/training/:programSlug"
+          element={<TrainingProgram />}
+        />
 
         <Route path="/admin/members" element={<Members />} />
         <Route path="/admin/members/new" element={<MemberForm />} />

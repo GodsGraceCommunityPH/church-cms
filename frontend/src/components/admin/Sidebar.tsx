@@ -1,5 +1,6 @@
 import {
   LayoutDashboard,
+  GraduationCap,
   Users,
   UsersRound,
   Music,
@@ -62,8 +63,8 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
 
         {/* Desktop Logo */}
         <div
-          className="mb-10 hidden md:block"
-          style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", paddingRight: "20px" }}
+          className="mb-10 hidden items-start justify-between md:flex"
+          style={{ paddingRight: "20px" }}
         >
           <div>
             <h2 className="text-xl font-bold">{collapsed ? "G" : "GGCCC"}</h2>
@@ -91,6 +92,19 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
             >
               <LayoutDashboard size={18} />
               {!collapsed && "Overview"}
+            </NavLink>
+
+            <NavLink
+              className={({ isActive }) =>
+                `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`
+              }
+              to="/admin/training"
+              onClick={onClose}
+              style={linkStyle}
+              title={collapsed ? "Training" : undefined}
+            >
+              <GraduationCap size={18} />
+              {!collapsed && "Training"}
             </NavLink>
 
             <NavLink
