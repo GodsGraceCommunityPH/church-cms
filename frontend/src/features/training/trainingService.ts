@@ -89,6 +89,10 @@ interface TrainingRow {
   name: string;
 }
 
+function normalizedProgramName(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 interface MemberTrainingRow {
   training_id: string;
   workflow_status: string | null;
@@ -145,7 +149,7 @@ export function trainingErrorMessage(error: unknown) {
     };
     if (value.code === "42501") return "You do not have permission to perform this Training action.";
     if (value.code === "23505") return "This member still has a database-level duplicate enrollment restriction. Apply migration 014, then reload the page.";
-    if (value.code?.startsWith("PGRST")) return "Training data could not be loaded. Please refresh and try again.";
+    if (value.code?.startsWith("PGRST")) return `${value.code}: ${value.message ?? "Training data could not be loaded."}`;
     if (value.message) return `${value.code ? `${value.code}: ` : ""}${value.message}`;
   }
   if (error instanceof Error && error.message.startsWith("Attendance")) return error.message;
@@ -172,7 +176,7 @@ export async function getTrainingOverview(): Promise<TrainingProgramSummary[]> {
 
   return TRAINING_PROGRAMS.map((program) => {
     const training = trainings.find(
-      (item) => item.name.trim().toLowerCase() === program.name.toLowerCase(),
+      (item) => normalizedProgramName(item.name) === normalizedProgramName(program.name),
     );
     const programEnrollments = training
       ? enrollments.filter((item) => item.training_id === training.id)
@@ -229,12 +233,14 @@ const ENROLLMENT_SELECT = `
 export async function getTrainingProgramDetail(
   programName: string,
 ): Promise<TrainingProgramDetail> {
-  const { data: program, error: programError } = await supabase
+  const { data: programs, error: programError } = await supabase
     .from("trainings")
-    .select("id, name")
-    .eq("name", programName)
-    .single();
+    .select("id, name");
   if (programError) throw programError;
+  const program = (programs ?? []).find(
+    (item) => normalizedProgramName(item.name) === normalizedProgramName(programName),
+  );
+  if (!program) throw new Error(`Training program "${programName}" was not found in Supabase.`);
 
   const { data: enrollments, error: enrollmentError } = await supabase
     .from("member_trainings")
@@ -597,7 +603,7 @@ export async function getPendingTrainingEnrollments() {
   if (error) throw error;
   return (data ?? []).map((item: any) => {
     const program = TRAINING_PROGRAMS.find(
-      (entry) => entry.name.toLowerCase() === item.trainings?.name?.toLowerCase(),
+      (entry) => normalizedProgramName(entry.name) === normalizedProgramName(item.trainings?.name ?? ""),
     );
     return {
       ...mapEnrollment(item),
