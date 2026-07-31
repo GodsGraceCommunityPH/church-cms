@@ -249,7 +249,7 @@ export async function getTrainingProgramDetail(
   const program = (programs ?? []).find(
     (item) => programNamesMatch(item.name, programName),
   );
-  if (!program) throw new Error(`Training program "${programName}" was not found in Supabase.`);
+  if (!program) throw new Error(`Training program "${programName}" was not found in Supabase. Apply migration 018, then reload the page.`);
 
   const { data: enrollments, error: enrollmentError } = await supabase
     .from("member_trainings")
