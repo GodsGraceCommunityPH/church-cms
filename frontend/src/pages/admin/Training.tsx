@@ -69,14 +69,6 @@ export default function Training() {
           </p>
         </div>
       ) : (
-        <>
-          <p
-            className="rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-800"
-            style={{ margin: 0, padding: "12px 16px" }}
-          >
-            Enrollment statistics will appear when the Training backend is ready.
-          </p>
-
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {programs.map((program) => (
               <article
@@ -106,7 +98,6 @@ export default function Training() {
               </article>
             ))}
           </div>
-        </>
       )}
     </div>
   );
