@@ -59,7 +59,7 @@ function App() {
           element={<TrainingProgram />}
         />
         <Route
-          path="/admin/training/:programSlug/batches/:batchId"
+          path="/admin/training/:programSlug/cycles/:batchId"
           element={<TrainingBatch />}
         />
         <Route

@@ -40,20 +40,6 @@ export interface TrainingProgramDetail {
   enrollments: TrainingEnrollment[];
 }
 
-export interface TrainingRequirementProgress {
-  id: string | null;
-  requirementId: string;
-  name: string;
-  description: string | null;
-  requirementType: string;
-  status: "pending" | "complete" | "missing" | "for_remedial";
-  completedAt: string | null;
-  attendanceStatus: string | null;
-  notes: string | null;
-  remedialRequired: boolean;
-  remedialDate: string | null;
-}
-
 export interface TrainingSessionAttendance {
   sessionId: string;
   title: string;
@@ -87,7 +73,6 @@ export interface MemberTrainingProfile {
   enrollment: TrainingEnrollment;
   programId: string;
   programName: string;
-  requirements: TrainingRequirementProgress[];
   sessions: TrainingSessionAttendance[];
   notes: TrainingNote[];
   remedials: TrainingRemedial[];
@@ -370,18 +355,8 @@ export async function getMemberTrainingProfile(
     trainerName,
   };
 
-  const [requirementResult, progressResult, sessionResult, attendanceResult, notesResult, remedialResult, advancementResult] =
+  const [sessionResult, attendanceResult, notesResult, remedialResult, advancementResult] =
     await Promise.all([
-      supabase
-        .from("training_requirements")
-        .select("id, name, description, requirement_type, display_order")
-        .eq("training_id", programRecord.id)
-        .eq("is_active", true)
-        .order("display_order"),
-      supabase
-        .from("member_training_requirements")
-        .select("*")
-        .eq("member_training_id", enrollmentId),
       enrollmentRecord.batch_id
         ? supabase
             .from("training_sessions")
@@ -410,8 +385,6 @@ export async function getMemberTrainingProfile(
     ]);
 
   for (const result of [
-    requirementResult,
-    progressResult,
     sessionResult,
     attendanceResult,
     notesResult,
@@ -421,9 +394,6 @@ export async function getMemberTrainingProfile(
     if (result.error) throw result.error;
   }
 
-  const progressByRequirement = new Map(
-    (progressResult.data ?? []).map((item: any) => [item.requirement_id, item]),
-  );
   const attendanceBySession = new Map(
     (attendanceResult.data ?? []).map((item: any) => [item.session_id, item]),
   );
@@ -456,22 +426,6 @@ export async function getMemberTrainingProfile(
     enrollment: mapEnrollment(hydratedEnrollment),
     programId: programRecord.id,
     programName: programRecord.name,
-    requirements: (requirementResult.data ?? []).map((requirement: any) => {
-      const progress = progressByRequirement.get(requirement.id) as any;
-      return {
-        id: progress?.id ?? null,
-        requirementId: requirement.id,
-        name: requirement.name,
-        description: requirement.description,
-        requirementType: requirement.requirement_type,
-        status: progress?.status ?? "pending",
-        completedAt: progress?.completed_at ?? null,
-        attendanceStatus: progress?.attendance_status ?? null,
-        notes: progress?.notes ?? null,
-        remedialRequired: progress?.remedial_required ?? false,
-        remedialDate: progress?.remedial_date ?? null,
-      };
-    }),
     sessions: (sessionResult.data ?? []).map((session: any) => {
       const attendance = attendanceBySession.get(session.id) as any;
       return {
@@ -630,24 +584,6 @@ export async function scheduleRemedial(
   if (error) throw error;
 }
 
-export async function saveRequirementProgress(
-  enrollmentId: string,
-  requirementId: string,
-  status: string,
-) {
-  const { error } = await supabase.from("member_training_requirements").upsert(
-    {
-      member_training_id: enrollmentId,
-      requirement_id: requirementId,
-      status,
-      completed_at: status === "complete" ? new Date().toISOString() : null,
-      remedial_required: status === "for_remedial",
-    },
-    { onConflict: "member_training_id,requirement_id" },
-  );
-  if (error) throw error;
-}
-
 export async function completeTraining(
   enrollmentId: string,
   nextTrainingId: string | null,
@@ -784,7 +720,14 @@ export async function getAvailableMembers(trainingId: string) {
       supabase
         .from("member_trainings")
         .select("member_id, workflow_status, archived_at")
-        .eq("training_id", trainingId),
+        .eq("training_id", trainingId)
+        .is("archived_at", null)
+        .in("workflow_status", [
+          "pending_enrollment",
+          "in_progress",
+          "for_remedial",
+          "ready_for_completion",
+        ]),
     ]);
   if (memberError) throw memberError;
   if (existingError) throw existingError;
@@ -805,6 +748,36 @@ export async function enrollBatchStudents(batchId: string, memberIds: string[]) 
   return data as number;
 }
 
+export async function getOrCreateTrainingCycle(trainingId: string) {
+  const { data, error } = await supabase.rpc("get_or_create_training_cycle", {
+    p_training_id: trainingId,
+  });
+  if (error) throw error;
+  return data as TrainingBatch & { training_id: string };
+}
+
+export async function completeTrainingCycle(cycleId: string) {
+  const { error } = await supabase.rpc("complete_training_cycle", {
+    p_cycle_id: cycleId,
+  });
+  if (error) throw error;
+}
+
+export async function assignPendingToTrainingCycle(
+  enrollmentId: string,
+  startTraining: boolean,
+) {
+  const { data, error } = await supabase.rpc(
+    "assign_pending_to_training_cycle",
+    {
+      p_enrollment_id: enrollmentId,
+      p_start_training: startTraining,
+    },
+  );
+  if (error) throw error;
+  return data as string;
+}
+
 export async function archiveImportedTrainingEnrollments() {
   const { data, error } = await supabase.rpc(
     "archive_imported_training_enrollments",
@@ -820,7 +793,7 @@ export async function getTrainingBatchWorkspace(batchId: string) {
     .eq("id", batchId)
     .single();
   if (batchError) throw batchError;
-  const [programResult, enrollmentResult, sessionResult, requirementResult] =
+  const [programResult, enrollmentResult, sessionResult] =
     await Promise.all([
       supabase.from("trainings").select("id, name").eq("id", batch.training_id).single(),
       supabase
@@ -834,14 +807,8 @@ export async function getTrainingBatchWorkspace(batchId: string) {
         .select("id, title, session_date, display_order")
         .eq("batch_id", batchId)
         .order("display_order"),
-      supabase
-        .from("training_requirements")
-        .select("id, name, description, requirement_type, display_order")
-        .eq("training_id", batch.training_id)
-        .eq("is_active", true)
-        .order("display_order"),
     ]);
-  for (const result of [programResult, enrollmentResult, sessionResult, requirementResult]) {
+  for (const result of [programResult, enrollmentResult, sessionResult]) {
     if (result.error) throw result.error;
   }
   if (!programResult.data) throw new Error("Training program not found.");
@@ -870,7 +837,6 @@ export async function getTrainingBatchWorkspace(batchId: string) {
     program,
     enrollments: (enrollmentResult.data ?? []).map(mapEnrollment),
     sessions: sessionResult.data ?? [],
-    requirements: requirementResult.data ?? [],
   };
 }
 
@@ -887,16 +853,6 @@ export async function createTrainingSession(
   if (error) throw error;
 }
 
-export async function createTrainingRequirement(
-  trainingId: string,
-  name: string,
-) {
-  const { error } = await supabase.from("training_requirements").insert({
-    training_id: trainingId,
-    name,
-  });
-  if (error) throw error;
-}
 
 export async function getMemberTrainingJourney(memberId: string) {
   const { data, error } = await supabase

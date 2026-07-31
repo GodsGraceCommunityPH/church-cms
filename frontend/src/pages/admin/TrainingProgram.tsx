@@ -1,23 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import Button from "../../components/ui/Button";
-import Input from "../../components/ui/Input";
-import Select from "../../components/ui/Select";
 import { useAuth } from "../../features/auth/auth";
 import { getTrainingProgram } from "../../features/training/trainingPrograms";
 import {
-  createTrainingBatch,
-  assignBatchTrainer,
-  getAssignableTrainers,
+  getOrCreateTrainingCycle,
   getProgramBatches,
   getTrainingProgramDetail,
   trainingErrorMessage,
   type TrainingBatch,
-  type TrainerOption,
 } from "../../features/training/trainingService";
 
 function formatDate(value: string | null) {
-  if (!value) return "Schedule not recorded";
+  if (!value) return "Not recorded";
   return new Intl.DateTimeFormat("en-PH", {
     year: "numeric",
     month: "short",
@@ -27,15 +22,13 @@ function formatDate(value: string | null) {
 
 export default function TrainingProgram() {
   const { programSlug } = useParams();
+  const navigate = useNavigate();
   const configuredProgram = getTrainingProgram(programSlug);
   const { hasPermission } = useAuth();
   const [trainingId, setTrainingId] = useState("");
-  const [batches, setBatches] = useState<TrainingBatch[]>([]);
-  const [newBatchName, setNewBatchName] = useState("");
-  const [trainerId, setTrainerId] = useState("");
-  const [trainers, setTrainers] = useState<TrainerOption[]>([]);
+  const [cycles, setCycles] = useState<TrainingBatch[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -45,81 +38,88 @@ export default function TrainingProgram() {
     try {
       const program = await getTrainingProgramDetail(configuredProgram.name);
       setTrainingId(program.id);
-      setBatches(await getProgramBatches(program.id));
-      if (hasPermission("training.enroll")) {
-        setTrainers(await getAssignableTrainers());
-      }
+      setCycles(await getProgramBatches(program.id));
     } catch (reason) {
       setError(trainingErrorMessage(reason));
     } finally {
       setLoading(false);
     }
-  }, [configuredProgram, hasPermission]);
+  }, [configuredProgram]);
 
   useEffect(() => { void load(); }, [load]);
-
   if (!configuredProgram) return <p>Training program not found.</p>;
+
+  const currentCycle = cycles.find((cycle) => ["open", "ongoing"].includes(cycle.status));
+  const previousCycles = cycles.filter((cycle) => !["open", "ongoing"].includes(cycle.status));
+
+  async function openCurrentCycle(addStudents = false) {
+    if (!trainingId) return;
+    setStarting(true);
+    setError("");
+    try {
+      const cycle = currentCycle ?? await getOrCreateTrainingCycle(trainingId);
+      navigate(
+        `/admin/training/${programSlug}/cycles/${cycle.id}${addStudents ? "?addStudents=1" : ""}`,
+      );
+    } catch (reason) {
+      setError(trainingErrorMessage(reason));
+    } finally {
+      setStarting(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
       <header>
         <Link to="/admin/training" className="text-sm font-medium text-olive-700 hover:underline">← Back to Training</Link>
         <h1 className="mt-4 text-3xl font-bold">{configuredProgram.name}</h1>
-        <p className="mt-2 text-slate-600">Manage classes, students, sessions, requirements, and graduations by batch.</p>
+        <p className="mt-2 text-slate-600">One current Training cycle with a preserved history of previous runs.</p>
       </header>
 
-      {hasPermission("training.enroll") && trainingId && (
-        <form
-          className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!newBatchName.trim()) return;
-            setSaving(true);
-            void createTrainingBatch(trainingId, newBatchName.trim())
-              .then(async (batchId) => {
-                if (trainerId) await assignBatchTrainer(batchId, trainerId);
-                setNewBatchName("");
-                setTrainerId("");
-                return load();
-              })
-              .catch((reason) => setError(trainingErrorMessage(reason)))
-              .finally(() => setSaving(false));
-          }}
-        >
-          <Input value={newBatchName} onChange={(event) => setNewBatchName(event.target.value)} placeholder={`${configuredProgram.name} - August 2026`} />
-          <Select value={trainerId} onChange={(event) => setTrainerId(event.target.value)}>
-            <option value="">Trainer (optional)</option>
-            {trainers.map((trainer) => <option key={trainer.id} value={trainer.id}>{trainer.name}</option>)}
-          </Select>
-          <Button type="submit" disabled={saving || !newBatchName.trim()}>Create Batch</Button>
-        </form>
-      )}
+      {error && <p className="rounded-xl bg-red-50 p-3 text-red-700">{error}</p>}
+      {loading ? <p className="py-12 text-center text-slate-500">Loading Training...</p> : (
+        <>
+          <section className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-olive-700">Current Training</p>
+                {currentCycle ? (
+                  <>
+                    <h2 className="mt-1 text-2xl font-semibold">{configuredProgram.name}</h2>
+                    <dl className="mt-4 grid grid-cols-2 gap-4 text-sm sm:grid-cols-3">
+                      <div><dt className="text-slate-500">Start date</dt><dd>{formatDate(currentCycle.startsOn)}</dd></div>
+                      <div><dt className="text-slate-500">Students</dt><dd>{currentCycle.studentCount}</dd></div>
+                      <div><dt className="text-slate-500">Status</dt><dd className="capitalize">{currentCycle.status}</dd></div>
+                    </dl>
+                  </>
+                ) : (
+                  <><h2 className="mt-1 text-xl font-semibold">No active Training</h2><p className="mt-2 text-slate-500">Start a new cycle when the program is ready to receive students.</p></>
+                )}
+              </div>
+              {hasPermission("training.enroll") && (
+                <div className="flex flex-wrap gap-2">
+                  <Button disabled={starting} onClick={() => void openCurrentCycle(!currentCycle)}>
+                    {currentCycle ? "+ Add Students" : "Start New Training"}
+                  </Button>
+                  {currentCycle && <Button variant="secondary" onClick={() => void openCurrentCycle(false)}>Manage Training</Button>}
+                </div>
+              )}
+            </div>
+          </section>
 
-      {loading ? <p className="py-12 text-center text-slate-500">Loading batches...</p> :
-        error ? <div className="rounded-2xl border border-red-200 bg-white p-8 text-center text-red-600">{error}</div> :
-        batches.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center">
-            <h2 className="text-lg font-semibold">No batches yet</h2>
-            <p className="mt-2 text-slate-500">Create the first batch to begin enrolling students.</p>
-          </div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {batches.map((batch) => (
-              <article key={batch.id} className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-olive-700">{batch.status}</p>
-                <h2 className="mt-1 text-xl font-semibold">{batch.name}</h2>
-                <dl className="mt-4 space-y-2 text-sm">
-                  <div className="flex justify-between gap-3"><dt className="text-slate-500">Trainer</dt><dd>{batch.trainerName ?? "Not assigned"}</dd></div>
-                  <div className="flex justify-between gap-3"><dt className="text-slate-500">Students</dt><dd>{batch.studentCount}</dd></div>
-                  <div className="flex justify-between gap-3"><dt className="text-slate-500">Starts</dt><dd>{formatDate(batch.startsOn)}</dd></div>
-                </dl>
-                <Link to={`/admin/training/${programSlug}/batches/${batch.id}`} className="mt-6 inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-100">
-                  Open batch
+          <section>
+            <h2 className="text-xl font-semibold">Previous Training Runs</h2>
+            {previousCycles.length === 0 ? <p className="mt-3 rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">No previous runs recorded.</p> : (
+              <div className="mt-3 space-y-3">{previousCycles.map((cycle) => (
+                <Link key={cycle.id} to={`/admin/training/${programSlug}/cycles/${cycle.id}`} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 hover:border-olive-400">
+                  <div><p className="font-semibold">{formatDate(cycle.startsOn)} – {formatDate(cycle.endsOn)}</p><p className="text-sm text-slate-500">{cycle.studentCount} students</p></div>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold capitalize">{cycle.status}</span>
                 </Link>
-              </article>
-            ))}
-          </div>
-        )}
+              ))}</div>
+            )}
+          </section>
+        </>
+      )}
     </div>
   );
 }

@@ -77,7 +77,7 @@ export default function Training() {
             <article key={program.slug} className="flex flex-col rounded-2xl border border-slate-200 bg-white p-5">
               <h2 className="text-xl font-semibold">{program.name}</h2>
               <dl className="mt-5 grid grid-cols-2 gap-4">
-                <Stat label="Active batches" value={program.activeBatches} />
+                <Stat label="Current training" value={program.activeBatches} />
                 <Stat label="Students training" value={program.inProgress} />
                 <Stat label="Ready to graduate" value={program.readyForGraduation} />
                 <Stat label="Completed" value={program.completed} />
@@ -86,7 +86,7 @@ export default function Training() {
                 to={`/admin/training/${program.slug}`}
                 className="mt-6 inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
               >
-                View batches
+                Open program
               </Link>
             </article>
           ))}

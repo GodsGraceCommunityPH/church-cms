@@ -14,7 +14,6 @@ import {
   getNextProgram,
   getTrainingBatches,
   saveAttendance,
-  saveRequirementProgress,
   scheduleRemedial,
   trainingErrorMessage,
   trainingStatusLabel,
@@ -247,42 +246,6 @@ export default function MemberTrainingProfile() {
           )}
         </section>
       )}
-
-      <section className="rounded-2xl border border-slate-200 bg-white p-5">
-        <h2 className="text-lg font-semibold">Requirements</h2>
-        {profile.requirements.length === 0 ? (
-          <p className="mt-4 text-slate-500">Requirements not recorded for this legacy enrollment.</p>
-        ) : (
-          <div className="mt-4 space-y-3">
-            {profile.requirements.map((requirement) => (
-              <div key={requirement.requirementId} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="font-medium">{requirement.name}</p>
-                  <p className="text-sm text-slate-500">{requirement.description ?? "No description recorded"}</p>
-                  <p className="mt-1 text-xs text-slate-500">Completed: {formatDate(requirement.completedAt)}</p>
-                </div>
-                {canManage ? (
-                  <Select
-                    value={requirement.status}
-                    disabled={saving}
-                    onChange={(event) =>
-                      void runAction(
-                        () => saveRequirementProgress(enrollment.id, requirement.requirementId, event.target.value),
-                        "Requirement progress updated.",
-                      )
-                    }
-                  >
-                    <option value="pending">Pending</option>
-                    <option value="complete">Complete</option>
-                    <option value="missing">Missing</option>
-                    <option value="for_remedial">For remedial</option>
-                  </Select>
-                ) : <StatusPill value={requirement.status} />}
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5">
         <h2 className="text-lg font-semibold">Sessions and attendance</h2>
