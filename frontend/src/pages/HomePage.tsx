@@ -10,8 +10,8 @@ function HomePage() {
       <Hero />
       <Welcome />
       <ServiceSchedule />
-      <PreviousWorship />
       <CommunityGallery />
+      <PreviousWorship />
     </>
   );
 }

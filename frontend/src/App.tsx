@@ -20,6 +20,7 @@ import HomePage from "./pages/HomePage";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
 import GivePage from "./pages/GivePage";
+import GalleryPage from "./pages/GalleryPage";
 
 import Login from "./pages/admin/Login";
 import Dashboard from "./pages/admin/Dashboard";
@@ -42,6 +43,7 @@ function App() {
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/give" element={<GivePage />} />
+        <Route path="/gallery/:albumSlug" element={<GalleryPage />} />
       </Route>
 
       {/* Staff Portal Login */}
