@@ -12,6 +12,7 @@ import type { Member } from "../../features/members/member";
 import type { CellGroup } from "../../features/cellGroups/cellGroup";
 import { supabase } from "../../lib/supabase";
 import SearchableSelect from "../../components/ui/SearchableSelect";
+import { validateMemberDetails, yesterdayDateInputValue } from "../../utils/memberValidation";
 import {
   createMember,
   getMember,
@@ -99,6 +100,8 @@ function MemberForm() {
       setFormError("Complete all required fields before saving the member.");
       return;
     }
+    const validationError = validateMemberDetails({ firstName, lastName, email: member.email, mobile: member.mobile, birthday: member.birthday });
+    if (validationError) { setFormError(validationError); return; }
 
     const payload = {
       first_name: firstName,
@@ -201,6 +204,7 @@ function MemberForm() {
               required
               value={member.firstName}
               onChange={handleChange}
+              pattern="[A-Za-z '\-]+"
             />
             <FormInput
               label="Last Name"
@@ -208,6 +212,7 @@ function MemberForm() {
               required
               value={member.lastName}
               onChange={handleChange}
+              pattern="[A-Za-z '\-]+"
             />
             <FormInput
               label="Nickname"
@@ -234,6 +239,7 @@ function MemberForm() {
               type="date"
               value={member.birthday}
               onChange={handleChange}
+              max={yesterdayDateInputValue()}
             />
           </section>
 
@@ -288,6 +294,7 @@ function MemberForm() {
             name="mobile"
             value={member.mobile}
             onChange={handleChange}
+            inputMode="tel"
           />
 
           <FormInput

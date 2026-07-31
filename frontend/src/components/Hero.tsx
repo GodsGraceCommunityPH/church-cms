@@ -1,5 +1,6 @@
 import heroImage from "../assets/hero.jpg";
 import PrimaryButton from "../components/PrimaryButton";
+import { CHURCH_LINKS } from "../config/churchLinks";
 
 function Hero() {
   return (
@@ -22,9 +23,9 @@ function Hero() {
         <div
           className="mx-auto w-full max-w-7xl"
           style={{
-            paddingLeft: "80px",
-            paddingRight: "80px",
-            paddingTop: "180px",
+            paddingLeft: "clamp(20px, 7vw, 80px)",
+            paddingRight: "clamp(20px, 7vw, 80px)",
+            paddingTop: "clamp(130px, 18vh, 180px)",
           }}
         >
           <div className="max-w-3xl">
@@ -49,7 +50,8 @@ function Hero() {
             <div className="flex flex-col gap-4 md:flex-row">
               <PrimaryButton
                 variant="primary"
-                href="#welcome"
+                href={CHURCH_LINKS.directions}
+                target="_blank"
                 className="w-full md:w-64"
               >
                 Join Us This Sunday
@@ -57,7 +59,7 @@ function Hero() {
 
               <PrimaryButton
                 variant="secondary"
-                href="https://www.facebook.com/GGCCCCaloocan"
+                href={CHURCH_LINKS.watch}
                 target="_blank"
                 className="w-full md:w-64"
               >

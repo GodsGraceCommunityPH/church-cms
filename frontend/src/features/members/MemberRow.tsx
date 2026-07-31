@@ -4,12 +4,14 @@ interface MemberRowProps {
   member: Member;
   onOpen: (id: string) => void;
   onDeactivate: (member: Member) => void;
+  onDelete: (member: Member) => void;
 }
 
 export default function MemberRow({
   member,
   onOpen,
   onDeactivate,
+  onDelete,
 }: MemberRowProps) {
   const isInactive = member.membershipStatus === "Inactive";
 
@@ -29,7 +31,7 @@ export default function MemberRow({
       </td>
       <td className="min-w-0 px-5 py-3 text-slate-600" style={{ padding: "12px", overflowWrap: "anywhere", wordBreak: "break-word", color: "#475569" }}>{member.cellGroup || "Unassigned"}</td>
       <td className="px-5 py-3 text-right" style={{ padding: "12px", textAlign: "right", whiteSpace: "nowrap" }}>
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2" style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap" }}>
           {!isInactive && (
             <button
               type="button"
@@ -49,6 +51,7 @@ export default function MemberRow({
               Deactivate
             </button>
           )}
+          <button type="button" onClick={(event) => { event.stopPropagation(); onDelete(member); }} style={{ background: "#991b1b", border: 0, borderRadius: 8, color: "white", padding: "8px 12px", cursor: "pointer" }}>Delete</button>
         </div>
       </td>
     </tr>

@@ -6,7 +6,7 @@ import Modal from "../../components/Modal";
 import MemberSearch from "../../features/members/MemberSearch";
 import MemberTable from "../../features/members/MemberTable";
 import type { Member } from "../../features/members/member";
-import { deactivateMember } from "../../features/members/memberService";
+import { deactivateMember, deleteMember } from "../../features/members/memberService";
 import { useMembers } from "../../features/members/useMembers";
 
 function Members() {
@@ -15,6 +15,7 @@ function Members() {
   const { members, loading, error, loadMembers } = useMembers();
   const [search, setSearch] = useState("");
   const [memberToDeactivate, setMemberToDeactivate] = useState<Member | null>(null);
+  const [memberToDelete, setMemberToDelete] = useState<Member | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [actionError, setActionError] = useState("");
   const [successMessage, setSuccessMessage] = useState(
@@ -50,6 +51,13 @@ function Members() {
     } finally {
       setIsSaving(false);
     }
+  }
+  async function handleDelete() {
+    if (!memberToDelete) return;
+    setIsSaving(true); setActionError("");
+    try { await deleteMember(memberToDelete.id); setMemberToDelete(null); await loadMembers(); setSuccessMessage("Member permanently deleted."); }
+    catch (reason) { setActionError(reason && typeof reason === "object" && "message" in reason ? String(reason.message) : "Unable to delete this member. Deactivate the member instead."); }
+    finally { setIsSaving(false); }
   }
 
   return (
@@ -144,6 +152,7 @@ function Members() {
             members={filteredMembers}
             onOpen={(id) => navigate(`/admin/members/${id}`)}
             onDeactivate={setMemberToDeactivate}
+            onDelete={setMemberToDelete}
           />
         )}
       </section>
@@ -174,6 +183,7 @@ function Members() {
           </Button>
         </div>
       </Modal>
+      <Modal open={memberToDelete !== null} title="Permanently Delete Member" onClose={() => { if (!isSaving) { setMemberToDelete(null); setActionError(""); } }}><p>Delete <strong>{memberToDelete?.firstName} {memberToDelete?.lastName}</strong> permanently?</p><p style={{ color: "#64748b" }}>This cannot be undone. Members with ministry, Training, attendance, or other historical records cannot be deleted; deactivate them instead.</p>{actionError && <p style={{ color: "#b91c1c" }}>{actionError}</p>}<div style={{ display: "flex", justifyContent: "flex-end", gap: 12, flexWrap: "wrap" }}><Button variant="secondary" disabled={isSaving} onClick={() => setMemberToDelete(null)}>Cancel</Button><Button variant="danger" disabled={isSaving} onClick={() => void handleDelete()}>{isSaving ? "Deleting..." : "Delete Permanently"}</Button></div></Modal>
     </div>
   );
 }

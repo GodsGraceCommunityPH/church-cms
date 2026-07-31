@@ -6,6 +6,7 @@ import FormSelect from "../../../components/forms/FormSelect";
 import FormTextarea from "../../../components/forms/FormTextArea";
 
 import type { Member } from "../../members/types";
+import { validateMemberDetails, yesterdayDateInputValue } from "../../../utils/memberValidation";
 
 type JoinMember = Pick<
   Member,
@@ -34,6 +35,7 @@ export default function JoinMemberForm({ onSubmit }: JoinMemberFormProps) {
     email: "",
     address: "",
   });
+  const [error, setError] = useState("");
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -51,14 +53,16 @@ export default function JoinMemberForm({ onSubmit }: JoinMemberFormProps) {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    console.log("Submitting form...");
-    console.log(member);
+    const validationError = validateMemberDetails(member);
+    if (validationError) { setError(validationError); return; }
+    setError("");
 
     await onSubmit(member);
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} noValidate>
+      {error && <p style={{ padding: 14, border: "1px solid #fecaca", borderRadius: 10, background: "#fef2f2", color: "#b91c1c" }}>{error}</p>}
       {/* Personal Information */}
       <section
         className="rounded-2xl border border-slate-200 bg-white"
@@ -72,6 +76,7 @@ export default function JoinMemberForm({ onSubmit }: JoinMemberFormProps) {
           required
           value={member.firstName}
           onChange={handleChange}
+          pattern="[A-Za-z '\-]+"
         />
 
         <FormInput
@@ -80,6 +85,7 @@ export default function JoinMemberForm({ onSubmit }: JoinMemberFormProps) {
           required
           value={member.lastName}
           onChange={handleChange}
+          pattern="[A-Za-z '\-]+"
         />
 
         <FormInput
@@ -108,6 +114,7 @@ export default function JoinMemberForm({ onSubmit }: JoinMemberFormProps) {
           required
           value={member.birthday}
           onChange={handleChange}
+          max={yesterdayDateInputValue()}
         />
       </section>
 
@@ -123,6 +130,7 @@ export default function JoinMemberForm({ onSubmit }: JoinMemberFormProps) {
           name="mobile"
           value={member.mobile}
           onChange={handleChange}
+          inputMode="tel"
         />
 
         <FormInput

@@ -82,3 +82,8 @@ export async function deactivateMember(id: string): Promise<void> {
     throw error;
   }
 }
+
+export async function deleteMember(id: string): Promise<void> {
+  const { error } = await supabase.rpc("delete_unreferenced_member", { p_member_id: id });
+  if (error) throw error;
+}
