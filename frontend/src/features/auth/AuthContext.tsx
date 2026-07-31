@@ -9,12 +9,56 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../../lib/supabase";
 import { AuthContext, type AuthContextValue } from "./auth";
 
-async function loadPermissions() {
-  const { data, error } = await supabase.rpc("get_my_permissions");
-  if (error) throw error;
-  return new Set<string>(
-    ((data ?? []) as Array<{ code: string }>).map((item) => item.code),
-  );
+class PortalAccessError extends Error {
+  readonly code: string;
+
+  constructor(
+    message: string,
+    code: string,
+  ) {
+    super(message);
+    this.code = code;
+  }
+}
+
+async function loadPermissions(userId: string) {
+  const { data: profile, error: profileError } = await supabase
+    .from("users")
+    .select("id, is_active")
+    .eq("id", userId)
+    .single();
+  if (profileError) {
+    throw new PortalAccessError(profileError.message, profileError.code);
+  }
+  if (!profile?.is_active) {
+    throw new PortalAccessError("This portal account is inactive.", "INACTIVE");
+  }
+
+  const { data, error } = await supabase
+    .from("user_roles")
+    .select(`
+      role_id,
+      roles (
+        code,
+        name,
+        role_permissions (
+          permissions (
+            code
+          )
+        )
+      )
+    `)
+    .eq("user_id", userId);
+  if (error) throw new PortalAccessError(error.message, error.code);
+
+  const permissionCodes = new Set<string>();
+  for (const assignment of (data ?? []) as any[]) {
+    for (const rolePermission of assignment.roles?.role_permissions ?? []) {
+      const code = rolePermission.permissions?.code;
+      if (code) permissionCodes.add(code);
+    }
+  }
+  return permissionCodes;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -29,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAccessError("");
     if (!nextSession) return;
     try {
-      const nextPermissions = await loadPermissions();
+      const nextPermissions = await loadPermissions(nextSession.user.id);
       setPermissions(nextPermissions);
       if (nextPermissions.size === 0) {
         setAccessError(
@@ -40,10 +84,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .from("users")
         .update({ last_login_at: new Date().toISOString() })
         .eq("id", nextSession.user.id);
-    } catch {
-      setAccessError(
-        "Your portal role could not be loaded. Confirm that the authentication migration is installed.",
-      );
+    } catch (error) {
+      const detail =
+        error instanceof PortalAccessError
+          ? ` (${error.code}: ${error.message})`
+          : "";
+      setAccessError(`Your portal role could not be loaded${detail}.`);
     }
   }, []);
 
