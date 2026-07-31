@@ -16,6 +16,7 @@ import {
   saveAttendance,
   saveRequirementProgress,
   scheduleRemedial,
+  trainingErrorMessage,
   trainingStatusLabel,
   updateEnrollmentStatus,
   type MemberTrainingProfile as Profile,
@@ -81,7 +82,7 @@ export default function MemberTrainingProfile() {
         setTrainers(await getAssignableTrainers());
       }
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Unable to load Training Profile.");
+      setError(trainingErrorMessage(reason));
     } finally {
       setLoading(false);
     }
@@ -100,7 +101,7 @@ export default function MemberTrainingProfile() {
       setSuccess(message);
       await load();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "The update could not be saved.");
+      setError(trainingErrorMessage(reason));
     } finally {
       setSaving(false);
     }

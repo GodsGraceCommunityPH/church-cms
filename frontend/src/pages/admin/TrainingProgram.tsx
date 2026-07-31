@@ -7,6 +7,7 @@ import { getTrainingProgram } from "../../features/training/trainingPrograms";
 import {
   getTrainingProgramDetail,
   createTrainingBatch,
+  trainingErrorMessage,
   trainingStatusLabel,
   updateEnrollmentStatus,
   type TrainingEnrollment,
@@ -72,11 +73,7 @@ export default function TrainingProgram() {
     void getTrainingProgramDetail(configuredProgram.name)
       .then(setDetail)
       .catch((reason: unknown) =>
-        setError(
-          reason instanceof Error
-            ? reason.message
-            : "Unable to load this Training program.",
-        ),
+        setError(trainingErrorMessage(reason)),
       )
       .finally(() => setLoading(false));
   }, [configuredProgram]);
@@ -188,7 +185,7 @@ export default function TrainingProgram() {
                     load();
                   })
                   .catch((reason: unknown) =>
-                    setError(reason instanceof Error ? reason.message : "Unable to create batch."),
+                    setError(trainingErrorMessage(reason)),
                   )
                   .finally(() => setSaving(false));
               }}
@@ -261,7 +258,7 @@ export default function TrainingProgram() {
                                       load();
                                     })
                                     .catch((reason: unknown) =>
-                                      setError(reason instanceof Error ? reason.message : "Unable to start training."),
+                                      setError(trainingErrorMessage(reason)),
                                     )
                                     .finally(() => setSaving(false));
                                 }}

@@ -153,6 +153,21 @@ export function trainingStatusLabel(status: string) {
     .join(" ");
 }
 
+export function trainingErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (error && typeof error === "object") {
+    const value = error as {
+      code?: string;
+      message?: string;
+      details?: string;
+      hint?: string;
+    };
+    const message = value.message ?? value.details ?? "Unknown Supabase error";
+    return value.code ? `${value.code}: ${message}` : message;
+  }
+  return "Unknown Training error";
+}
+
 export async function getTrainingOverview(): Promise<TrainingProgramSummary[]> {
   const [trainingsResult, enrollmentResult] = await Promise.all([
     supabase.from("trainings").select("id, name"),
@@ -195,8 +210,8 @@ function mapEnrollment(item: any): TrainingEnrollment {
     startedAt: item.started_at,
     completedAt: item.completed_at,
     batchId: item.batch_id,
-    batchName: item.training_batches?.name ?? null,
-    trainerName: item.training_batches?.trainer?.display_name ?? null,
+    batchName: item.batchName ?? null,
+    trainerName: item.trainerName ?? null,
   };
 }
 
@@ -208,11 +223,7 @@ const ENROLLMENT_SELECT = `
   started_at,
   completed_at,
   batch_id,
-  members ( first_name, last_name ),
-  training_batches (
-    name,
-    trainer:users!training_batches_trainer_user_id_fkey ( display_name )
-  )
+  members ( first_name, last_name )
 `;
 
 export async function getTrainingProgramDetail(
@@ -232,10 +243,49 @@ export async function getTrainingProgramDetail(
     .order("created_at", { ascending: false });
   if (enrollmentError) throw enrollmentError;
 
+  const batchIds = Array.from(
+    new Set((enrollments ?? []).map((item: any) => item.batch_id).filter(Boolean)),
+  );
+  const { data: batches, error: batchError } = batchIds.length
+    ? await supabase
+        .from("training_batches")
+        .select("id, name, trainer_user_id")
+        .in("id", batchIds)
+    : { data: [], error: null };
+  if (batchError) throw batchError;
+  const trainerIds = Array.from(
+    new Set((batches ?? []).map((item: any) => item.trainer_user_id).filter(Boolean)),
+  );
+  const { data: trainers, error: trainerError } = trainerIds.length
+    ? await supabase.from("users").select("id, display_name").in("id", trainerIds)
+    : { data: [], error: null };
+  if (trainerError) throw trainerError;
+  const trainersById = new Map(
+    (trainers ?? []).map((item: any) => [item.id, item.display_name]),
+  );
+  const batchesById = new Map(
+    (batches ?? []).map((item: any) => [
+      item.id,
+      {
+        name: item.name,
+        trainerName: trainersById.get(item.trainer_user_id) ?? null,
+      },
+    ]),
+  );
+
   return {
     id: program.id,
     name: program.name,
-    enrollments: (enrollments ?? []).map(mapEnrollment),
+    enrollments: (enrollments ?? []).map((item: any) => {
+      const batch = batchesById.get(item.batch_id) as
+        | { name: string; trainerName: string | null }
+        | undefined;
+      return mapEnrollment({
+        ...item,
+        batchName: batch?.name,
+        trainerName: batch?.trainerName,
+      });
+    }),
   };
 }
 
@@ -244,18 +294,68 @@ export async function getMemberTrainingProfile(
 ): Promise<MemberTrainingProfile> {
   const { data: enrollment, error: enrollmentError } = await supabase
     .from("member_trainings")
-    .select(`${ENROLLMENT_SELECT}, trainings ( id, name )`)
+    .select(`
+      id,
+      member_id,
+      training_id,
+      workflow_status,
+      created_at,
+      started_at,
+      completed_at,
+      batch_id
+    `)
     .eq("id", enrollmentId)
     .single();
   if (enrollmentError) throw enrollmentError;
   const enrollmentRecord = enrollment as any;
+
+  const [memberResult, programResult, batchResult] = await Promise.all([
+    supabase
+      .from("members")
+      .select("first_name, last_name")
+      .eq("id", enrollmentRecord.member_id)
+      .single(),
+    supabase
+      .from("trainings")
+      .select("id, name")
+      .eq("id", enrollmentRecord.training_id)
+      .single(),
+    enrollmentRecord.batch_id
+      ? supabase
+          .from("training_batches")
+          .select("id, name, trainer_user_id")
+          .eq("id", enrollmentRecord.batch_id)
+          .single()
+      : Promise.resolve({ data: null, error: null }),
+  ]);
+  if (memberResult.error) throw memberResult.error;
+  if (programResult.error) throw programResult.error;
+  if (batchResult.error) throw batchResult.error;
+
+  let trainerName: string | null = null;
+  if (batchResult.data?.trainer_user_id) {
+    const { data: trainer, error: trainerError } = await supabase
+      .from("users")
+      .select("display_name")
+      .eq("id", batchResult.data.trainer_user_id)
+      .single();
+    if (trainerError) throw trainerError;
+    trainerName = trainer.display_name;
+  }
+  const programRecord = programResult.data;
+  const hydratedEnrollment = {
+    ...enrollmentRecord,
+    members: memberResult.data,
+    batchName: batchResult.data?.name ?? null,
+    trainerName,
+  };
 
   const [requirementResult, progressResult, sessionResult, attendanceResult, notesResult, remedialResult, advancementResult] =
     await Promise.all([
       supabase
         .from("training_requirements")
         .select("id, name, description, requirement_type, display_order")
-        .eq("training_id", enrollmentRecord.trainings.id)
+        .eq("training_id", programRecord.id)
         .eq("is_active", true)
         .order("display_order"),
       supabase
@@ -275,7 +375,7 @@ export async function getMemberTrainingProfile(
         .eq("member_training_id", enrollmentId),
       supabase
         .from("training_notes")
-        .select("id, note, created_at, author:users!training_notes_created_by_fkey(display_name)")
+        .select("id, note, created_at, created_by")
         .eq("member_training_id", enrollmentId)
         .order("created_at", { ascending: false }),
       supabase
@@ -285,7 +385,7 @@ export async function getMemberTrainingProfile(
         .order("scheduled_for", { ascending: false }),
       supabase
         .from("training_advancement_eligibility")
-        .select("status, recommendation, recommended_at, next_program:trainings!training_advancement_eligibility_next_training_id_fkey(name)")
+        .select("status, recommendation, recommended_at, next_training_id")
         .eq("source_member_training_id", enrollmentId),
     ]);
 
@@ -307,11 +407,35 @@ export async function getMemberTrainingProfile(
   const attendanceBySession = new Map(
     (attendanceResult.data ?? []).map((item: any) => [item.session_id, item]),
   );
+  const noteAuthorIds = Array.from(
+    new Set((notesResult.data ?? []).map((item: any) => item.created_by).filter(Boolean)),
+  );
+  const { data: noteAuthors, error: noteAuthorError } = noteAuthorIds.length
+    ? await supabase.from("users").select("id, display_name").in("id", noteAuthorIds)
+    : { data: [], error: null };
+  if (noteAuthorError) throw noteAuthorError;
+  const noteAuthorsById = new Map(
+    (noteAuthors ?? []).map((item: any) => [item.id, item.display_name]),
+  );
+  const nextTrainingIds = Array.from(
+    new Set(
+      (advancementResult.data ?? [])
+        .map((item: any) => item.next_training_id)
+        .filter(Boolean),
+    ),
+  );
+  const { data: nextPrograms, error: nextProgramError } = nextTrainingIds.length
+    ? await supabase.from("trainings").select("id, name").in("id", nextTrainingIds)
+    : { data: [], error: null };
+  if (nextProgramError) throw nextProgramError;
+  const nextProgramsById = new Map(
+    (nextPrograms ?? []).map((item: any) => [item.id, item.name]),
+  );
 
   return {
-    enrollment: mapEnrollment(enrollmentRecord),
-    programId: enrollmentRecord.trainings.id,
-    programName: enrollmentRecord.trainings.name,
+    enrollment: mapEnrollment(hydratedEnrollment),
+    programId: programRecord.id,
+    programName: programRecord.name,
     requirements: (requirementResult.data ?? []).map((requirement: any) => {
       const progress = progressByRequirement.get(requirement.id) as any;
       return {
@@ -342,7 +466,7 @@ export async function getMemberTrainingProfile(
       id: note.id,
       note: note.note,
       createdAt: note.created_at,
-      author: note.author?.display_name ?? "Portal user",
+      author: noteAuthorsById.get(note.created_by) ?? "Portal user",
     })),
     remedials: (remedialResult.data ?? []).map((item: any) => ({
       id: item.id,
@@ -353,7 +477,7 @@ export async function getMemberTrainingProfile(
     advancement: (advancementResult.data ?? []).map((item: any) => ({
       status: item.status,
       recommendation: item.recommendation,
-      nextProgram: item.next_program?.name ?? "Not recorded",
+      nextProgram: nextProgramsById.get(item.next_training_id) ?? "Not recorded",
       recommendedAt: item.recommended_at,
     })),
   };
@@ -376,14 +500,24 @@ export async function updateEnrollmentStatus(
 export async function getTrainingBatches(trainingId: string) {
   const { data, error } = await supabase
     .from("training_batches")
-    .select("id, name, trainer:users!training_batches_trainer_user_id_fkey(display_name)")
+    .select("id, name, trainer_user_id")
     .eq("training_id", trainingId)
     .order("name");
   if (error) throw error;
+  const trainerIds = Array.from(
+    new Set((data ?? []).map((item: any) => item.trainer_user_id).filter(Boolean)),
+  );
+  const { data: trainers, error: trainerError } = trainerIds.length
+    ? await supabase.from("users").select("id, display_name").in("id", trainerIds)
+    : { data: [], error: null };
+  if (trainerError) throw trainerError;
+  const trainersById = new Map(
+    (trainers ?? []).map((item: any) => [item.id, item.display_name]),
+  );
   return (data ?? []).map((item: any) => ({
     id: item.id,
     name: item.name,
-    trainerName: item.trainer?.display_name ?? null,
+    trainerName: trainersById.get(item.trainer_user_id) ?? null,
   })) as TrainingBatchOption[];
 }
 
