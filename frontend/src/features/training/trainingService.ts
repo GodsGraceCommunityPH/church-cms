@@ -779,8 +779,7 @@ export async function getAvailableMembers(trainingId: string) {
     await Promise.all([
       supabase
         .from("members")
-        .select("id, first_name, last_name")
-        .eq("status", "active")
+        .select("id, first_name, last_name, membership_status")
         .order("first_name"),
       supabase
         .from("member_trainings")
@@ -792,7 +791,11 @@ export async function getAvailableMembers(trainingId: string) {
   if (memberError) throw memberError;
   if (existingError) throw existingError;
   const existingIds = new Set((existing ?? []).map((item) => item.member_id));
-  return (members ?? []).filter((member) => !existingIds.has(member.id));
+  return (members ?? []).filter(
+    (member) =>
+      !existingIds.has(member.id) &&
+      String(member.membership_status ?? "Active").toLowerCase() !== "inactive",
+  );
 }
 
 export async function enrollBatchStudents(batchId: string, memberIds: string[]) {

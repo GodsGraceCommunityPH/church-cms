@@ -22,6 +22,7 @@ export default function TrainingBatch() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [showStudents, setShowStudents] = useState(false);
+  const [loadingMembers, setLoadingMembers] = useState(false);
   const [sessionName, setSessionName] = useState("");
   const [requirementName, setRequirementName] = useState("");
   const [error, setError] = useState("");
@@ -46,7 +47,24 @@ export default function TrainingBatch() {
         <Link to={`/admin/training/${programSlug}`} className="text-sm font-medium text-olive-700 hover:underline">← Back to {workspace.program.name}</Link>
         <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
           <div><p className="text-sm font-medium text-olive-700">{workspace.program.name}</p><h1 className="text-3xl font-bold">{workspace.batch.name}</h1><p className="mt-2 text-slate-600">Trainer: {workspace.batch.trainerName ?? "Not assigned"}</p></div>
-          {hasPermission("training.enroll") && <Button onClick={() => void getAvailableMembers(workspace.program.id).then((data) => { setMembers(data); setShowStudents(true); })}>+ Add Students</Button>}
+          {hasPermission("training.enroll") && (
+            <Button
+              disabled={loadingMembers}
+              onClick={() => {
+                setLoadingMembers(true);
+                setError("");
+                void getAvailableMembers(workspace.program.id)
+                  .then((data) => {
+                    setMembers(data);
+                    setShowStudents(true);
+                  })
+                  .catch((reason) => setError(trainingErrorMessage(reason)))
+                  .finally(() => setLoadingMembers(false));
+              }}
+            >
+              {loadingMembers ? "Loading Members..." : "+ Add Students"}
+            </Button>
+          )}
         </div>
       </header>
       {error && <p className="rounded-xl bg-red-50 p-3 text-red-700">{error}</p>}
