@@ -12,7 +12,9 @@ import {
   ChevronRight,
   X,
 } from "lucide-react";
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
+import { useAuth } from "../../features/auth/auth";
 
 type SidebarProps = {
   open: boolean;
@@ -22,6 +24,8 @@ type SidebarProps = {
 };
 
 function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
+  const { signOut } = useAuth();
+  const [signingOut, setSigningOut] = useState(false);
   const linkClass =
     "flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-gray-100";
   const linkStyle = {
@@ -181,9 +185,23 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
             {!collapsed && "Back to Website"}
           </NavLink>
 
-          <button className={linkClass} style={linkStyle} title={collapsed ? "Log Out" : undefined}>
+          <button
+            type="button"
+            disabled={signingOut}
+            className={linkClass}
+            style={linkStyle}
+            title={collapsed ? "Log Out" : undefined}
+            onClick={async () => {
+              setSigningOut(true);
+              try {
+                await signOut();
+              } finally {
+                setSigningOut(false);
+              }
+            }}
+          >
             <LogOut size={18} />
-            {!collapsed && "Log Out"}
+            {!collapsed && (signingOut ? "Signing out..." : "Log Out")}
           </button>
         </div>
       </div>

@@ -1,36 +1,47 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Lock, LogIn, User, Info } from "lucide-react";
-
+import { useEffect, useState } from "react";
+import { Info, Lock, LogIn, Mail } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import logo from "../../assets/ggccc-logo.png";
-import PrimaryButton from "../../components/PrimaryButton";
+import Button from "../../components/ui/Button";
+import Input from "../../components/ui/Input";
+import { useAuth } from "../../features/auth/auth";
 
-function Login() {
+export default function Login() {
   const navigate = useNavigate();
-
-  const [username, setUsername] = useState("");
+  const location = useLocation();
+  const { session, loading: authLoading, signIn } = useAuth();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  const destination = location.state?.from || "/admin/dashboard";
 
-  function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-
-    const ADMIN_USERNAME = "admin";
-    const ADMIN_PASSWORD = "ggccc123";
-
-    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-      navigate("/admin/dashboard");
-      return;
+  useEffect(() => {
+    if (!authLoading && session) {
+      navigate(destination, { replace: true });
     }
+  }, [authLoading, destination, navigate, session]);
 
-    alert(
-      "Invalid username or password.\n\nPlease contact the GGCCC IT Ministry if you need access.",
-    );
+  async function handleLogin(event: React.FormEvent) {
+    event.preventDefault();
+    setSubmitting(true);
+    setError("");
+    try {
+      await signIn(email.trim(), password);
+    } catch {
+      setError("Invalid email or password. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (authLoading || session) {
+    return <p className="py-16 text-center text-slate-500">Checking session...</p>;
   }
 
   return (
     <section className="flex min-h-screen items-center justify-center bg-[#F8F7F3] px-6 py-12">
       <div className="w-full max-w-md">
-        {/* Back */}
         <Link
           to="/"
           className="mb-8 inline-flex items-center gap-2 text-slate-600 transition hover:text-[#556B2F]"
@@ -38,131 +49,94 @@ function Login() {
           ← Back to Website
         </Link>
 
-        {/* Card */}
-        <div className="rounded-3xl bg-white p-10 shadow-xl">
-          {/* Logo */}
-          <div
-            style={{ padding: "5px 0px" }}
-            className="mb-4 flex justify-center"
-          >
+        <div className="rounded-3xl bg-white p-8 shadow-xl sm:p-10">
+          <div className="mb-4 flex justify-center">
             <img
               src={logo}
               alt="GGCCC Logo"
               className="h-20 w-20 object-contain"
             />
           </div>
-
           <p className="text-center text-sm font-semibold uppercase tracking-[0.4em] text-[#A3B18A]">
             Staff Portal
           </p>
-
-          <h1 className="font-heading mt-3 text-center text-4xl font-semibold text-slate-900">
+          <h1 className="mt-3 text-center text-4xl font-semibold text-slate-900">
             Welcome Back
           </h1>
-
           <p className="mt-3 text-center text-slate-500">
-            Sign in to access the Church Management System.
+            Sign in with your authorized church account.
           </p>
 
-          <form
-            style={{
-              padding: "0 20px",
-            }}
-            onSubmit={handleLogin}
-            className="mt-10 space-y-7"
-          >
-            {/* Username */}
-            <div style={{ padding: "10px 0px" }}>
-              {/* <label className="mb-2 block font-medium text-slate-700">
-                Username
-              </label> */}
-
-              <div
-                style={{
-                  padding: "0 10px",
-                }}
-                className="flex h-14 items-center gap-3 rounded-lg border border-slate-300 px-4 transition focus-within:border-[#556B2F]"
+          <form className="mt-8 space-y-5" onSubmit={handleLogin}>
+            {error && (
+              <p
+                role="alert"
+                className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700"
               >
-                <User size={20} className="shrink-0 text-slate-400" />
-
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter username"
-                  className="h-full w-full bg-transparent outline-none"
+                {error}
+              </p>
+            )}
+            <label className="block">
+              <span className="mb-2 block text-sm font-medium text-slate-700">
+                Email
+              </span>
+              <div className="relative">
+                <Mail
+                  size={18}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+                <Input
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className="pl-10"
+                  placeholder="you@example.com"
                 />
               </div>
-            </div>
-
-            {/* Password */}
-            <div style={{ padding: "10px 0px" }}>
-              {/* <label className="mb-2 block font-medium text-slate-700">
+            </label>
+            <label className="block">
+              <span className="mb-2 block text-sm font-medium text-slate-700">
                 Password
-              </label> */}
-
-              <div
-                style={{
-                  padding: "0 10px",
-                }}
-                className="flex h-14 items-center gap-3 rounded-lg border border-slate-300 px-4 transition focus-within:border-[#556B2F]"
-              >
-                <Lock size={20} className="mr-3 text-slate-400" />
-
-                <input
+              </span>
+              <div className="relative">
+                <Lock
+                  size={18}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+                <Input
                   type="password"
+                  autoComplete="current-password"
+                  required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter password"
-                  className="h-full w-full bg-transparent outline-none"
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="pl-10"
                 />
               </div>
-            </div>
-            <div style={{ padding: "10px 0px" }}>
-              <PrimaryButton
-                type="submit"
-                className="flex h-14 w-full items-center justify-center gap-2"
-              >
-                <LogIn size={20} />
-                Sign In
-              </PrimaryButton>
-            </div>
+            </label>
+            <Button
+              type="submit"
+              className="h-12 w-full gap-2"
+              disabled={submitting}
+            >
+              <LogIn size={18} />
+              {submitting ? "Signing in..." : "Sign In"}
+            </Button>
           </form>
 
-          {/* Divider */}
-          <div className="my-10 h-px bg-slate-200" />
-
-          {/* Notice */}
-          <div
-            style={{
-              padding: "20px 10px",
-            }}
-            className="rounded-xl bg-slate-50 p-5"
-          >
-            <div className="flex items-start gap-3">
-              <Info size={22} className="mt-0.5 text-[#556B2F]" />
-
-              <div>
-                <p className="font-semibold text-slate-800">Need access?</p>
-
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  This portal is for authorized church staff and ministry
-                  leaders. Please contact the{" "}
-                  <Link
-                    to="/contact"
-                    className="font-semibold text-[#556B2F] transition hover:underline"
-                  >
-                    GGCCC IT Ministry
-                  </Link>{" "}
-                  if you need an account. if you need an account.
-                </p>
-              </div>
-            </div>
+          <div className="mt-8 flex gap-3 rounded-xl bg-slate-50 p-4">
+            <Info size={20} className="mt-0.5 shrink-0 text-[#556B2F]" />
+            <p className="text-sm leading-6 text-slate-600">
+              Need access? Contact the{" "}
+              <Link to="/contact" className="font-semibold text-[#556B2F]">
+                GGCCC IT Ministry
+              </Link>
+              .
+            </p>
           </div>
         </div>
       </div>
     </section>
   );
 }
-
-export default Login;

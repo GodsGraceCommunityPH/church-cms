@@ -25,6 +25,10 @@ import Login from "./pages/admin/Login";
 import Dashboard from "./pages/admin/Dashboard";
 import Training from "./pages/admin/Training";
 import TrainingProgram from "./pages/admin/TrainingProgram";
+import {
+  PermissionRoute,
+  ProtectedRoute,
+} from "./features/auth/ProtectedRoute";
 
 function App() {
   return (
@@ -40,31 +44,53 @@ function App() {
       {/* Staff Portal Login */}
       <Route path="/admin" element={<Login />} />
 
-      {/* Admin Portal */}
+      {/* Authenticated Admin Portal */}
+      <Route element={<ProtectedRoute />}>
       <Route element={<AdminLayout />}>
         <Route path="/admin/dashboard" element={<Dashboard />} />
+        <Route element={<PermissionRoute permission="training.view" />}>
         <Route path="/admin/training" element={<Training />} />
         <Route
           path="/admin/training/:programSlug"
           element={<TrainingProgram />}
         />
+        </Route>
 
+        <Route element={<PermissionRoute permission="members.view" />}>
         <Route path="/admin/members" element={<Members />} />
-        <Route path="/admin/members/new" element={<MemberForm />} />
-        <Route path="/admin/members/:id/edit" element={<MemberForm />} />
         <Route path="/admin/members/:id" element={<MemberProfile />} />
+        </Route>
+        <Route element={<PermissionRoute permission="members.create" />}>
+          <Route path="/admin/members/new" element={<MemberForm />} />
+        </Route>
+        <Route element={<PermissionRoute permission="members.update" />}>
+          <Route path="/admin/members/:id/edit" element={<MemberForm />} />
+        </Route>
 
+        <Route element={<PermissionRoute permission="cell_groups.view" />}>
         <Route path="/admin/cell-groups" element={<CellGroups />} />
-        <Route path="/admin/cell-groups/new" element={<CellGroupForm />} />
-        <Route path="/admin/cell-groups/:id/edit" element={<CellGroupForm />} />
         <Route path="/admin/cell-groups/:id" element={<CellGroupProfile />} />
+        </Route>
+        <Route element={<PermissionRoute permission="cell_groups.manage" />}>
+          <Route path="/admin/cell-groups/new" element={<CellGroupForm />} />
+          <Route path="/admin/cell-groups/:id/edit" element={<CellGroupForm />} />
+        </Route>
         <Route path="/join/:token" element={<JoinCellGroup />} />
+        <Route element={<PermissionRoute permission="ministries.view" />}>
         <Route path="/admin/ministries" element={<Ministries />} />
-        <Route path="/admin/ministries/new" element={<MinistryForm />} />
-        <Route path="/admin/ministries/:id/edit" element={<MinistryForm />} />
         <Route path="/admin/ministries/:id" element={<MinistryProfile />} />
+        </Route>
+        <Route element={<PermissionRoute permission="ministries.manage" />}>
+          <Route path="/admin/ministries/new" element={<MinistryForm />} />
+          <Route path="/admin/ministries/:id/edit" element={<MinistryForm />} />
+        </Route>
+        <Route element={<PermissionRoute permission="finance.view" />}>
         <Route path="/admin/giving" element={<Giving />} />
+        </Route>
+        <Route element={<PermissionRoute permission="admin.settings" />}>
         <Route path="/admin/settings" element={<Settings />} />
+        </Route>
+      </Route>
       </Route>
     </Routes>
   );
