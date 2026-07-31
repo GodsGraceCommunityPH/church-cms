@@ -23,6 +23,8 @@ export default function TrainingBatch() {
   const [search, setSearch] = useState("");
   const [showStudents, setShowStudents] = useState(false);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [enrolling, setEnrolling] = useState(false);
+  const [enrollmentError, setEnrollmentError] = useState("");
   const [sessionName, setSessionName] = useState("");
   const [requirementName, setRequirementName] = useState("");
   const [error, setError] = useState("");
@@ -56,6 +58,7 @@ export default function TrainingBatch() {
                 void getAvailableMembers(workspace.program.id)
                   .then((data) => {
                     setMembers(data);
+                    setEnrollmentError("");
                     setShowStudents(true);
                   })
                   .catch((reason) => setError(trainingErrorMessage(reason)))
@@ -100,7 +103,37 @@ export default function TrainingBatch() {
           <label key={member.id} className="flex items-center gap-3 rounded-lg border border-slate-200 p-3"><input type="checkbox" checked={selected.has(member.id)} onChange={(event) => setSelected((current) => { const next = new Set(current); if (event.target.checked) next.add(member.id); else next.delete(member.id); return next; })} /><span>{member.first_name} {member.last_name}</span></label>
         ))}</div>
         <p className="mt-3 text-sm text-slate-600">Selected ({selected.size})</p>
-        <Button className="mt-3 w-full" disabled={selected.size === 0} onClick={() => void enrollBatchStudents(workspace.batch.id, Array.from(selected)).then(() => { setShowStudents(false); setSelected(new Set()); return load(); })}>Enroll Selected</Button>
+        {enrollmentError && (
+          <p className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            {enrollmentError}
+          </p>
+        )}
+        <Button
+          className="mt-3 w-full"
+          disabled={selected.size === 0 || enrolling}
+          onClick={() => {
+            setEnrolling(true);
+            setEnrollmentError("");
+            void enrollBatchStudents(workspace.batch.id, Array.from(selected))
+              .then(async (count) => {
+                if (count === 0) {
+                  setEnrollmentError(
+                    "No students were enrolled. They may already have active enrollment records for this program.",
+                  );
+                  return;
+                }
+                setShowStudents(false);
+                setSelected(new Set());
+                await load();
+              })
+              .catch((reason) =>
+                setEnrollmentError(trainingErrorMessage(reason)),
+              )
+              .finally(() => setEnrolling(false));
+          }}
+        >
+          {enrolling ? "Enrolling Students..." : `Enroll Selected (${selected.size})`}
+        </Button>
       </Modal>
     </div>
   );
