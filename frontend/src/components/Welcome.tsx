@@ -18,10 +18,6 @@ function Welcome() {
           margin: "0 auto",
         }}
       >
-        <p className="mb-4 text-sm font-semibold uppercase tracking-[0.4em] text-[#A3B18A]">
-          WELCOME TO GGCCC
-        </p>
-
         <h2 className="font-heading mb-8 text-4xl md:text-5xl font-semibold leading-[1.15] tracking-tight text-slate-900">
           You're Always Welcome Here
         </h2>

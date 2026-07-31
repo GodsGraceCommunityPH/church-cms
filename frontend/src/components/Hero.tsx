@@ -29,9 +29,6 @@ function Hero() {
           }}
         >
           <div className="max-w-3xl">
-            <p className="mb-5 text-sm font-semibold uppercase tracking-[0.5em] text-[#A3B18A]">
-              JOIN US THIS SUNDAY
-            </p>
             <h1 className="font-heading mb-8 text-5xl font-semibold leading-[1.1] tracking-tight text-white lg:text-6xl">
               God's Grace Community
               <br />

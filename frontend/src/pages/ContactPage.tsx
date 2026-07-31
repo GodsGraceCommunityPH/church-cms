@@ -21,10 +21,6 @@ function ContactPage() {
       >
         {/* Hero */}
         <div className="mb-20 text-center">
-          <p className="mb-4 text-sm font-semibold uppercase tracking-[0.4em] text-[#A3B18A]">
-            CONTACT US
-          </p>
-
           <h1 className="font-heading mb-8 text-4xl md:text-5xl font-semibold leading-[1.15] tracking-tight text-slate-900">
             We'd Love to Hear From You
           </h1>

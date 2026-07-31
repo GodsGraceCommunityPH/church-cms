@@ -47,10 +47,6 @@ function GivePage() {
       >
         {/* Hero */}
         <div className="text-center">
-          <p className="mb-4 text-sm font-semibold uppercase tracking-[0.4em] text-[#A3B18A]">
-            GIVE
-          </p>
-
           <h1 className="font-heading mb-8 text-5xl font-semibold leading-tight text-slate-900">
             Giving is an act of worship
           </h1>
