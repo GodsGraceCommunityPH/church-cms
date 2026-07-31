@@ -58,6 +58,8 @@ export default function TrainingBatch() {
                 void getAvailableMembers(workspace.program.id)
                   .then((data) => {
                     setMembers(data);
+                    setSelected(new Set());
+                    setSearch("");
                     setEnrollmentError("");
                     setShowStudents(true);
                   })
@@ -99,9 +101,17 @@ export default function TrainingBatch() {
 
       <Modal open={showStudents} title="Add Students" onClose={() => setShowStudents(false)}>
         <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search members..." />
-        <div className="mt-4 max-h-72 space-y-2 overflow-y-auto">{filteredMembers.map((member) => (
-          <label key={member.id} className="flex items-center gap-3 rounded-lg border border-slate-200 p-3"><input type="checkbox" checked={selected.has(member.id)} onChange={(event) => setSelected((current) => { const next = new Set(current); if (event.target.checked) next.add(member.id); else next.delete(member.id); return next; })} /><span>{member.first_name} {member.last_name}</span></label>
-        ))}</div>
+        <div className="mt-4 max-h-72 space-y-2 overflow-y-auto">
+          {filteredMembers.length === 0 ? (
+            <p className="rounded-lg bg-slate-50 p-4 text-center text-sm text-slate-500">
+              {members.length === 0
+                ? "Every member already has an enrollment record for this program."
+                : "No eligible members match your search."}
+            </p>
+          ) : filteredMembers.map((member) => (
+            <label key={member.id} className="flex items-center gap-3 rounded-lg border border-slate-200 p-3"><input type="checkbox" checked={selected.has(member.id)} onChange={(event) => setSelected((current) => { const next = new Set(current); if (event.target.checked) next.add(member.id); else next.delete(member.id); return next; })} /><span>{member.first_name} {member.last_name}</span></label>
+          ))}
+        </div>
         <p className="mt-3 text-sm text-slate-600">Selected ({selected.size})</p>
         {enrollmentError && (
           <p className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">

@@ -783,10 +783,8 @@ export async function getAvailableMembers(trainingId: string) {
         .order("first_name"),
       supabase
         .from("member_trainings")
-        .select("member_id")
-        .eq("training_id", trainingId)
-        .is("archived_at", null)
-        .not("workflow_status", "in", '("withdrawn","cancelled")'),
+        .select("member_id, workflow_status, archived_at")
+        .eq("training_id", trainingId),
     ]);
   if (memberError) throw memberError;
   if (existingError) throw existingError;
