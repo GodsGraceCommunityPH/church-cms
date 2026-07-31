@@ -13,16 +13,16 @@ export default function MemberTable({
   onDeactivate,
 }: MemberTableProps) {
   return (
-    <div className="overflow-x-auto" style={{ overflowX: "auto" }}>
+    <div className="w-full min-w-0 overflow-x-hidden">
       <table
-        className="w-full min-w-[640px] text-left text-sm"
-        style={{ width: "100%", minWidth: "640px", borderCollapse: "collapse" }}
+        className="w-full table-fixed text-left text-sm"
+        style={{ width: "100%", minWidth: 0, tableLayout: "fixed", borderCollapse: "collapse" }}
       >
         <thead className="bg-slate-50 text-slate-600" style={{ background: "#f8fafc", color: "#475569" }}>
           <tr>
-            <th className="px-5 py-3 font-medium" style={{ padding: "12px 20px" }}>Name</th>
-            <th className="px-5 py-3 font-medium" style={{ padding: "12px 20px" }}>Cell Group</th>
-            <th className="px-5 py-3 text-right font-medium" style={{ padding: "12px 20px", textAlign: "right" }}>Actions</th>
+            <th className="px-5 py-3 font-medium" style={{ padding: "12px" }}>Name</th>
+            <th className="px-5 py-3 font-medium" style={{ padding: "12px" }}>Cell Group</th>
+            <th className="px-5 py-3 text-right font-medium" style={{ width: "120px", padding: "12px", textAlign: "right" }}>Actions</th>
           </tr>
         </thead>
         <tbody>

@@ -27,10 +27,10 @@ function AdminLayout() {
       />
 
       {/* Main */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         <Topbar onMenuClick={() => setSidebarOpen(true)} />
 
-        <main className="flex-1 px-6 py-8 md:px-8 md:py-10">
+        <main className="flex-1 px-6 py-8 md:px-8 md:py-10" style={{ minWidth: 0, padding: "24px" }}>
           <Outlet />
         </main>
       </div>

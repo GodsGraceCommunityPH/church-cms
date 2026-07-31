@@ -19,7 +19,7 @@ export default function MemberRow({
       onClick={() => onOpen(member.id)}
       style={{ borderTop: "1px solid #f1f5f9", cursor: "pointer" }}
     >
-      <td className="px-5 py-3 font-medium text-slate-900" style={{ padding: "12px 20px" }}>
+      <td className="min-w-0 px-5 py-3 font-medium text-slate-900" style={{ padding: "12px", overflowWrap: "anywhere", wordBreak: "break-word", color: "#0f172a" }}>
         {member.firstName} {member.lastName}
         {member.nickname && (
           <span className="ml-2 text-sm font-normal text-slate-500">
@@ -27,8 +27,8 @@ export default function MemberRow({
           </span>
         )}
       </td>
-      <td className="px-5 py-3 text-slate-600" style={{ padding: "12px 20px" }}>{member.cellGroup || "Unassigned"}</td>
-      <td className="px-5 py-3 text-right" style={{ padding: "12px 20px", textAlign: "right" }}>
+      <td className="min-w-0 px-5 py-3 text-slate-600" style={{ padding: "12px", overflowWrap: "anywhere", wordBreak: "break-word", color: "#475569" }}>{member.cellGroup || "Unassigned"}</td>
+      <td className="px-5 py-3 text-right" style={{ padding: "12px", textAlign: "right", whiteSpace: "nowrap" }}>
         <div className="flex justify-end gap-2">
           {!isInactive && (
             <button
