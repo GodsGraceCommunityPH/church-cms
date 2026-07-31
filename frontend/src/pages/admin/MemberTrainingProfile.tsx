@@ -109,7 +109,7 @@ export default function MemberTrainingProfile() {
   const active = ["in_progress", "for_remedial", "ready_for_completion"].includes(enrollment.status);
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-7" style={{ display: "grid", gap: 24 }}>
       <header>
         <Link to={`/admin/training/${programSlug}`} className="text-sm font-medium text-olive-700 hover:underline">← Back to {profile.programName}</Link>
         <div className="mt-5 flex flex-wrap items-start justify-between gap-5">
@@ -121,9 +121,9 @@ export default function MemberTrainingProfile() {
       {success && <p className="rounded-xl bg-green-50 p-4 text-sm text-green-800">{success}</p>}
       {error && <p className="rounded-xl bg-red-50 p-4 text-sm text-red-700">{error}</p>}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" style={{ padding: 26, border: "1px solid #dbe3ec", borderRadius: 18, background: "#fff", boxShadow: "0 2px 8px rgba(15,23,42,.06)" }}>
         <h2 className="text-lg font-semibold">Enrollment Summary</h2>
-        <dl className="mt-5 grid gap-5 sm:grid-cols-3">
+        <dl className="mt-5 grid gap-5 sm:grid-cols-3" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 22, marginTop: 20 }}>
           <div><dt className="text-sm text-slate-500">Enrollment date</dt><dd className="mt-1 font-medium">{formatDate(enrollment.enrolledAt)}</dd></div>
           {started && <div><dt className="text-sm text-slate-500">Start date</dt><dd className="mt-1 font-medium">{formatDate(enrollment.startedAt)}</dd></div>}
           {enrollment.status === "completed" && <div><dt className="text-sm text-slate-500">Completion date</dt><dd className="mt-1 font-medium">{formatDate(enrollment.completedAt)}</dd></div>}
@@ -131,7 +131,7 @@ export default function MemberTrainingProfile() {
       </section>
 
       {canManage && enrollment.status !== "completed" && (
-        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" style={{ padding: 26, border: "1px solid #dbe3ec", borderRadius: 18, background: "#fff", boxShadow: "0 2px 8px rgba(15,23,42,.06)" }}>
           <h2 className="text-lg font-semibold">Actions</h2>
           <div className="mt-5 flex flex-wrap gap-3">
             {enrollment.status === "pending_enrollment" && <><Button disabled={saving} onClick={() => void changeStatus("in_progress")}>Start Training</Button><Button disabled={saving} variant="danger" onClick={() => void changeStatus("cancelled")}>Cancel Enrollment</Button></>}
@@ -140,11 +140,11 @@ export default function MemberTrainingProfile() {
         </section>
       )}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" style={{ padding: 26, border: "1px solid #dbe3ec", borderRadius: 18, background: "#fff", boxShadow: "0 2px 8px rgba(15,23,42,.06)" }}>
         <h2 className="text-lg font-semibold">Sessions and Attendance</h2>
         {profile.sessions.length === 0 ? <p className="mt-4 text-slate-500">No sessions recorded.</p> : (
           <div className="mt-5 space-y-3">{profile.sessions.map((session) => (
-            <div key={session.sessionId} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div key={session.sessionId} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(160px, 210px)", alignItems: "center", gap: 18, padding: 18, border: "1px solid #dbe3ec", borderRadius: 12 }}>
               <div><p className="font-medium">{session.title}</p><p className="mt-1 text-sm text-slate-500">{formatDate(session.sessionDate)}</p></div>
               {canRecordAttendance ? <Select className="sm:w-48" value={session.status ?? ""} disabled={saving} onChange={(event) => void runAction(() => saveAttendance(enrollment.id, session.sessionId, event.target.value), "Attendance saved.")}><option value="" disabled>Select attendance</option><option value="present">Present</option><option value="absent">Absent</option><option value="late">Late</option><option value="excused">Excused</option></Select> : session.status ? <StatusPill value={session.status} /> : <span className="text-sm text-slate-500">Not recorded</span>}
             </div>
@@ -152,7 +152,7 @@ export default function MemberTrainingProfile() {
         )}
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" style={{ padding: 26, border: "1px solid #dbe3ec", borderRadius: 18, background: "#fff", boxShadow: "0 2px 8px rgba(15,23,42,.06)" }}>
         <h2 className="text-lg font-semibold">Trainer Notes</h2>
         {canManage && <form className="mt-5 flex flex-col gap-3 sm:flex-row" onSubmit={(event) => { event.preventDefault(); if (!note.trim()) return; void runAction(() => addTrainingNote(enrollment.id, note.trim()), "Note added.").then(() => setNote("")); }}><Input value={note} onChange={(event) => setNote(event.target.value)} placeholder="Add a training note..." /><Button type="submit" disabled={saving || !note.trim()}>Add Note</Button></form>}
         {profile.notes.length === 0 ? <p className="mt-4 text-slate-500">No notes recorded.</p> : <div className="mt-5 space-y-3">{profile.notes.map((item) => <article key={item.id} className="rounded-xl bg-slate-50 p-4"><p>{item.note}</p><p className="mt-2 text-xs text-slate-500">{item.author} · {formatDate(item.createdAt)}</p></article>)}</div>}

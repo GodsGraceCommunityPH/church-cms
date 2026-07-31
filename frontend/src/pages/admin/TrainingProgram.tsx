@@ -4,6 +4,7 @@ import Button from "../../components/ui/Button";
 import { useAuth } from "../../features/auth/auth";
 import { getTrainingProgram } from "../../features/training/trainingPrograms";
 import {
+  deleteCancelledTrainingCycle,
   getOrCreateTrainingCycle,
   getProgramBatches,
   getTrainingProgramDetail,
@@ -91,18 +92,15 @@ export default function TrainingProgram() {
               style={{ display: "block", padding: 30, border: "1px solid #dbe3ec", borderRadius: 18, background: "#fff", color: "inherit", textDecoration: "none", boxShadow: "0 2px 8px rgba(15,23,42,.08)" }}
             >
               <div>
-              <div>
-                    <h2 className="text-2xl font-semibold" style={{ margin: 0 }}>{configuredProgram.name}</h2>
                     <dl className="mt-7 grid grid-cols-2 gap-x-10 gap-y-5 text-sm sm:grid-cols-3" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 24, marginTop: 26 }}>
                       <div><dt className="text-slate-500">Start date</dt><dd>{formatDate(currentCycle.startsOn)}</dd></div>
                       <div><dt className="text-slate-500">Students</dt><dd>{currentCycle.studentCount}</dd></div>
                       <div><dt className="text-slate-500">Status</dt><dd className="capitalize">{currentCycle.status}</dd></div>
                     </dl>
               </div>
-              </div>
             </Link>
           ) : (
-            <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-8">
+            <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-8" style={{ padding: 30, border: "1px dashed #b9c6d6", borderRadius: 18, background: "#fff" }}>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Current Training</p>
               <h2 className="mt-3 text-xl font-semibold">No active Training</h2>
               <p className="mt-3 max-w-xl leading-6 text-slate-500">Start a new Training cycle when this program is ready to receive students.</p>
@@ -117,11 +115,11 @@ export default function TrainingProgram() {
           <section>
             <h2 className="text-xl font-semibold">Previous Training Runs</h2>
             {previousCycles.length === 0 ? <p className="mt-3 rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">No previous runs recorded.</p> : (
-              <div className="mt-3 space-y-3">{previousCycles.map((cycle) => (
-                <Link key={cycle.id} to={`/admin/training/${programSlug}/cycles/${cycle.id}`} className="flex flex-wrap items-center justify-between gap-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-olive-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive-600 focus-visible:ring-offset-2">
+              <div className="mt-3 space-y-3" style={{ display: "grid", gap: 12 }}>{previousCycles.map((cycle) => (
+                <div key={cycle.id} style={{ display: "flex", alignItems: "center", gap: 12 }}><Link to={`/admin/training/${programSlug}/cycles/${cycle.id}`} className="flex flex-wrap items-center justify-between gap-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-olive-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive-600 focus-visible:ring-offset-2" style={{ display: "flex", flex: 1, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 20, padding: 22, border: "1px solid #dbe3ec", borderRadius: 14, color: "inherit", textDecoration: "none" }}>
                   <div><p className="font-semibold">{formatDate(cycle.startsOn)} – {formatDate(cycle.endsOn)}</p><p className="text-sm text-slate-500">{cycle.studentCount} students</p></div>
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold capitalize">{cycle.status}</span>
-                </Link>
+                </Link>{cycle.status === "cancelled" && hasPermission("admin.settings") && <Button variant="danger" onClick={() => { if (!window.confirm("Permanently delete this cancelled demo run and all of its cycle data? This cannot be undone.")) return; void deleteCancelledTrainingCycle(cycle.id).then(load).catch((reason) => setError(trainingErrorMessage(reason))); }}>Delete</Button>}</div>
               ))}</div>
             )}
           </section>

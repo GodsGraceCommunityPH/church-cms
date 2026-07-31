@@ -689,7 +689,13 @@ export async function getOrCreateTrainingCycle(trainingId: string) {
     p_training_id: trainingId,
   });
   if (error) throw error;
+  if (!data?.id) throw new Error("The Training cycle could not be created. Apply migration 014 and try again.");
   return data as TrainingBatch & { training_id: string };
+}
+
+export async function deleteCancelledTrainingCycle(cycleId: string) {
+  const { error } = await supabase.rpc("delete_cancelled_training_cycle", { p_cycle_id: cycleId });
+  if (error) throw error;
 }
 
 export async function completeTrainingCycle(cycleId: string) {

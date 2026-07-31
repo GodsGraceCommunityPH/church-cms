@@ -33,11 +33,18 @@ export default function TrainingBatch() {
   const [savingAttendance, setSavingAttendance] = useState("");
   const [sessionName, setSessionName] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   const load = useCallback(async () => {
-    if (!batchId) return;
-    try { setWorkspace(await getTrainingBatchWorkspace(batchId)); }
-    catch (reason) { setError(trainingErrorMessage(reason)); }
+    if (!batchId) return false;
+    setError("");
+    try {
+      setWorkspace(await getTrainingBatchWorkspace(batchId));
+      return true;
+    } catch (reason) {
+      setError(trainingErrorMessage(reason));
+      return false;
+    }
   }, [batchId]);
   useEffect(() => { void load(); }, [load]);
 
@@ -94,10 +101,11 @@ export default function TrainingBatch() {
         </div>
       </header>
       {error && <p className="rounded-xl bg-red-50 p-3 text-red-700">{error}</p>}
+      {notice && <p style={{ margin: 0, padding: "12px 16px", borderRadius: 10, background: "#ecfdf5", color: "#166534" }}>{notice}</p>}
 
       {activeCycle && (
         <div className="flex justify-end" style={{ display: "flex", justifyContent: "flex-end", gap: 12, flexWrap: "wrap" }}>
-          <Button variant="secondary" onClick={() => void load()}>Refresh Data</Button>
+          <Button variant="secondary" onClick={() => { setNotice(""); void load().then((loaded) => { if (loaded) setNotice("Training data reloaded from Supabase."); }); }}>Reload Data</Button>
           {hasPermission("admin.settings") && (
             <Button variant="secondary" onClick={() => {
               if (!window.confirm("Reset this current Training cycle for the demo? Active students will be cancelled and the cycle will move to history. Nothing will be deleted.")) return;
@@ -143,8 +151,8 @@ export default function TrainingBatch() {
 
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" style={{ padding: 26, border: "1px solid #dbe3ec", borderRadius: 18, background: "#fff", boxShadow: "0 2px 8px rgba(15,23,42,.06)" }}>
         <h2 className="text-lg font-semibold">Students ({workspace.enrollments.length})</h2>
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">{workspace.enrollments.map((student) => (
-          <Link key={student.id} to={`/admin/training/${programSlug}/members/${student.id}`} className="rounded-xl border border-slate-200 p-5 shadow-sm transition hover:border-olive-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive-600"><p className="font-semibold">{student.firstName} {student.lastName}</p><p className="mt-2 text-sm capitalize text-slate-500">{student.status.replaceAll("_", " ")}</p></Link>
+        <div className="mt-5 grid gap-4 sm:grid-cols-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 16, marginTop: 20 }}>{workspace.enrollments.map((student) => (
+          <Link key={student.id} to={`/admin/training/${programSlug}/members/${student.id}`} className="rounded-xl border border-slate-200 p-5 shadow-sm transition hover:border-olive-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive-600" style={{ display: "block", minHeight: 86, padding: 20, border: "1px solid #dbe3ec", borderRadius: 14, background: "#fff", color: "inherit", textDecoration: "none", boxShadow: "0 2px 6px rgba(15,23,42,.07)", boxSizing: "border-box" }}><p className="font-semibold" style={{ margin: 0, fontSize: 17 }}>{student.firstName} {student.lastName}</p><p className="mt-2 text-sm capitalize text-slate-500" style={{ margin: "9px 0 0", color: "#64748b" }}>{student.status.replaceAll("_", " ")}</p></Link>
         ))}</div>
       </section>
 
