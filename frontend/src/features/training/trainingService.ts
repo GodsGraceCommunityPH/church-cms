@@ -144,8 +144,9 @@ export function trainingErrorMessage(error: unknown) {
       hint?: string;
     };
     if (value.code === "42501") return "You do not have permission to perform this Training action.";
-    if (value.code === "23505") return "This Training record already exists.";
+    if (value.code === "23505") return "This member still has a database-level duplicate enrollment restriction. Apply migration 014, then reload the page.";
     if (value.code?.startsWith("PGRST")) return "Training data could not be loaded. Please refresh and try again.";
+    if (value.message) return `${value.code ? `${value.code}: ` : ""}${value.message}`;
   }
   if (error instanceof Error && error.message.startsWith("Attendance")) return error.message;
   return "The Training request could not be completed. Please try again.";
