@@ -25,6 +25,7 @@ import Login from "./pages/admin/Login";
 import Dashboard from "./pages/admin/Dashboard";
 import Training from "./pages/admin/Training";
 import TrainingProgram from "./pages/admin/TrainingProgram";
+import MemberTrainingProfile from "./pages/admin/MemberTrainingProfile";
 import {
   PermissionRoute,
   ProtectedRoute,
@@ -53,6 +54,10 @@ function App() {
         <Route
           path="/admin/training/:programSlug"
           element={<TrainingProgram />}
+        />
+        <Route
+          path="/admin/training/:programSlug/members/:enrollmentId"
+          element={<MemberTrainingProfile />}
         />
         </Route>
 
