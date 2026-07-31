@@ -109,7 +109,15 @@ begin
   if not public.has_permission('training.complete') then raise exception 'training.complete permission required' using errcode='42501'; end if;
   if p_admin_override and not public.has_permission('admin.settings') then raise exception 'Administrator override permission required' using errcode='42501'; end if;
   if p_next_training_id is not null and not public.has_permission('training.recommend') then raise exception 'training.recommend permission required' using errcode='42501'; end if;
-  select mt,batch.required_sessions,batch.excused_counts into enrollment,required_count,counts_excused from public.member_trainings mt join public.training_batches batch on batch.id=mt.batch_id where mt.id=p_enrollment_id for update;
+  select mt.* into enrollment
+  from public.member_trainings mt
+  where mt.id=p_enrollment_id
+  for update;
+  if not found then raise exception 'Training enrollment not found' using errcode='P0002'; end if;
+  select batch.required_sessions,batch.excused_counts into required_count,counts_excused
+  from public.training_batches batch
+  where batch.id=enrollment.batch_id;
+  if required_count is null then raise exception 'Current Class not found for enrollment' using errcode='P0002'; end if;
   select count(*) into attended_count from public.training_attendance where member_training_id=p_enrollment_id and (status in ('present','late') or (counts_excused and status='excused'));
   if not p_admin_override and attended_count < required_count then raise exception 'Completion Checklist is not satisfied: required attendance is incomplete' using errcode='P0001'; end if;
   update public.member_trainings set workflow_status='completed',completed_at=now() where id=p_enrollment_id;
