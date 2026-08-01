@@ -1,72 +1,39 @@
-import heroImage from "../assets/hero.jpg";
-import PrimaryButton from "../components/PrimaryButton";
+import { MapPin } from "lucide-react";
+import FacebookIcon from "./FacebookIcon";
 import { CHURCH_LINKS } from "../config/churchLinks";
+
+const heroImage = "/images/galleries/41st-anniversary/01.webp";
 
 function Hero() {
   return (
-    <section className="relative min-h-screen overflow-hidden">
-      {/* Background Image */}
-      <img
-        src={heroImage}
-        alt="God's Grace Community Covenant Church"
-        className="absolute inset-0 h-full w-full object-cover"
-      />
-
-      {/* Dark Overlay */}
-      <div className="absolute inset-0 bg-black/60" />
-
-      {/* Bottom Gradient */}
-      <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-b from-transparent to-white" />
-
-      {/* Hero Content */}
-      <div className="relative z-10">
-        <div
-          className="mx-auto w-full max-w-7xl"
-          style={{
-            paddingLeft: "clamp(20px, 7vw, 80px)",
-            paddingRight: "clamp(20px, 7vw, 80px)",
-            paddingTop: "clamp(130px, 18vh, 180px)",
-          }}
-        >
-          <div className="max-w-3xl">
-            <h1 className="font-heading mb-8 text-5xl font-semibold leading-[1.1] tracking-tight text-white lg:text-6xl">
-              God's Grace Community
-              <br />
-              Covenant Church
-            </h1>
-
-            <p className="mb-12 text-2xl leading-relaxed text-gray-200">
-              Loving God.
-              <br />
-              Loving People.
-              <br />
-              Making Disciples.
-            </p>
-
-            {/* Buttons */}
-            <div className="flex flex-col gap-4 md:flex-row">
-              <PrimaryButton
-                variant="primary"
-                href={CHURCH_LINKS.directions}
-                target="_blank"
-                className="w-full md:w-64"
-              >
-                Join Us This Sunday
-              </PrimaryButton>
-
-              <PrimaryButton
-                variant="secondary"
-                href={CHURCH_LINKS.watch}
-                target="_blank"
-                className="w-full md:w-64"
-              >
-                Watch Sermons
-              </PrimaryButton>
-            </div>
-          </div>
+    <>
+      <section className="homepage-hero" aria-labelledby="homepage-hero-title">
+        <img
+          src={heroImage}
+          alt="God's Grace Community Covenant Church congregation gathered for the 41st anniversary"
+          className="homepage-hero-image"
+          width="1800"
+          height="1200"
+          fetchPriority="high"
+        />
+        <div className="homepage-hero-overlay" aria-hidden="true" />
+        <div className="homepage-hero-content">
+          <p className="homepage-hero-eyebrow">God's Grace Community Covenant Church</p>
+          <h1 id="homepage-hero-title">Loving God.<br />Loving People.<br />Making Disciples.</h1>
+          <p className="homepage-hero-copy">A church family growing in faith, building meaningful relationships, and sharing God's grace with our community.</p>
         </div>
-      </div>
-    </section>
+      </section>
+      <section className="homepage-actions-section" aria-label="Visit and worship links">
+        <div className="homepage-actions" aria-label="Visit and worship links">
+          <a className="homepage-action homepage-action-primary" href={CHURCH_LINKS.directions} target="_blank" rel="noopener noreferrer">
+            <MapPin aria-hidden="true" /> <span><strong>Join Us This Sunday</strong><small>Get Directions</small></span>
+          </a>
+          <a className="homepage-action homepage-action-secondary" href={CHURCH_LINKS.facebook} target="_blank" rel="noopener noreferrer">
+            <span aria-hidden="true" style={{ display: "flex", width: 22 }}><FacebookIcon /></span> <span><strong>Watch on Facebook</strong><small>Join us online</small></span>
+          </a>
+        </div>
+      </section>
+    </>
   );
 }
 

@@ -1,0 +1,93 @@
+.home-page { background: #fff; color: #172033; overflow-x: clip; }
+.home-section { padding: 72px 24px; }
+.home-section-inner { margin: 0 auto; max-width: 1120px; width: 100%; }
+.home-section-heading { align-items: end; display: flex; gap: 24px; justify-content: space-between; margin-bottom: 28px; }
+.home-section-heading h2 { color: #243813; font-family: "Source Serif 4", serif; font-size: clamp(2rem, 4vw, 2.75rem); line-height: 1.1; margin: 0; }
+.home-section-heading p { color: #64748b; line-height: 1.6; margin: 8px 0 0; }
+
+.homepage-hero { align-items: center; background: #1f2b18; display: flex; min-height: min(690px, 84vh); overflow: hidden; padding: 108px 34px 62px; position: relative; }
+.homepage-hero-image { height: 100%; inset: 0; object-fit: cover; object-position: 56% 56%; position: absolute; width: 100%; }
+.homepage-hero-overlay { background: linear-gradient(90deg, rgba(11,20,8,.86) 0%, rgba(17,27,12,.66) 21%, rgba(17,27,12,.2) 34%, rgba(17,27,12,0) 43%), linear-gradient(0deg, rgba(9,15,7,.2), transparent 42%); inset: 0; position: absolute; }
+.homepage-hero-content { color: #fff; margin: 0 auto; max-width: 1240px; position: relative; width: 100%; z-index: 1; }
+.homepage-hero-eyebrow { color: #dce8c9; font-size: .7rem; font-weight: 800; letter-spacing: .12em; margin: 0 0 14px; max-width: min(34vw,400px); text-transform: uppercase; }
+.homepage-hero h1 { font-family: "Source Serif 4", serif; font-size: clamp(2.35rem, 3.6vw, 3.15rem); letter-spacing: -.025em; line-height: .97; margin: 0; max-width: min(34vw,400px); white-space: nowrap; }
+.homepage-hero-copy { color: #eef3e8; font-size: clamp(.9rem, 1.1vw, 1rem); line-height: 1.55; margin: 18px 0 0; max-width: min(32vw,380px); }
+.homepage-actions-section { background: #fff; padding: 22px 24px 24px; }
+.homepage-actions { align-items: stretch; display: flex; gap: 16px; justify-content: center; margin: 0 auto; max-width: 610px; }
+.homepage-action { align-items: center; border: 1.5px solid #587d28; border-radius: 11px; color: #294416; display: flex; flex: 1; gap: 10px; justify-content: center; min-height: 54px; padding: 9px 15px; text-decoration: none; transition: background .2s ease, box-shadow .2s ease, transform .2s ease; }
+.homepage-action strong, .homepage-action small { display: block; }
+.homepage-action small { color: inherit; font-size: .76rem; margin-top: 2px; opacity: .82; }
+.homepage-action-primary { background: #587d28; border-color: #587d28; }
+.homepage-action-secondary { background: #fff; }
+.homepage-action:hover { background: #6a9135; border-color: #6a9135; box-shadow: 0 8px 24px rgba(53,77,29,.2); color: #fff; transform: translateY(-2px); }
+.homepage-action:focus-visible { outline: 3px solid #587d28; outline-offset: 4px; }
+
+.prayer-section { background: #f8f7f3; padding: 64px 20px; }
+.prayer-card { background: #fff; border: 1px solid #dbe2e8; border-radius: 22px; box-shadow: 0 5px 18px rgba(15,23,42,.07); margin: 0 auto; max-width: 980px; padding: 30px 38px 34px; }
+.prayer-card > h2 { color: #3e5e1d; font-family: "Source Serif 4", serif; font-size: clamp(1.6rem, 3vw, 2rem); margin: 0 0 26px; text-align: center; }
+.prayer-entries { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
+.prayer-entry { align-items: center; display: grid; gap: 20px; grid-template-columns: 64px minmax(0,1fr); min-width: 0; padding: 8px 40px; }
+.prayer-entry + .prayer-entry { border-left: 1px solid #d8dee5; }
+.prayer-entry-icon { color: #527724; justify-self: center; }
+.prayer-entry-content h3 { color: #172033; font-size: 1rem; margin: 0 0 7px; text-transform: uppercase; }
+.prayer-entry-content p { color: #475569; font-size: .9rem; line-height: 1.45; margin: 2px 0; }
+.prayer-entry-content a { align-items: center; background: #527724; border-radius: 8px; color: #fff; display: inline-flex; font-size: .86rem; font-weight: 800; gap: 8px; justify-content: center; margin-top: 13px; min-height: 40px; padding: 8px 15px; text-decoration: none; transition: background .2s ease, transform .2s ease; }
+.prayer-entry-content a:hover { background: #6a9135; transform: translateY(-1px); }
+.prayer-entry-content a:focus-visible { outline: 3px solid #77964c; outline-offset: 3px; }
+.prayer-unavailable { color: #8a341f !important; font-weight: 700; margin-top: 12px !important; }
+
+.schedule-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.schedule-item { align-items: center; border-right: 1px solid #d8dfd0; display: flex; flex-direction: column; min-width: 0; padding: 18px 22px; text-align: center; }
+.schedule-item:last-child { border-right: 0; }
+.schedule-icon { color: #527724; margin-bottom: 14px; }
+.schedule-item h3 { font-size: 1rem; margin: 0 0 8px; text-transform: uppercase; }
+.schedule-item p { color: #334155; font-size: .9rem; line-height: 1.5; margin: 0; }
+
+.worship-section { background: #f7f8f5; }
+.worship-grid { display: grid; gap: 22px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.worship-card { background: #fff; border: 1px solid #dce3d4; border-radius: 18px; box-shadow: 0 6px 18px rgba(30,45,20,.08); color: inherit; min-width: 0; overflow: hidden; text-decoration: none; transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+.worship-card:hover { border-color: #768e52; box-shadow: 0 12px 26px rgba(30,45,20,.14); transform: translateY(-3px); }
+.worship-card:focus-visible { outline: 3px solid #66833a; outline-offset: 4px; }
+.worship-thumbnail { aspect-ratio: 16 / 9; background: #dce7c9; overflow: hidden; position: relative; }
+.worship-thumbnail img { display: block; height: 100%; object-fit: cover; width: 100%; }
+.worship-play { align-items: center; background: rgba(30,55,14,.9); border-radius: 999px; color: #fff; display: flex; height: 48px; justify-content: center; left: 50%; position: absolute; top: 50%; transform: translate(-50%,-50%); width: 48px; }
+.worship-card-body { padding: 20px; }
+.worship-card h3 { font-size: 1.1rem; margin: 0 0 8px; }
+.worship-date { color: #64748b; margin: 0 0 18px; }
+.worship-link { color: #527724; font-weight: 800; }
+
+@media (max-width: 760px) {
+  .homepage-hero { display: block; min-height: 0; padding: 0; }
+  .homepage-hero-image { display: block; height: clamp(255px, 72vw, 310px); object-fit: cover; object-position: 55% 57%; position: relative; width: 100%; }
+  .homepage-hero-overlay { background: linear-gradient(180deg, rgba(10,17,8,.16), rgba(10,17,8,.04) 60%, rgba(10,17,8,.32)); bottom: auto; height: clamp(255px, 72vw, 310px); }
+  .homepage-hero-content { background: #16250f; box-sizing: border-box; max-width: none; padding: 26px 18px 29px; }
+  .homepage-hero-eyebrow { font-size: .62rem; letter-spacing: .09em; margin-bottom: 10px; max-width: 100%; }
+  .homepage-hero h1 { font-size: clamp(2rem, 9.5vw, 2.55rem); line-height: .98; max-width: 100%; }
+  .homepage-hero-copy { font-size: .88rem; line-height: 1.5; margin-top: 14px; max-width: 390px; }
+  .homepage-actions-section { padding: 16px 18px 20px; }
+  .homepage-actions { flex-direction: column; gap: 10px; max-width: 430px; }
+  .homepage-action { box-sizing: border-box; flex: auto; min-height: 50px; width: 100%; }
+  .prayer-section { padding: 52px 18px; }
+  .prayer-card { padding: 26px 20px; }
+  .prayer-card > h2 { margin-bottom: 20px; text-align: left; }
+  .prayer-entries { grid-template-columns: 1fr; }
+  .prayer-entry { gap: 15px; grid-template-columns: 48px minmax(0,1fr); padding: 14px 2px 22px; }
+  .prayer-entry + .prayer-entry { border-left: 0; border-top: 1px solid #d8dee5; padding-top: 24px; }
+  .prayer-entry-icon { align-self: start; margin-top: 2px; }
+  .prayer-entry-content a { box-sizing: border-box; width: min(100%,220px); }
+  .home-section { padding: 56px 18px; }
+  .home-section-heading { align-items: start; flex-direction: column; gap: 8px; }
+  .schedule-grid { gap: 0; grid-template-columns: 1fr; }
+  .schedule-item { align-items: flex-start; border-bottom: 1px solid #d8dfd0; border-right: 0; display: grid; gap: 4px 16px; grid-template-columns: 42px minmax(0, 1fr); padding: 18px 6px; text-align: left; }
+  .schedule-item:last-child { border-bottom: 0; }
+  .schedule-icon { grid-row: 1 / 3; margin: 0; }
+  .schedule-item h3, .schedule-item p { grid-column: 2; }
+  .worship-grid { grid-template-columns: 1fr; }
+}
+
+@media (min-width: 761px) and (max-width: 980px) {
+  .schedule-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .schedule-item:nth-child(2) { border-right: 0; }
+  .schedule-item:nth-child(-n+2) { border-bottom: 1px solid #d8dfd0; }
+  .worship-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

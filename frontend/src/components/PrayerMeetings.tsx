@@ -1,53 +1,34 @@
-import { Clock, Video } from "lucide-react";
+import { Clock, Users, Video } from "lucide-react";
+
+const PRAYER_ZOOM_URL =
+  "https://us06web.zoom.us/j/83883523884?pwd=J5OBmIp8gfmoOLqMCExebzvmaQaT8F.1&fbclid=IwY2xjawP4jI1leHRuA2FlbQIxMABicmlkETF2UWxtMmdZNFpqME1DTXF6c3J0YwZhcHBfaWQQMjIyMDM5MTc4ODIwMDg5MgABHoV4Sz_OJOE4iUNGXXIQbtTrgyQgyo9O4hxEiidmeq9vdZqxZX1HTYsNpASd_aem_0VLSZPXUuwmz9mZ57CryHw#success";
+
+const PRAYER_MEETINGS = [
+  { icon: Clock, title: "Daily Morning Prayer", schedule: "Every day at 6:00 AM" },
+  { icon: Users, title: "Wednesday Prayer Meeting", schedule: "Every Wednesday at 8:00 PM" },
+];
 
 export default function PrayerMeetings() {
-  const PRAYER_ZOOM =
-    "https://us06web.zoom.us/j/83883523884?pwd=J5OBmIp8gfmoOLqMCExebzvmaQaT8F.1&fbclid=IwY2xjawP4jI1leHRuA2FlbQIxMABicmlkETF2UWxtMmdZNFpqME1DTXF6c3J0YwZhcHBfaWQQMjIyMDM5MTc4ODIwMDg5MgABHoV4Sz_OJOE4iUNGXXIQbtTrgyQgyo9O4hxEiidmeq9vdZqxZX1HTYsNpASd_aem_0VLSZPXUuwmz9mZ57CryHw#success";
-
   return (
-    <section className="bg-[#F8F7F3] py-16" style={{ padding: "64px 20px" }}>
-      <div className="mx-auto" style={{ maxWidth: 900, margin: "0 auto" }}>
-        <div className="rounded-3xl border border-slate-200 bg-white p-10 shadow-sm" style={{ padding: "clamp(24px,5vw,40px)", borderRadius: 24 }}>
-          <div className="flex justify-center">
-            <Clock size={42} className="text-[#556B2F]" />
-          </div>
-
-          <h2 className="mt-6 text-center text-3xl font-heading font-semibold text-slate-900">
-            Online Prayer Meetings
-          </h2>
-
-          <div className="mt-10 space-y-8">
-            <div className="text-center">
-              <h3 className="text-xl font-semibold text-slate-900">
-                Daily Morning Prayer
-              </h3>
-
-              <p className="mt-2 text-slate-600">
-                Every day at <strong>6:00 AM</strong>
-              </p>
-            </div>
-
-            <div className="border-t border-slate-200 pt-8 text-center">
-              <h3 className="text-xl font-semibold text-slate-900">
-                Wednesday Prayer Meeting
-              </h3>
-
-              <p className="mt-2 text-slate-600">
-                Every Wednesday at <strong>8:00 PM</strong>
-              </p>
-            </div>
-          </div>
-
-          <a
-            style={{ display: "flex", width: "100%", maxWidth: 360, minHeight: 50, gap: 10, padding: "12px 22px", margin: "32px auto 0", boxSizing: "border-box" }}
-            href={PRAYER_ZOOM}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-10 flex items-center justify-center rounded-xl bg-[#556B2F] font-semibold text-white transition hover:bg-[#6B8E23] hover:shadow-lg"
-          >
-            <Video size={18} />
-            Join via Zoom
-          </a>
+    <section className="prayer-section" id="prayer-meetings" aria-labelledby="prayer-meetings-title">
+      <div className="prayer-card">
+        <h2 id="prayer-meetings-title">Online Prayer Meetings</h2>
+        <div className="prayer-entries">
+          {PRAYER_MEETINGS.map(({ icon: Icon, title, schedule }) => (
+            <article className="prayer-entry" key={title}>
+              <Icon className="prayer-entry-icon" size={42} strokeWidth={1.8} aria-hidden="true" />
+              <div className="prayer-entry-content">
+                <h3>{title}</h3>
+                <p><strong>{schedule}</strong></p>
+                <p>via Zoom</p>
+                {PRAYER_ZOOM_URL ? (
+                  <a href={PRAYER_ZOOM_URL} target="_blank" rel="noopener noreferrer" aria-label={`Join ${title} via Zoom`}>
+                    <Video size={16} aria-hidden="true" /> Join via Zoom
+                  </a>
+                ) : <p className="prayer-unavailable">Zoom link unavailable</p>}
+              </div>
+            </article>
+          ))}
         </div>
       </div>
     </section>

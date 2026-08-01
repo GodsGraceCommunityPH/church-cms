@@ -1,18 +1,19 @@
 import Hero from "../components/Hero";
-import Welcome from "../components/Welcome";
 import ServiceSchedule from "../components/ServiceSchedule";
 import PreviousWorship from "../components/PreviousWorship";
+import PrayerMeetings from "../components/PrayerMeetings";
 import CommunityGallery from "../components/CommunityGallery";
+import "./HomePage.css";
 
 function HomePage() {
   return (
-    <>
+    <main className="home-page">
       <Hero />
-      <Welcome />
       <ServiceSchedule />
-      <CommunityGallery />
       <PreviousWorship />
-    </>
+      <PrayerMeetings />
+      <CommunityGallery />
+    </main>
   );
 }
 
