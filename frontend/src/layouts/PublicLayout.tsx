@@ -5,6 +5,7 @@ import Footer from "../components/Footer";
 import ChurchInfoBar from "../components/ChurchInfoBar";
 import PrayerMeetings from "../components/PrayerMeetings";
 import ScrollToTop from "../components/ScrollToTop";
+import PersistentBackButton from "../components/PersistentBackButton";
 
 function PublicLayout() {
   return (
@@ -12,6 +13,8 @@ function PublicLayout() {
       <ScrollToTop />
 
       <Navbar />
+
+      <PersistentBackButton fallback="/" hiddenPaths={["/"]} />
 
       <Outlet />
 

@@ -106,25 +106,13 @@ function ContactPage() {
                 God's Grace Community Covenant Church
               </p>
 
-              <a
+              <PrimaryButton
                 href="https://www.facebook.com/GGCCCCaloocan"
                 target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block rounded-xl bg-[#556B2F] px-10 py-5 text-center font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-[#6B8E23]"
-                style={{
-                  padding: "5px 15px",
-                }}
+                className="mt-5 min-w-0 w-auto"
               >
-                <div className="mt-5">
-                  <PrimaryButton
-                    href="https://www.facebook.com/GGCCCCaloocan"
-                    target="_blank"
-                    className="min-w-0 w-auto"
-                  >
-                    Visit our Facebook
-                  </PrimaryButton>
-                </div>
-              </a>
+                Visit our Facebook
+              </PrimaryButton>
             </div>
           </section>
         </div>

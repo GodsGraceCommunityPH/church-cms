@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { HandCoins, Landmark, Wallet, Heart } from "lucide-react";
-import { Link } from "react-router-dom";
 import PrimaryButton from "../components/PrimaryButton";
 import instapayQr from "../assets/instapay-qr.png";
 import { Copy, Check } from "lucide-react";
@@ -272,26 +271,13 @@ function GivePage() {
             we'd be happy to help.
           </p>
 
-          <Link
+          <PrimaryButton
             to="/contact"
-            className="inline-block rounded-xl bg-[#556B2F] px-10 py-5 font-semibold text-white transition-all duration-300 hover:scale-105 hover:bg-[#6B8E23]"
+            variant="primary"
+            className="w-full md:w-64"
           >
-            <div
-              style={{
-                padding: "0 20px",
-              }}
-            >
-              {" "}
-              <PrimaryButton
-                variant="primary"
-                href="https://www.facebook.com/GGCCCCaloocan"
-                target="_blank"
-                className="w-full md:w-64"
-              >
-                Contact Us
-              </PrimaryButton>
-            </div>
-          </Link>
+            Contact Us
+          </PrimaryButton>
         </div>
       </div>
     </section>
