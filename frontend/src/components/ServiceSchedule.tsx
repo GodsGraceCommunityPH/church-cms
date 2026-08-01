@@ -56,11 +56,12 @@ function ServiceSchedule() {
         </div>
 
         {/* Cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 28, alignItems: "stretch" }}><div className="grid grid-cols-1 justify-items-center gap-5 md:grid-cols-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 18 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,280px),1fr))", gap: 28, alignItems: "stretch", width: "100%", minWidth: 0 }}><div className="grid grid-cols-1 justify-items-center gap-5 md:grid-cols-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,230px),1fr))", gap: 18, width: "100%", minWidth: 0 }}>
           {services.map((service) => (
             <div
               key={service.title}
               className="mx-auto flex w-full max-w-sm min-h-[160px] flex-col items-center justify-center rounded-3xl bg-white px-6 py-6 text-center shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
+              style={{ width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" }}
             >
               <div className="mb-4">{service.icon}</div>
 

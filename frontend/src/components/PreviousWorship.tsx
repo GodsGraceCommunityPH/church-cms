@@ -1,5 +1,5 @@
 import { Play } from "lucide-react";
-import { LATEST_WORSHIP_MESSAGE } from "../config/churchLinks";
+import { CHURCH_LINKS, LATEST_WORSHIP_MESSAGE } from "../config/churchLinks";
 
 export default function PreviousWorship() {
   return (
@@ -21,10 +21,13 @@ export default function PreviousWorship() {
             </div>
           </article>
         ) : (
-          <div role="status" style={{ border: "1px solid #dbe3cf", borderRadius: 18, background: "white", padding: "clamp(28px,6vw,48px)", textAlign: "center", color: "#475569" }}>
-            <h3 style={{ margin: "0 0 8px", color: "#172033", fontSize: 24 }}>No worship message is featured yet</h3>
-            <p style={{ margin: 0 }}>Please check back after the next message is published.</p>
-          </div>
+          <article style={{ border: "1px solid #dbe3cf", borderRadius: 18, background: "white", padding: "clamp(28px,6vw,48px)", textAlign: "center", color: "#475569" }}>
+            <h3 style={{ margin: "0 0 10px", color: "#172033", fontSize: 24 }}>Watch Previous Worship Messages</h3>
+            <p style={{ margin: "0 0 24px" }}>Catch up on worship messages from God's Grace Community Covenant Church.</p>
+            <a href={CHURCH_LINKS.watch} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 48, padding: "12px 20px", borderRadius: 10, background: "#556b2f", color: "white", fontWeight: 700, textDecoration: "none" }}>
+              <Play size={18} aria-hidden="true" /> Watch on Facebook
+            </a>
+          </article>
         )}
       </div>
     </section>
