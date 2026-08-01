@@ -5,7 +5,7 @@ import Input from "../../components/ui/Input";
 import {
   getPendingTrainingEnrollments,
   trainingErrorMessage,
-  updateEnrollmentStatus,
+  cancelTrainingEnrollment,
   type PendingTrainingEnrollment,
 } from "../../features/training/trainingService";
 
@@ -55,7 +55,7 @@ export default function PendingTraining() {
             {filtered.map((item) => (
               <article key={item.id} className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 md:flex-row md:items-center" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 18, padding: 20, border: "1px solid #dbe3ec", borderRadius: 14, boxShadow: "0 1px 4px rgba(15,23,42,.06)" }}>
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-semibold">{item.firstName} {item.lastName}</h2>
+                  <h2 className="font-semibold"><Link to={`/admin/training/${item.programSlug}/members/${item.id}`} state={{ returnTo: "/admin/training/pending" }}>{item.firstName} {item.lastName}</Link></h2>
                   <p className="text-sm text-slate-600">{item.programName} · Waiting {waitingDays(item.enrolledAt)} days</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -63,7 +63,7 @@ export default function PendingTraining() {
                     variant="danger"
                     onClick={() => {
                       if (window.confirm("Cancel this incorrect enrollment? Its history will be preserved.")) {
-                        void updateEnrollmentStatus(item.id, "cancelled").then(load);
+                        void cancelTrainingEnrollment(item.id, "Cancelled from Pending Enrollment").then(load).catch((reason) => setError(trainingErrorMessage(reason)));
                       }
                     }}
                   >

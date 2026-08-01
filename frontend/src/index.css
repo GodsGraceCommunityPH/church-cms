@@ -17,3 +17,32 @@ body {
 .font-heading {
   font-family: "Source Serif 4", serif;
 }
+.admin-sidebar-shell {
+  position: fixed;
+}
+
+/* The desktop admin-sidebar control sits on the middle edge. Mobile uses the
+   drawer close button instead. */
+.sidebar-edge-toggle {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .admin-sidebar-shell {
+    position: relative;
+  }
+
+  .sidebar-edge-toggle {
+    display: inline-flex;
+  }
+
+  .sidebar-edge-toggle:hover {
+    background: #f4f6ef !important;
+    border-color: #77894a !important;
+  }
+
+  .sidebar-edge-toggle:focus-visible {
+    outline: 2px solid #667b38;
+    outline-offset: 2px;
+  }
+}

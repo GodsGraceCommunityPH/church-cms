@@ -126,8 +126,9 @@ Student Profile and must not occur before the checklist is satisfied.
 The checklist model must support future requirements such as a workbook,
 interview, or memory verse without a database or workflow redesign.
 
-Leadership may override completion only as an exceptional administrative
-action. An override is not part of the normal graduation workflow.
+The portal does not provide an Override Completion action. Exceptional data
+repair, if leadership ever requires it, must occur outside the normal Training
+workflow through a separate, explicitly audited administrative process.
 
 Completion does **not** imply readiness.
 
@@ -186,6 +187,15 @@ Attendance records represent participation and are the sole enabled Completion
 Checklist requirement for GGCCC v1. Present and Late count toward completion;
 Excused attendance is configurable per Current Class; Absent does not count.
 
+Attendance progress is scoped to the enrollment's Current Class. Attendance
+from an earlier class or attempt never satisfies a later attempt.
+
+Regular sessions progress sequentially. Only the current released session
+accepts normal attendance. A future session is released after every active
+student has an attendance value for the preceding session. Completed previous
+sessions are read-only unless an Administrator explicitly reopens one for an
+audited correction.
+
 ---
 
 # Assignments
@@ -205,6 +215,27 @@ A member may:
 Remedials are part of the training process.
 
 Completing remedials should update training records without rewriting historical attendance.
+
+An absence remains recorded as Absent. A separately recorded completed
+remedial may satisfy that missed session obligation. Adding, correcting, or
+reopening attendance or remedial completion must recalculate eligibility in
+both directions.
+
+---
+
+## Enrollment State Changes
+
+Training enrollment state changes use dedicated permission-checked operations.
+The approved normal transitions are:
+
+- Pending Enrollment to Cancelled
+- Cancelled to Pending Enrollment through explicit restoration
+- In Progress to Withdrawn
+- Completed to In Progress through an Administrator reopen action
+
+Cancelled restoration reuses the enrollment record but does not count
+attendance or remedials belonging to its previous class. Workflow changes and
+completion reopening preserve an immutable audit event.
 
 ---
 

@@ -39,12 +39,15 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
   return (
     <aside
       className={`
-        fixed top-0 left-0 z-40 h-dvh w-72 bg-white border-r
+        admin-sidebar-shell fixed top-0 left-0 z-40 h-dvh w-72 bg-white border-r
         transform transition-transform duration-300
         ${open ? "translate-x-0" : "-translate-x-full"}
         md:translate-x-0 md:static md:flex
       `}
-      style={collapsed ? { width: "72px" } : undefined}
+      style={{
+        width: collapsed ? "72px" : "256px",
+        transition: "width 220ms ease, transform 300ms ease",
+      }}
     >
       <div
         style={{ padding: collapsed ? "20px 12px 0" : "20px 0 0 20px" }}
@@ -74,16 +77,33 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
             <h2 className="text-xl font-bold">{collapsed ? "G" : "GGCCC"}</h2>
             {!collapsed && <p className="text-gray-500">Staff Portal</p>}
           </div>
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="hidden md:inline-flex"
-            style={{ alignItems: "center", background: "transparent", border: "none", borderRadius: "6px", display: "inline-flex", justifyContent: "center", padding: "8px" }}
-          >
-            {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-          </button>
         </div>
+
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="sidebar-edge-toggle"
+          style={{
+            alignItems: "center",
+            background: "#ffffff",
+            border: "1px solid #d7dee8",
+            borderRadius: "999px",
+            boxShadow: "0 3px 10px rgba(15, 23, 42, 0.14)",
+            height: "38px",
+            justifyContent: "center",
+            padding: 0,
+            position: "absolute",
+            right: "-19px",
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: "38px",
+            zIndex: 50,
+          }}
+        >
+          {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+        </button>
 
         <nav className="flex-1 overflow-y-auto">
           <div className="flex flex-col gap-2">

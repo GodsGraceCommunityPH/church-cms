@@ -205,15 +205,16 @@ export default function MemberProfile() {
                 }}
               >
                 <div>
-                  <strong>{item.status === "completed" ? "✓ " : ""}{item.programName}</strong>
+                  <strong>{item.status === "completed" ? "✓ " : ""}{item.programName} · Attempt {item.attemptNumber}</strong>
                   <p style={{ margin: "4px 0 0", color: "#64748b", fontSize: "14px" }}>
                     {trainingStatusLabel(item.status)}
                     {item.batchName ? ` · ${item.batchName}` : ""}
                   </p>
+                  <p style={{ margin: "6px 0 0", color: "#64748b", fontSize: 13 }}>Enrolled {formatDate(item.enrolledAt)}{item.startedAt ? ` · Started ${formatDate(item.startedAt)}` : ""}{item.completedAt ? ` · Completed ${formatDate(item.completedAt)}` : ""}{item.cancelledAt ? ` · Cancelled ${formatDate(item.cancelledAt)}` : ""}{item.withdrawnAt ? ` · Withdrawn ${formatDate(item.withdrawnAt)}` : ""}</p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => navigate(`/admin/training/${item.programSlug}/members/${item.enrollmentId}`)}
+                  onClick={() => navigate(`/admin/training/${item.programSlug}/members/${item.enrollmentId}`, { state: { returnTo: location.pathname } })}
                   style={{ border: "1px solid #cbd5e1", borderRadius: "8px", background: "white", padding: "8px 12px", cursor: "pointer" }}
                 >
                   View Training

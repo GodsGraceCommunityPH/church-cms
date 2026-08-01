@@ -5,7 +5,7 @@ import Input from "../../components/ui/Input";
 import { useAuth } from "../../features/auth/auth";
 import { getTrainingProgram } from "../../features/training/trainingPrograms";
 import {
-  deleteCancelledTrainingCycle,
+  archiveTrainingClass,
   createConfiguredTrainingCycle,
   getProgramBatches,
   getTrainingProgramDetail,
@@ -22,6 +22,17 @@ function formatDate(value: string | null) {
   }).format(new Date(value));
 }
 
+function nextSunday() {
+  const value = new Date();
+  const days = (7 - value.getDay()) % 7;
+  value.setDate(value.getDate() + days);
+  return value.toISOString().slice(0, 10);
+}
+
+function isSunday(value: string) {
+  return Boolean(value) && new Date(`${value}T00:00:00`).getDay() === 0;
+}
+
 export default function TrainingProgram() {
   const { programSlug } = useParams();
   const navigate = useNavigate();
@@ -32,9 +43,8 @@ export default function TrainingProgram() {
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState("");
-  const defaults: Record<string, number> = { suynl: 10, "life-class": 8, "sol-1": 12, "sol-2": 10, "sol-3": 15 };
-  const [classStartDate, setClassStartDate] = useState(new Date().toISOString().slice(0, 10));
-  const [requiredSessions, setRequiredSessions] = useState(defaults[programSlug ?? ""] ?? 10);
+  const [classStartDate, setClassStartDate] = useState(nextSunday);
+  const [requiredSessions, setRequiredSessions] = useState(10);
 
   const load = useCallback(async () => {
     if (!configuredProgram) return;
@@ -59,6 +69,10 @@ export default function TrainingProgram() {
 
   async function openCurrentCycle() {
     if (!trainingId) return;
+    if (!isSunday(classStartDate)) {
+      setError("Class Start Date must be a Sunday.");
+      return;
+    }
     setStarting(true);
     setError("");
     try {
@@ -85,7 +99,7 @@ export default function TrainingProgram() {
           {currentCycle ? (
             <Link
               to={`/admin/training/${programSlug}/cycles/${currentCycle.id}`}
-              aria-label={`Manage current ${configuredProgram.name} Training`}
+              aria-label={`Manage current ${configuredProgram.name} class`}
               onKeyDown={(event) => {
                 if (event.key === " ") {
                   event.preventDefault();
@@ -111,7 +125,7 @@ export default function TrainingProgram() {
               <h2 className="mt-3 text-xl font-semibold">No active class</h2>
               <p className="mt-3 max-w-xl leading-6 text-slate-500">Set the class date and session count. Weekly sessions are generated automatically.</p>
               {hasPermission("training.enroll") && (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,240px))", gap: 14, marginTop: 22 }}><label>Class Start Date<Input type="date" value={classStartDate} onChange={(event) => setClassStartDate(event.target.value)} /></label><label>Required Sessions<Input type="number" min="1" value={requiredSessions} onChange={(event) => setRequiredSessions(Number(event.target.value))} /></label><Button disabled={starting || !classStartDate || requiredSessions < 1} onClick={() => void openCurrentCycle()}>Create Class</Button></div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,240px))", gap: 14, marginTop: 22 }}><label>Class Start Date<Input type="date" value={classStartDate} onChange={(event) => setClassStartDate(event.target.value)} />{classStartDate && !isSunday(classStartDate) && <small style={{ display: "block", marginTop: 6, color: "#b91c1c" }}>Please select a Sunday.</small>}</label><label>Required Sessions<Input type="number" min="1" value={requiredSessions} onChange={(event) => setRequiredSessions(Number(event.target.value))} /></label><Button disabled={starting || !isSunday(classStartDate) || requiredSessions < 1} onClick={() => void openCurrentCycle()}>Create Class</Button></div>
               )}
             </section>
           )}
@@ -123,7 +137,7 @@ export default function TrainingProgram() {
                 <div key={cycle.id} style={{ display: "flex", alignItems: "center", gap: 12 }}><Link to={`/admin/training/${programSlug}/cycles/${cycle.id}`} className="flex flex-wrap items-center justify-between gap-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-olive-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive-600 focus-visible:ring-offset-2" style={{ display: "flex", flex: 1, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 20, padding: 22, border: "1px solid #dbe3ec", borderRadius: 14, color: "inherit", textDecoration: "none" }}>
                   <div><p className="font-semibold">{formatDate(cycle.startsOn)} – {formatDate(cycle.endsOn)}</p><p className="text-sm text-slate-500">{cycle.studentCount} students</p></div>
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold capitalize">{cycle.status}</span>
-                </Link>{cycle.status === "cancelled" && hasPermission("admin.settings") && <Button variant="danger" onClick={() => { if (!window.confirm("Permanently delete this cancelled demo run and all of its cycle data? This cannot be undone.")) return; void deleteCancelledTrainingCycle(cycle.id).then(load).catch((reason) => setError(trainingErrorMessage(reason))); }}>Delete</Button>}</div>
+                </Link>{hasPermission("admin.settings") && <Button variant="secondary" onClick={() => { if (!window.confirm("Archive this Previous Class? Students, attendance, remedials, notes, and audit history will be preserved.")) return; void archiveTrainingClass(cycle.id).then(load).catch((reason) => setError(trainingErrorMessage(reason))); }}>Archive</Button>}</div>
               ))}</div>
             )}
           </section>

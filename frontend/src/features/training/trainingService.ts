@@ -10,6 +10,13 @@ export type TrainingWorkflowStatus =
   | "withdrawn"
   | "cancelled";
 
+export const ACTIVE_TRAINING_STATUSES: TrainingWorkflowStatus[] = [
+  "pending_enrollment",
+  "in_progress",
+  "for_remedial",
+  "ready_for_completion",
+];
+
 export interface TrainingProgramSummary {
   name: string;
   slug: string;
@@ -29,6 +36,8 @@ export interface TrainingEnrollment {
   enrolledAt: string;
   startedAt: string | null;
   completedAt: string | null;
+  cancelledAt: string | null;
+  withdrawnAt: string | null;
   batchId: string | null;
   batchName: string | null;
   trainerName: string | null;
@@ -46,6 +55,8 @@ export interface TrainingSessionAttendance {
   sessionDate: string | null;
   status: string | null;
   notes: string | null;
+  remedialStatus: string | null;
+  remedialCompletedAt: string | null;
 }
 
 export interface TrainingNote {
@@ -62,6 +73,7 @@ export interface TrainingRemedial {
   scheduledFor: string;
   status: string;
   notes: string | null;
+  completedAt: string | null;
 }
 
 export interface MemberTrainingProfile {
@@ -141,6 +153,10 @@ export function isInProgressTrainingStatus(status: string) {
   );
 }
 
+export function isActiveTrainingStatus(status: string) {
+  return ACTIVE_TRAINING_STATUSES.includes(asWorkflowStatus(status));
+}
+
 export function trainingStatusLabel(status: string) {
   return asWorkflowStatus(status)
     .split("_")
@@ -157,9 +173,11 @@ export function trainingErrorMessage(error: unknown) {
       hint?: string;
     };
     if (value.code === "42501") return "You do not have permission to perform this Training action.";
-    if (value.code === "23505") return "This member still has a database-level duplicate enrollment restriction. Apply migration 014, then reload the page.";
-    if (value.code?.startsWith("PGRST")) return `${value.code}: ${value.message ?? "Training data could not be loaded."}`;
-    if (value.message) return `${value.code ? `${value.code}: ` : ""}${value.message}`;
+    if (value.code === "23505") return "This member already has an active enrollment in this Training program.";
+    if (value.code === "23503") return "This record has Training history and cannot be deleted. Archive it instead.";
+    if (value.code === "PGRST202") return "This Training action is unavailable because the required database migration has not been applied.";
+    if (value.code?.startsWith("PGRST")) return "Training data could not be loaded. Please reload and try again.";
+    if (value.message) return value.message;
   }
   if (error instanceof Error && error.message.startsWith("Attendance")) return error.message;
   return "The Training request could not be completed. Please try again.";
@@ -198,7 +216,7 @@ export async function getTrainingOverview(): Promise<TrainingProgramSummary[]> {
         isCompletedTrainingStatus(item.workflow_status ?? ""),
       ).length,
       inProgress: programEnrollments.filter((item) =>
-        isInProgressTrainingStatus(item.workflow_status ?? ""),
+        isActiveTrainingStatus(item.workflow_status ?? ""),
       ).length,
       activeBatches: training
         ? (batchResult.data ?? []).filter(
@@ -222,6 +240,8 @@ function mapEnrollment(item: any): TrainingEnrollment {
     enrolledAt: item.created_at,
     startedAt: item.started_at,
     completedAt: item.completed_at,
+    cancelledAt: item.cancelled_at ?? null,
+    withdrawnAt: item.withdrawn_at ?? null,
     batchId: item.batch_id,
     batchName: item.batchName ?? null,
     trainerName: item.trainerName ?? null,
@@ -235,6 +255,8 @@ const ENROLLMENT_SELECT = `
   created_at,
   started_at,
   completed_at,
+  cancelled_at,
+  withdrawn_at,
   batch_id,
   members ( first_name, last_name )
 `;
@@ -318,6 +340,8 @@ export async function getMemberTrainingProfile(
       created_at,
       started_at,
       completed_at,
+      cancelled_at,
+      withdrawn_at,
       batch_id
     `)
     .eq("id", enrollmentId)
@@ -369,7 +393,7 @@ export async function getMemberTrainingProfile(
         .order("created_at", { ascending: false }),
       supabase
         .from("training_remedials")
-        .select("id, session_id, scheduled_for, status, notes")
+        .select("id, session_id, scheduled_for, status, notes, completed_at")
         .eq("member_training_id", enrollmentId)
         .order("scheduled_for", { ascending: false }),
     ]);
@@ -399,6 +423,11 @@ export async function getMemberTrainingProfile(
   const sessionTitles = new Map(
     (sessionResult.data ?? []).map((session: any) => [session.id, session.title]),
   );
+  const remedialsBySession = new Map(
+    (remedialResult.data ?? [])
+      .filter((item: any) => item.session_id && item.status !== "cancelled")
+      .map((item: any) => [item.session_id, item]),
+  );
 
   return {
     enrollment: mapEnrollment(hydratedEnrollment),
@@ -406,12 +435,15 @@ export async function getMemberTrainingProfile(
     programName: programRecord.name,
     sessions: (sessionResult.data ?? []).map((session: any) => {
       const attendance = attendanceBySession.get(session.id) as any;
+      const remedial = remedialsBySession.get(session.id) as any;
       return {
         sessionId: session.id,
         title: session.title,
         sessionDate: session.session_date,
         status: attendance?.status ?? null,
         notes: attendance?.notes ?? null,
+        remedialStatus: remedial?.status ?? null,
+        remedialCompletedAt: remedial?.completed_at ?? null,
       };
     }),
     notes: (notesResult.data ?? []).map((note: any) => ({
@@ -427,23 +459,35 @@ export async function getMemberTrainingProfile(
       scheduledFor: item.scheduled_for,
       status: item.status,
       notes: item.notes,
+      completedAt: item.completed_at,
     })),
     requiredSessions: batchConfiguration?.required_sessions ?? sessionResult.data?.length ?? 0,
     excusedCounts: batchConfiguration?.excused_counts ?? false,
   };
 }
 
-export async function updateEnrollmentStatus(
-  enrollmentId: string,
-  status: TrainingWorkflowStatus,
-) {
-  const values: Record<string, string | null> = { workflow_status: status };
-  if (status === "in_progress") values.started_at = new Date().toISOString();
-  if (status !== "completed") values.completed_at = null;
-  const { error } = await supabase
-    .from("member_trainings")
-    .update(values)
-    .eq("id", enrollmentId);
+export async function cancelTrainingEnrollment(enrollmentId: string, reason = "") {
+  const { error } = await supabase.rpc("cancel_training_enrollment", {
+    p_enrollment_id: enrollmentId,
+    p_reason: reason || null,
+  });
+  if (error) throw error;
+}
+
+export async function restoreTrainingEnrollment(enrollmentId: string, batchId: string, reason = "") {
+  const { error } = await supabase.rpc("restore_training_enrollment", {
+    p_enrollment_id: enrollmentId,
+    p_batch_id: batchId,
+    p_reason: reason || null,
+  });
+  if (error) throw error;
+}
+
+export async function withdrawTrainingEnrollment(enrollmentId: string, reason = "") {
+  const { error } = await supabase.rpc("withdraw_training_enrollment", {
+    p_enrollment_id: enrollmentId,
+    p_reason: reason || null,
+  });
   if (error) throw error;
 }
 
@@ -555,11 +599,26 @@ export async function scheduleRemedial(
   scheduledFor: string,
   notes: string,
 ) {
-  const { error } = await supabase.from("training_remedials").insert({
-    member_training_id: enrollmentId,
-    session_id: sessionId,
-    scheduled_for: scheduledFor,
-    notes: notes || null,
+  const { error } = await supabase.rpc("schedule_training_remedial", {
+    p_enrollment_id: enrollmentId,
+    p_session_id: sessionId,
+    p_scheduled_for: scheduledFor,
+    p_notes: notes || null,
+  });
+  if (error) throw error;
+}
+
+export async function completeRemedial(remedialId: string, completedOn: string) {
+  const { error } = await supabase.rpc("complete_training_remedial", {
+    p_remedial_id: remedialId,
+    p_completed_on: completedOn,
+  });
+  if (error) throw error;
+}
+
+export async function reopenRemedial(remedialId: string) {
+  const { error } = await supabase.rpc("reopen_training_remedial", {
+    p_remedial_id: remedialId,
   });
   if (error) throw error;
 }
@@ -571,24 +630,33 @@ export async function completeTraining(
     p_enrollment_id: enrollmentId,
     p_next_training_id: null,
     p_recommendation_text: null,
-    p_admin_override: false,
   });
   if (error) throw error;
 }
 
-export async function overrideCompleteTraining(enrollmentId: string) {
-  const { error } = await supabase.rpc("complete_training_enrollment", { p_enrollment_id: enrollmentId, p_next_training_id: null, p_recommendation_text: null, p_admin_override: true });
-  if (error) throw error;
-}
-
-export async function reopenTrainingEnrollment(enrollmentId: string) {
-  const { error } = await supabase.rpc("reopen_training_enrollment", { p_enrollment_id: enrollmentId });
+export async function reopenTrainingEnrollment(enrollmentId: string, reason = "") {
+  const { error } = await supabase.rpc("reopen_training_enrollment", {
+    p_enrollment_id: enrollmentId,
+    p_reason: reason || null,
+  });
   if (error) throw error;
 }
 
 export interface PendingTrainingEnrollment extends TrainingEnrollment {
   programName: string;
   programSlug: string;
+}
+
+export type CancelledTrainingEnrollment = TrainingEnrollment;
+
+export async function getPendingTrainingCount() {
+  const { count, error } = await supabase
+    .from("member_trainings")
+    .select("id", { count: "exact", head: true })
+    .eq("workflow_status", "pending_enrollment")
+    .is("archived_at", null);
+  if (error) throw error;
+  return count ?? 0;
 }
 
 export interface TrainingBatch {
@@ -604,6 +672,7 @@ export interface TrainingBatch {
   cadenceDays: number;
   excusedCounts: boolean;
   attendanceProgress: number;
+  archivedAt: string | null;
 }
 
 export interface MemberTrainingJourneyItem {
@@ -612,7 +681,12 @@ export interface MemberTrainingJourneyItem {
   programSlug: string;
   status: TrainingWorkflowStatus;
   batchName: string | null;
+  attemptNumber: number;
+  enrolledAt: string;
+  startedAt: string | null;
   completedAt: string | null;
+  cancelledAt: string | null;
+  withdrawnAt: string | null;
 }
 
 export async function getPendingTrainingEnrollments() {
@@ -625,6 +699,8 @@ export async function getPendingTrainingEnrollments() {
       created_at,
       started_at,
       completed_at,
+      cancelled_at,
+      withdrawn_at,
       batch_id,
       members ( first_name, last_name ),
       trainings ( name )
@@ -648,8 +724,9 @@ export async function getPendingTrainingEnrollments() {
 export async function getProgramBatches(trainingId: string) {
   const { data: batches, error } = await supabase
     .from("training_batches")
-    .select("id, training_id, name, trainer_user_id, status, starts_on, ends_on, required_sessions, cadence_days, excused_counts")
+    .select("id, training_id, name, trainer_user_id, status, starts_on, ends_on, required_sessions, cadence_days, excused_counts, archived_at")
     .eq("training_id", trainingId)
+    .is("archived_at", null)
     .order("starts_on", { ascending: false });
   if (error) throw error;
   const batchIds = (batches ?? []).map((batch) => batch.id);
@@ -689,12 +766,13 @@ export async function getProgramBatches(trainingId: string) {
     startsOn: batch.starts_on,
     endsOn: batch.ends_on,
     studentCount: (enrollments ?? []).filter(
-      (enrollment) => enrollment.batch_id === batch.id && ["pending_enrollment", "in_progress", "for_remedial", "ready_for_completion"].includes(enrollment.workflow_status),
+      (enrollment) => enrollment.batch_id === batch.id && isActiveTrainingStatus(enrollment.workflow_status),
     ).length,
     requiredSessions: batch.required_sessions ?? 10,
     cadenceDays: batch.cadence_days ?? 7,
     excusedCounts: batch.excused_counts ?? false,
     attendanceProgress: new Set((recordedAttendance ?? []).filter((record) => (sessions ?? []).some((session) => session.id === record.session_id && session.batch_id === batch.id)).map((record) => record.session_id)).size,
+    archivedAt: batch.archived_at,
   })) as TrainingBatch[];
 }
 
@@ -707,24 +785,38 @@ export async function getAvailableMembers(trainingId: string) {
         .order("first_name"),
       supabase
         .from("member_trainings")
-        .select("member_id, workflow_status, archived_at")
+        .select("member_id, workflow_status, archived_at, updated_at")
         .eq("training_id", trainingId)
         .is("archived_at", null)
-        .in("workflow_status", [
-          "pending_enrollment",
-          "in_progress",
-          "for_remedial",
-          "ready_for_completion",
-        ]),
+        .order("updated_at", { ascending: false }),
     ]);
   if (memberError) throw memberError;
   if (existingError) throw existingError;
-  const existingIds = new Set((existing ?? []).map((item) => item.member_id));
+  const latestByMember = new Map<string, string>();
+  for (const item of existing ?? []) {
+    if (!latestByMember.has(item.member_id)) latestByMember.set(item.member_id, item.workflow_status);
+  }
+  const existingIds = new Set(Array.from(latestByMember).filter(([, status]) => isActiveTrainingStatus(status) || status === "cancelled").map(([memberId]) => memberId));
   return (members ?? []).filter(
     (member) =>
       !existingIds.has(member.id) &&
       String(member.membership_status ?? "Active").toLowerCase() !== "inactive",
   );
+}
+
+export async function getCancelledTrainingEnrollments(trainingId: string) {
+  const { data, error } = await supabase
+    .from("member_trainings")
+    .select(ENROLLMENT_SELECT)
+    .eq("training_id", trainingId)
+    .is("archived_at", null)
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  const latestByMember = new Map<string, any>();
+  for (const item of (data ?? []) as any[]) {
+    if (!latestByMember.has(item.member_id)) latestByMember.set(item.member_id, item);
+  }
+  return Array.from(latestByMember.values()).filter((item) => item.workflow_status === "cancelled").map(mapEnrollment) as CancelledTrainingEnrollment[];
 }
 
 export async function enrollBatchStudents(batchId: string, memberIds: string[]) {
@@ -734,15 +826,6 @@ export async function enrollBatchStudents(batchId: string, memberIds: string[]) 
   });
   if (error) throw error;
   return data as number;
-}
-
-export async function getOrCreateTrainingCycle(trainingId: string) {
-  const { data, error } = await supabase.rpc("get_or_create_training_cycle", {
-    p_training_id: trainingId,
-  });
-  if (error) throw error;
-  if (!data?.id) throw new Error("The Training cycle could not be created. Apply migration 014 and try again.");
-  return data as TrainingBatch & { training_id: string };
 }
 
 export async function createConfiguredTrainingCycle(trainingId: string, startDate: string, requiredSessions: number) {
@@ -756,8 +839,30 @@ export async function startTrainingCycle(cycleId: string) {
   if (error) throw error;
 }
 
-export async function updateTrainingSession(sessionId: string, title: string, sessionDate: string) {
-  const { error } = await supabase.from("training_sessions").update({ title, session_date: sessionDate || null }).eq("id", sessionId);
+export async function rescheduleTrainingSession(sessionId: string, sessionDate: string, shiftSucceeding: boolean, reason = "") {
+  const { data, error } = await supabase.rpc("reschedule_training_session", {
+    p_session_id: sessionId,
+    p_new_date: sessionDate,
+    p_shift_succeeding: shiftSucceeding,
+    p_reason: reason || null,
+  });
+  if (error) throw error;
+  return data as number;
+}
+
+export async function reopenTrainingSession(sessionId: string, reason = "") {
+  const { error } = await supabase.rpc("reopen_training_session", {
+    p_session_id: sessionId,
+    p_reason: reason || null,
+  });
+  if (error) throw error;
+}
+
+export async function closeTrainingSessionEditing(sessionId: string, reason = "") {
+  const { error } = await supabase.rpc("close_training_session_editing", {
+    p_session_id: sessionId,
+    p_reason: reason || null,
+  });
   if (error) throw error;
 }
 
@@ -766,15 +871,16 @@ export async function deleteTrainingSession(sessionId: string) {
   if (error) throw error;
 }
 
-export async function deleteCancelledTrainingCycle(cycleId: string) {
-  const { error } = await supabase.rpc("delete_cancelled_training_cycle", { p_cycle_id: cycleId });
+export async function completeTrainingCycle(cycleId: string) {
+  const { data, error } = await supabase.rpc("close_training_class", {
+    p_class_id: cycleId,
+  });
   if (error) throw error;
+  return data as { closed: boolean; pending: number; active: number; incompleteRemedials: number };
 }
 
-export async function completeTrainingCycle(cycleId: string) {
-  const { error } = await supabase.rpc("complete_training_cycle", {
-    p_cycle_id: cycleId,
-  });
+export async function archiveTrainingClass(cycleId: string) {
+  const { error } = await supabase.rpc("archive_training_class", { p_class_id: cycleId });
   if (error) throw error;
 }
 
@@ -784,21 +890,6 @@ export async function resetTrainingCycleForDemo(cycleId: string) {
   });
   if (error) throw error;
   return data as number;
-}
-
-export async function assignPendingToTrainingCycle(
-  enrollmentId: string,
-  startTraining: boolean,
-) {
-  const { data, error } = await supabase.rpc(
-    "assign_pending_to_training_cycle",
-    {
-      p_enrollment_id: enrollmentId,
-      p_start_training: startTraining,
-    },
-  );
-  if (error) throw error;
-  return data as string;
 }
 
 export async function archiveImportedTrainingEnrollments() {
@@ -827,7 +918,7 @@ export async function getTrainingBatchWorkspace(batchId: string) {
         .order("created_at"),
       supabase
         .from("training_sessions")
-        .select("id, title, session_date, display_order")
+        .select("id, title, session_date, display_order, attendance_reopened_at, attendance_reopened_by")
         .eq("batch_id", batchId)
         .order("display_order"),
     ]);
@@ -848,14 +939,19 @@ export async function getTrainingBatchWorkspace(batchId: string) {
   }
   const enrollmentIds = (enrollmentResult.data ?? []).map((item) => item.id);
   const currentSessionIds = (sessionResult.data ?? []).map((session) => session.id);
-  const { data: attendance, error: attendanceError } = enrollmentIds.length && currentSessionIds.length
-    ? await supabase
-        .from("training_attendance")
-        .select("member_training_id, session_id, status")
-        .in("member_training_id", enrollmentIds)
-        .in("session_id", currentSessionIds)
-    : { data: [], error: null };
+  const [{ data: attendance, error: attendanceError }, { data: remedials, error: remedialError }] = await Promise.all([
+    enrollmentIds.length && currentSessionIds.length
+      ? supabase.from("training_attendance").select("member_training_id, session_id, status").in("member_training_id", enrollmentIds).in("session_id", currentSessionIds)
+      : Promise.resolve({ data: [], error: null }),
+    enrollmentIds.length && currentSessionIds.length
+      ? supabase.from("training_remedials").select("id, member_training_id, session_id, scheduled_for, status, completed_at, notes").in("member_training_id", enrollmentIds).in("session_id", currentSessionIds).neq("status", "cancelled")
+      : Promise.resolve({ data: [], error: null }),
+  ]);
   if (attendanceError) throw attendanceError;
+  if (remedialError) throw remedialError;
+
+  const mappedEnrollments = (enrollmentResult.data ?? []).map(mapEnrollment);
+  const activeEnrollments = mappedEnrollments.filter((item) => isActiveTrainingStatus(item.status));
 
   return {
     batch: {
@@ -866,16 +962,17 @@ export async function getTrainingBatchWorkspace(batchId: string) {
       status: batch.status,
       startsOn: batch.starts_on,
       endsOn: batch.ends_on,
-      studentCount: enrollmentResult.data?.length ?? 0,
+      studentCount: activeEnrollments.length,
       requiredSessions: batch.required_sessions ?? 10,
       cadenceDays: batch.cadence_days ?? 7,
       excusedCounts: batch.excused_counts ?? false,
       attendanceProgress: new Set((attendance ?? []).map((item) => item.session_id)).size,
     } as TrainingBatch,
     program,
-    enrollments: (enrollmentResult.data ?? []).map(mapEnrollment),
+    enrollments: mappedEnrollments,
     sessions: sessionResult.data ?? [],
     attendance: attendance ?? [],
+    remedials: remedials ?? [],
   };
 }
 
@@ -899,7 +996,11 @@ export async function getMemberTrainingJourney(memberId: string) {
     .select(`
       id,
       workflow_status,
+      created_at,
+      started_at,
       completed_at,
+      cancelled_at,
+      withdrawn_at,
       trainings ( name ),
       training_batches ( name )
     `)
@@ -907,17 +1008,31 @@ export async function getMemberTrainingJourney(memberId: string) {
     .is("archived_at", null)
     .order("created_at", { ascending: false });
   if (error) throw error;
+  const totals = new Map<string, number>();
+  for (const item of (data ?? []) as any[]) {
+    const key = item.trainings?.name ?? "Not recorded";
+    totals.set(key, (totals.get(key) ?? 0) + 1);
+  }
+  const seen = new Map<string, number>();
   return (data ?? []).map((item: any) => {
     const program = TRAINING_PROGRAMS.find(
       (entry) => programNamesMatch(entry.name, item.trainings?.name ?? ""),
     );
+    const key = item.trainings?.name ?? "Not recorded";
+    const newerAttempts = seen.get(key) ?? 0;
+    seen.set(key, newerAttempts + 1);
     return {
       enrollmentId: item.id,
       programName: item.trainings?.name ?? "Not recorded",
       programSlug: program?.slug ?? "",
       status: asWorkflowStatus(item.workflow_status),
       batchName: item.training_batches?.name ?? null,
+      attemptNumber: (totals.get(key) ?? 1) - newerAttempts,
+      enrolledAt: item.created_at,
+      startedAt: item.started_at,
       completedAt: item.completed_at,
+      cancelledAt: item.cancelled_at,
+      withdrawnAt: item.withdrawn_at,
     };
   }) as MemberTrainingJourneyItem[];
 }

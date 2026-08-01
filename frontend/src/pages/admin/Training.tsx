@@ -14,7 +14,7 @@ function Stat({ label, value }: { label: string; value: number | null }) {
 }
 
 export default function Training() {
-  const { programs, loading, error, loadPrograms } = useTrainingOverview();
+  const { programs, pendingCount, loading, error, loadPrograms } = useTrainingOverview();
   const { hasPermission } = useAuth();
 
   return (
@@ -73,6 +73,7 @@ export default function Training() {
           >
             <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Queue</p>
             <h2 className="mt-3 text-xl font-semibold">Pending Enrollment</h2>
+            <p style={{ margin: "14px 0 0", fontSize: 34, fontWeight: 700, color: "#92400e" }}>{pendingCount}</p>
             <p className="mt-4 flex-1 text-sm leading-6 text-slate-600">
               Review waiting members and move them into their approved Training program.
             </p>
