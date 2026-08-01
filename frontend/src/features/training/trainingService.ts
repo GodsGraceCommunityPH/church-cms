@@ -164,6 +164,17 @@ export function trainingStatusLabel(status: string) {
     .join(" ");
 }
 
+export function attendanceStatusLabel(status: string | null | undefined) {
+  if (!status) return "Not Recorded";
+  const labels: Record<string, string> = {
+    present: "Present",
+    late: "Late",
+    absent: "Absent",
+    excused: "Excused",
+  };
+  return labels[status.toLowerCase()] ?? "Not Recorded";
+}
+
 export function trainingErrorMessage(error: unknown) {
   if (error && typeof error === "object") {
     const value = error as {
