@@ -12,8 +12,8 @@ function ChurchInfoBar() {
         }}
       >
         {/* Mobile */}
-        <div className="grid grid-cols-2 gap-6 md:hidden">
-          <div className="flex items-center gap-3">
+        <div className="church-info-mobile">
+          <div className="church-info-mobile-item">
             <Sun size={28} className="shrink-0" />
             <div>
               <p className="font-semibold">Sunday Worship</p>
@@ -21,7 +21,7 @@ function ChurchInfoBar() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="church-info-mobile-item">
             <BookOpen size={28} className="shrink-0" />
             <div>
               <p className="font-semibold">Lifeline</p>
@@ -29,7 +29,7 @@ function ChurchInfoBar() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="church-info-mobile-item">
             <Sunset size={28} className="shrink-0" />
             <div>
               <p className="font-semibold">Sunday Worship</p>
@@ -37,7 +37,7 @@ function ChurchInfoBar() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="church-info-mobile-item">
             <House size={28} className="shrink-0" />
             <div>
               <p className="font-semibold">Lighthouse</p>
@@ -47,7 +47,7 @@ function ChurchInfoBar() {
         </div>
 
         {/* Desktop */}
-        <div className="hidden items-center justify-center gap-12 md:flex">
+        <div className="church-info-desktop items-center justify-center gap-12">
           <div className="flex w-[230px] items-center gap-4">
             <Sun size={28} className="shrink-0" />
             <div>

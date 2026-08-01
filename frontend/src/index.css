@@ -27,6 +27,40 @@ body {
   display: none;
 }
 
+.church-info-mobile {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  width: 100%;
+}
+
+.church-info-mobile-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.church-info-mobile-item > div {
+  min-width: 0;
+}
+
+.church-info-desktop {
+  display: none;
+}
+
+@media (min-width: 560px) and (max-width: 767px) {
+  .church-info-mobile {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .church-info-mobile-item {
+    gap: 8px;
+    justify-content: center;
+  }
+}
+
 @media (min-width: 768px) {
   .admin-sidebar-shell {
     position: relative;
@@ -34,6 +68,14 @@ body {
 
   .sidebar-edge-toggle {
     display: inline-flex;
+  }
+
+  .church-info-mobile {
+    display: none;
+  }
+
+  .church-info-desktop {
+    display: flex;
   }
 
   .sidebar-edge-toggle:hover {
