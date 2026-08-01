@@ -39,7 +39,7 @@ export default function PrayerMeetings() {
           </div>
 
           <a
-            style={{ display: "inline-flex", width: "100%", maxWidth: 360, minHeight: 50, gap: 10, padding: "12px 22px", margin: "32px auto 0", boxSizing: "border-box" }}
+            style={{ display: "flex", width: "100%", maxWidth: 360, minHeight: 50, gap: 10, padding: "12px 22px", margin: "32px auto 0", boxSizing: "border-box" }}
             href={PRAYER_ZOOM}
             target="_blank"
             rel="noopener noreferrer"
