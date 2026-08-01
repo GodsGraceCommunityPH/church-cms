@@ -12,7 +12,7 @@ import type { Member } from "../../features/members/member";
 import type { CellGroup } from "../../features/cellGroups/cellGroup";
 import { supabase } from "../../lib/supabase";
 import SearchableSelect from "../../components/ui/SearchableSelect";
-import { validateMemberDetails, yesterdayDateInputValue } from "../../utils/memberValidation";
+import { type MemberValidationErrors, validateMemberDetails, yesterdayDateInputValue } from "../../utils/memberValidation";
 import {
   createMember,
   getMember,
@@ -30,6 +30,7 @@ function MemberForm() {
   const [memberLoadError, setMemberLoadError] = useState("");
   const [cellGroupLoadError, setCellGroupLoadError] = useState("");
   const [formError, setFormError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<MemberValidationErrors>({});
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -82,6 +83,7 @@ function MemberForm() {
       ...prev,
       [name]: value,
     }));
+    setFieldErrors((current) => ({ ...current, [name]: undefined }));
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -96,12 +98,14 @@ function MemberForm() {
     const firstName = member.firstName.trim();
     const lastName = member.lastName.trim();
 
-    if (!firstName || !lastName || !member.gender || !member.membershipStatus) {
-      setFormError("Complete all required fields before saving the member.");
+    const validationErrors = validateMemberDetails({ firstName, lastName, gender: member.gender, membershipStatus: member.membershipStatus, email: member.email, mobile: member.mobile, birthday: member.birthday });
+    const firstInvalidField = Object.keys(validationErrors)[0];
+    if (firstInvalidField) {
+      setFieldErrors(validationErrors);
+      requestAnimationFrame(() => document.getElementById(firstInvalidField)?.focus());
       return;
     }
-    const validationError = validateMemberDetails({ firstName, lastName, email: member.email, mobile: member.mobile, birthday: member.birthday });
-    if (validationError) { setFormError(validationError); return; }
+    setFieldErrors({});
 
     const payload = {
       first_name: firstName,
@@ -179,7 +183,7 @@ function MemberForm() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         {formError && (
           <p className="mx-8 mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700" style={{ margin: "0 0 16px", border: "1px solid #fecaca", borderRadius: "8px", background: "#fef2f2", padding: "12px", color: "#b91c1c" }}>
             {formError}
@@ -204,7 +208,8 @@ function MemberForm() {
               required
               value={member.firstName}
               onChange={handleChange}
-              pattern="[A-Za-z '\-]+"
+              autoComplete="given-name"
+              error={fieldErrors.firstName}
             />
             <FormInput
               label="Last Name"
@@ -212,7 +217,8 @@ function MemberForm() {
               required
               value={member.lastName}
               onChange={handleChange}
-              pattern="[A-Za-z '\-]+"
+              autoComplete="family-name"
+              error={fieldErrors.lastName}
             />
             <FormInput
               label="Nickname"
@@ -231,6 +237,7 @@ function MemberForm() {
               ]}
               value={member.gender}
               onChange={handleChange}
+              error={fieldErrors.gender}
             />
 
             <FormInput
@@ -240,6 +247,7 @@ function MemberForm() {
               value={member.birthday}
               onChange={handleChange}
               max={yesterdayDateInputValue()}
+              error={fieldErrors.birthday}
             />
           </section>
 
@@ -261,6 +269,7 @@ function MemberForm() {
               ]}
               value={member.membershipStatus}
               onChange={handleChange}
+              error={fieldErrors.membershipStatus}
             />
             <SearchableSelect
               value={member.cellGroupId}
@@ -294,7 +303,10 @@ function MemberForm() {
             name="mobile"
             value={member.mobile}
             onChange={handleChange}
+            type="tel"
             inputMode="tel"
+            autoComplete="tel"
+            error={fieldErrors.mobile}
           />
 
           <FormInput
@@ -303,6 +315,8 @@ function MemberForm() {
             type="email"
             value={member.email}
             onChange={handleChange}
+            autoComplete="email"
+            error={fieldErrors.email}
           />
 
           <FormTextarea

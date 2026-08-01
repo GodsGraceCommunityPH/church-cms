@@ -6,7 +6,7 @@ import FormSelect from "../../../components/forms/FormSelect";
 import FormTextarea from "../../../components/forms/FormTextArea";
 
 import type { Member } from "../../members/types";
-import { validateMemberDetails, yesterdayDateInputValue } from "../../../utils/memberValidation";
+import { type MemberValidationErrors, validateMemberDetails, yesterdayDateInputValue } from "../../../utils/memberValidation";
 
 type JoinMember = Pick<
   Member,
@@ -35,7 +35,7 @@ export default function JoinMemberForm({ onSubmit }: JoinMemberFormProps) {
     email: "",
     address: "",
   });
-  const [error, setError] = useState("");
+  const [errors, setErrors] = useState<MemberValidationErrors>({});
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -48,25 +48,30 @@ export default function JoinMemberForm({ onSubmit }: JoinMemberFormProps) {
       ...prev,
       [name]: value,
     }));
+    setErrors((current) => ({ ...current, [name]: undefined }));
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const validationError = validateMemberDetails(member);
-    if (validationError) { setError(validationError); return; }
-    setError("");
+    const validationErrors = validateMemberDetails({ ...member, requireBirthday: true });
+    const firstInvalidField = Object.keys(validationErrors)[0];
+    if (firstInvalidField) {
+      setErrors(validationErrors);
+      requestAnimationFrame(() => document.getElementById(firstInvalidField)?.focus());
+      return;
+    }
+    setErrors({});
 
     await onSubmit(member);
   };
 
   return (
     <form onSubmit={handleSubmit} noValidate>
-      {error && <p style={{ padding: 14, border: "1px solid #fecaca", borderRadius: 10, background: "#fef2f2", color: "#b91c1c" }}>{error}</p>}
       {/* Personal Information */}
       <section
         className="rounded-2xl border border-slate-200 bg-white"
-        style={{ padding: "32px", marginBottom: "32px" }}
+        style={{ padding: "clamp(20px, 5vw, 32px)", marginBottom: "32px" }}
       >
         <h2 className="mb-6 text-xl font-semibold">Personal Information</h2>
 
@@ -76,7 +81,8 @@ export default function JoinMemberForm({ onSubmit }: JoinMemberFormProps) {
           required
           value={member.firstName}
           onChange={handleChange}
-          pattern="[A-Za-z '\-]+"
+          autoComplete="given-name"
+          error={errors.firstName}
         />
 
         <FormInput
@@ -85,7 +91,8 @@ export default function JoinMemberForm({ onSubmit }: JoinMemberFormProps) {
           required
           value={member.lastName}
           onChange={handleChange}
-          pattern="[A-Za-z '\-]+"
+          autoComplete="family-name"
+          error={errors.lastName}
         />
 
         <FormInput
@@ -105,6 +112,7 @@ export default function JoinMemberForm({ onSubmit }: JoinMemberFormProps) {
           ]}
           value={member.gender}
           onChange={handleChange}
+          error={errors.gender}
         />
 
         <FormInput
@@ -115,13 +123,14 @@ export default function JoinMemberForm({ onSubmit }: JoinMemberFormProps) {
           value={member.birthday}
           onChange={handleChange}
           max={yesterdayDateInputValue()}
+          error={errors.birthday}
         />
       </section>
 
       {/* Contact Information */}
       <section
         className="rounded-2xl border border-slate-200 bg-white"
-        style={{ padding: "32px", marginBottom: "32px" }}
+        style={{ padding: "clamp(20px, 5vw, 32px)", marginBottom: "32px" }}
       >
         <h2 className="mb-6 text-xl font-semibold">Contact Information</h2>
 
@@ -130,7 +139,10 @@ export default function JoinMemberForm({ onSubmit }: JoinMemberFormProps) {
           name="mobile"
           value={member.mobile}
           onChange={handleChange}
+          type="tel"
           inputMode="tel"
+          autoComplete="tel"
+          error={errors.mobile}
         />
 
         <FormInput
@@ -139,6 +151,8 @@ export default function JoinMemberForm({ onSubmit }: JoinMemberFormProps) {
           type="email"
           value={member.email}
           onChange={handleChange}
+          autoComplete="email"
+          error={errors.email}
         />
 
         <FormTextarea

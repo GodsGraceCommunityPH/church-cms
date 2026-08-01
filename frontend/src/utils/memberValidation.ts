@@ -2,17 +2,40 @@ const NAME_PATTERN = /^[\p{L}]+(?:[ '-][\p{L}]+)*$/u;
 const EMAIL_PATTERN = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
 const PHONE_PATTERN = /^(?:09\d{9}|\+639\d{9})$/;
 
-export function validateMemberDetails(values: { firstName: string; middleName?: string; lastName: string; email?: string; mobile?: string; birthday?: string }) {
-  const names = [["First name", values.firstName], ["Middle name", values.middleName ?? ""], ["Last name", values.lastName]] as const;
-  for (const [label, value] of names) if (value.trim() && !NAME_PATTERN.test(value.trim())) return `${label} may contain only letters, spaces, apostrophes, and hyphens.`;
-  if (values.email?.trim() && !EMAIL_PATTERN.test(values.email.trim())) return "Enter a complete email address such as name@example.com.";
-  if (values.mobile?.trim() && !PHONE_PATTERN.test(values.mobile.trim())) return "Enter a Philippine mobile number as 09xxxxxxxxx or +639xxxxxxxxx.";
+export type MemberValidationField = "firstName" | "middleName" | "lastName" | "gender" | "membershipStatus" | "email" | "mobile" | "birthday";
+export type MemberValidationErrors = Partial<Record<MemberValidationField, string>>;
+
+interface MemberValidationValues {
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  gender?: string;
+  membershipStatus?: string;
+  email?: string;
+  mobile?: string;
+  birthday?: string;
+  requireBirthday?: boolean;
+}
+
+export function validateMemberDetails(values: MemberValidationValues): MemberValidationErrors {
+  const errors: MemberValidationErrors = {};
+  const names = [["firstName", "First name", values.firstName], ["middleName", "Middle name", values.middleName ?? ""], ["lastName", "Last name", values.lastName]] as const;
+
+  for (const [field, label, value] of names) {
+    if (!value.trim() && field !== "middleName") errors[field] = `${label} is required.`;
+    else if (value.trim() && !NAME_PATTERN.test(value.trim())) errors[field] = `${label} may contain only letters, spaces, apostrophes, and hyphens.`;
+  }
+  if (values.gender !== undefined && !values.gender) errors.gender = "Gender is required.";
+  if (values.membershipStatus !== undefined && !values.membershipStatus) errors.membershipStatus = "Membership status is required.";
+  if (values.email?.trim() && !EMAIL_PATTERN.test(values.email.trim())) errors.email = "Enter a complete email address such as name@example.com.";
+  if (values.mobile?.trim() && !PHONE_PATTERN.test(values.mobile.trim())) errors.mobile = "Enter a Philippine mobile number as 09xxxxxxxxx or +639xxxxxxxxx.";
+  if (values.requireBirthday && !values.birthday) errors.birthday = "Birthday is required.";
   if (values.birthday) {
     const today = new Date(); today.setHours(0,0,0,0);
     const birthday = new Date(`${values.birthday}T00:00:00`);
-    if (birthday >= today) return "Birthday must be earlier than today.";
+    if (Number.isNaN(birthday.getTime()) || birthday >= today) errors.birthday = "Birthday must be earlier than today.";
   }
-  return "";
+  return errors;
 }
 
 export function yesterdayDateInputValue() {

@@ -96,6 +96,9 @@ function Navbar() {
           <button
             onClick={() => setMenuOpen(true)}
             className="text-white md:hidden"
+            aria-label="Open navigation menu"
+            aria-expanded={menuOpen}
+            aria-controls="mobile-navigation"
           >
             <Menu size={30} />
           </button>
@@ -112,6 +115,9 @@ function Navbar() {
 
       {/* Drawer */}
       <aside
+        id="mobile-navigation"
+        aria-label="Mobile navigation"
+        aria-hidden={!menuOpen}
         className={`fixed right-0 top-0 z-50 h-screen w-[58%] max-w-[250px] bg-black/90 backdrop-blur-xl shadow-2xl transition-transform duration-300 md:hidden ${
           menuOpen ? "translate-x-0" : "translate-x-full"
         }`}
@@ -121,6 +127,7 @@ function Navbar() {
           <button
             onClick={closeMenu}
             className="text-white transition hover:text-[#DDE5C3]"
+            aria-label="Close navigation menu"
           >
             <X size={30} />
           </button>

@@ -10,6 +10,7 @@ interface FormSelectProps {
   required?: boolean;
   value: string;
   onChange: React.ChangeEventHandler<HTMLSelectElement>;
+  error?: string;
 }
 
 function FormSelect({
@@ -19,7 +20,9 @@ function FormSelect({
   required = false,
   value,
   onChange,
+  error,
 }: FormSelectProps) {
+  const errorId = `${name}-error`;
   return (
     <div style={{ marginBottom: "24px" }}>
       <label
@@ -37,6 +40,8 @@ function FormSelect({
         required={required}
         value={value}
         onChange={onChange}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? errorId : undefined}
         className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 transition-colors focus:border-emerald-600 focus:outline-none"
         style={{ width: "100%", boxSizing: "border-box", border: "1px solid #cbd5e1", borderRadius: "12px", background: "white", padding: "12px 16px", font: "inherit" }}
       >
@@ -48,6 +53,7 @@ function FormSelect({
           </option>
         ))}
       </select>
+      {error && <p id={errorId} role="alert" style={{ margin: "6px 0 0", color: "#b91c1c", fontSize: "14px" }}>{error}</p>}
     </div>
   );
 }
