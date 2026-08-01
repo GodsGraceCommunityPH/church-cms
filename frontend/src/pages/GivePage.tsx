@@ -1,287 +1,39 @@
 import { useState } from "react";
-import { HandCoins, Landmark, Wallet, Heart } from "lucide-react";
-import PrimaryButton from "../components/PrimaryButton";
+import { Check, Copy, HandCoins, Heart, Landmark, Wallet } from "lucide-react";
 import instapayQr from "../assets/instapay-qr.png";
-import { Copy, Check } from "lucide-react";
+import PublicPage from "../components/PublicPage";
 
-function GivePage() {
+const accountName = "Gods Grace Community Church";
+const accountNumber = "3143314461925";
+
+export default function GivePage() {
   const [copiedField, setCopiedField] = useState("");
-
-  async function copyAccountNumber() {
-    await navigator.clipboard.writeText("Gods Grace Community Church");
-
-    setCopiedField("accountNumber");
-
-    setTimeout(() => {
-      setCopiedField("");
-    }, 2000);
-  }
-
-  async function copyAccountName() {
-    await navigator.clipboard.writeText("Gods Grace Community Church");
-
-    setCopiedField("accountName");
-
-    setTimeout(() => {
-      setCopiedField("");
-    }, 2000);
+  async function copyValue(field: string, value: string) {
+    await navigator.clipboard.writeText(value);
+    setCopiedField(field);
+    window.setTimeout(() => setCopiedField(""), 2000);
   }
 
   return (
-    <section
-      className="bg-white"
-      style={{
-        paddingTop: "160px",
-        paddingBottom: "140px",
-      }}
-    >
-      {/* ONE WRAPPER */}
-      <div
-        className="mx-auto"
-        style={{
-          maxWidth: "1000px",
-          padding: "0 24px",
-          margin: "0 auto",
-        }}
-      >
-        {/* Hero */}
-        <div className="text-center">
-          <h1 className="font-heading mb-8 text-5xl font-semibold leading-tight text-slate-900">
-            Giving is an act of worship
-          </h1>
+    <PublicPage eyebrow="Give" title="Giving is an act of worship" description="Your generosity helps GGCCC share the Gospel, serve our community, and support the work of its ministries.">
+      <section className="public-section giving-intro-grid">
+        <article className="public-card giving-copy"><h2>Giving with a cheerful heart</h2><p>Through your generosity, we are able to continue sharing the Gospel, serving our community, and supporting the ministries of God's Grace Community Covenant Church.</p></article>
+        <aside className="public-card scripture-card" aria-label="2 Corinthians 9 verse 7"><Heart size={32} aria-hidden="true" /><blockquote>“Each one must give as he has decided in his heart, not reluctantly or under compulsion, for God loves a cheerful giver.”</blockquote><cite>2 Corinthians 9:7</cite></aside>
+      </section>
 
-          <div
-            style={{
-              maxWidth: "760px",
-              margin: "0 auto",
-              textAlign: "center",
-              paddingBottom: "20px",
-            }}
-            className="text-xl leading-9 text-slate-600"
-          >
-            Through your generosity, we are able to continue sharing the Gospel,
-            serving our community, and supporting the ministries of God's Grace
-            Community Covenant Church.
-          </div>
+      <section className="public-section" aria-labelledby="ways-to-give">
+        <div className="public-section-heading"><h2 id="ways-to-give">Ways to Give</h2><p>Choose the giving method most convenient for you.</p></div>
+        <div className="giving-grid">
+          <article className="public-card giving-card"><HandCoins className="giving-icon" size={42} aria-hidden="true" /><h3>Cash</h3><p>You may give your tithes and offerings during any worship service.</p></article>
+          <article className="public-card giving-card bank-card"><Landmark className="giving-icon" size={42} aria-hidden="true" /><h3>Bank Transfer</h3><p>Metropolitan Bank and Trust Company</p><div className="bank-details">
+            <div className="bank-row"><span>Account Name</span><div className="bank-value"><strong>{accountName}</strong><button className="public-copy" type="button" aria-label="Copy bank account name" onClick={() => copyValue("name", accountName)}>{copiedField === "name" ? <Check size={19} /> : <Copy size={19} />}</button></div></div>
+            <div className="bank-row"><span>Account Number</span><div className="bank-value"><strong>{accountNumber}</strong><button className="public-copy" type="button" aria-label="Copy bank account number" onClick={() => copyValue("number", accountNumber)}>{copiedField === "number" ? <Check size={19} /> : <Copy size={19} />}</button></div></div>
+          </div></article>
+          <article className="public-card giving-card qr-card"><img src={instapayQr} alt="InstaPay QR code for giving to God's Grace Community Church" /><div><Wallet className="giving-icon" size={42} aria-hidden="true" /><h3>Scan to Give</h3><p>Scan using GCash, Maya, or any InstaPay-enabled banking app.</p></div></article>
         </div>
+      </section>
 
-        {/* Bible Verse */}
-        <div className="mt-24 rounded-3xl bg-[#F8F7F3] px-10 py-14">
-          <div
-            style={{
-              maxWidth: "760px",
-              margin: "0 auto",
-              textAlign: "center",
-            }}
-          >
-            <div className="mb-6 flex justify-center">
-              <Heart size={42} className="text-[#556B2F]" strokeWidth={2} />
-            </div>
-
-            <div className="text-2xl italic leading-10 text-slate-700">
-              "Each one must give as he has decided in his heart, not
-              reluctantly or under compulsion, for God loves a cheerful giver."
-            </div>
-
-            <div className="mt-6 font-semibold text-[#556B2F]">
-              2 Corinthians 9:7
-            </div>
-          </div>
-        </div>
-
-        {/* Ways to Give */}
-        <div
-          style={{
-            paddingTop: "180px",
-          }}
-          className="mt-28"
-        >
-          <div
-            style={{
-              marginBottom: "20px",
-            }}
-            className="mb-14 text-center"
-          >
-            <h2 className="font-heading text-4xl font-semibold text-slate-900">
-              Ways to Give
-            </h2>
-          </div>
-
-          <div className="grid gap-8 lg:grid-cols-2">
-            {/* Cash */}
-            <div
-              className="rounded-3xl border border-slate-200 shadow-sm"
-              style={{
-                padding: "36px 28px",
-              }}
-            >
-              <div
-                style={{
-                  paddingBottom: "24px",
-                }}
-                className="flex justify-center"
-              >
-                <HandCoins size={46} className="text-[#556B2F]" />
-              </div>
-
-              <div
-                style={{
-                  maxWidth: "300px",
-                  margin: "0 auto",
-                  textAlign: "center",
-                }}
-              >
-                <h3 className="mb-4 text-2xl font-semibold text-slate-900">
-                  Cash
-                </h3>
-
-                <p className="leading-8 text-slate-600">
-                  You may give your tithes and offerings during any worship
-                  service.
-                </p>
-              </div>
-            </div>
-
-            {/* Bank */}
-            <div
-              className="rounded-3xl border border-slate-200 shadow-sm"
-              style={{
-                padding: "36px 28px",
-              }}
-            >
-              <div
-                style={{
-                  paddingBottom: "24px",
-                }}
-                className="flex justify-center"
-              >
-                <Landmark size={46} className="text-[#556B2F]" />
-              </div>
-
-              <div
-                style={{
-                  maxWidth: "300px",
-                  margin: "0 auto",
-                  textAlign: "center",
-                }}
-              >
-                <h3 className="mb-4 text-2xl font-semibold text-slate-900">
-                  Bank Transfer
-                </h3>
-
-                <div className="leading-8 text-slate-600">
-                  <strong>Bank:</strong> Metropolitan Bank and Trust Company
-                  <br />
-                  <strong>Account Name:</strong> Gods Grace Community Church
-                  <button
-                    style={{ paddingLeft: "10px" }}
-                    onClick={copyAccountName}
-                    className="rounded-lg p-2 transition hover:bg-slate-100"
-                    title="Copy account number"
-                  >
-                    {copiedField === "accountName" ? (
-                      <Check size={18} className="text-green-600" />
-                    ) : (
-                      <Copy size={18} />
-                    )}
-                  </button>
-                  <br />
-                  <strong>Account No.:</strong> 3143314461925
-                  <button
-                    style={{ paddingLeft: "10px" }}
-                    onClick={copyAccountNumber}
-                    className="rounded-lg p-2 transition hover:bg-slate-100"
-                    title="Copy account number"
-                  >
-                    {copiedField === "accountNumber" ? (
-                      <Check size={18} className="text-green-600" />
-                    ) : (
-                      <Copy size={18} />
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-          {/* Scan to Give */}
-          <div
-            className="rounded-3xl border border-slate-200 shadow-sm"
-            style={{
-              maxWidth: "600px",
-              margin: "0 auto",
-              marginTop: "20px",
-              textAlign: "center",
-            }}
-          >
-            <div
-              style={{
-                paddingBottom: "24px",
-              }}
-              className="flex justify-center"
-            >
-              <Wallet size={46} className="text-[#556B2F]" />
-            </div>
-
-            <div
-              style={{
-                maxWidth: "320px",
-                margin: "0 auto",
-                textAlign: "center",
-                padding: "10px",
-              }}
-            >
-              <h3 className="mb-4 text-2xl font-semibold text-slate-900">
-                Scan to Give
-              </h3>
-
-              <img
-                src={instapayQr}
-                alt="InstaPay QR Code"
-                className="mx-auto mb-6 w-full rounded-xl border"
-              />
-
-              <p className="leading-8 text-slate-600">
-                Scan using GCash, Maya, or any InstaPay-enabled banking app.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Questions */}
-        <div
-          style={{
-            marginTop: "50px",
-          }}
-          className="mt-40 rounded-3xl bg-slate-50 px-10 py-14 text-center"
-        >
-          <h2 className="font-heading mb-5 text-4xl font-semibold text-slate-900">
-            Questions about giving?
-          </h2>
-
-          <p
-            style={{
-              maxWidth: "760px",
-              margin: "0 auto",
-              textAlign: "center",
-              paddingBottom: "20px",
-            }}
-            className="text-xl leading-9 text-slate-600"
-          >
-            If you need assistance or would like more information about giving,
-            we'd be happy to help.
-          </p>
-
-          <PrimaryButton
-            to="/contact"
-            variant="primary"
-            className="w-full md:w-64"
-          >
-            Contact Us
-          </PrimaryButton>
-        </div>
-      </div>
-    </section>
+      <section className="public-section public-card questions-card"><div><h2>Questions about giving?</h2><p>If you need assistance or more information, we'd be happy to help.</p></div><a className="public-action" href="/contact">Contact Us</a></section>
+    </PublicPage>
   );
 }
-
-export default GivePage;
