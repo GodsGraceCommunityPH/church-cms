@@ -5,7 +5,6 @@ import Input from "../../components/ui/Input";
 import { useAuth } from "../../features/auth/auth";
 import { getTrainingProgram } from "../../features/training/trainingPrograms";
 import {
-  archiveTrainingClass,
   createConfiguredTrainingCycle,
   getProgramBatches,
   getTrainingProgramDetail,
@@ -137,7 +136,7 @@ export default function TrainingProgram() {
                 <div key={cycle.id} style={{ display: "flex", alignItems: "center", gap: 12 }}><Link to={`/admin/training/${programSlug}/cycles/${cycle.id}`} className="flex flex-wrap items-center justify-between gap-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-olive-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive-600 focus-visible:ring-offset-2" style={{ display: "flex", flex: 1, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 20, padding: 22, border: "1px solid #dbe3ec", borderRadius: 14, color: "inherit", textDecoration: "none" }}>
                   <div><p className="font-semibold">{formatDate(cycle.startsOn)} – {formatDate(cycle.endsOn)}</p><p className="text-sm text-slate-500">{cycle.studentCount} students</p></div>
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold capitalize">{cycle.status}</span>
-                </Link>{hasPermission("admin.settings") && <Button variant="secondary" onClick={() => { if (!window.confirm("Archive this Previous Class? Students, attendance, remedials, notes, and audit history will be preserved.")) return; void archiveTrainingClass(cycle.id).then(load).catch((reason) => setError(trainingErrorMessage(reason))); }}>Archive</Button>}</div>
+                </Link></div>
               ))}</div>
             )}
           </section>

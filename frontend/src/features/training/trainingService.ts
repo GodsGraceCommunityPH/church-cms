@@ -486,12 +486,13 @@ export async function cancelTrainingEnrollment(enrollmentId: string, reason = ""
 }
 
 export async function restoreTrainingEnrollment(enrollmentId: string, batchId: string, reason = "") {
-  const { error } = await supabase.rpc("restore_training_enrollment", {
+  const { data, error } = await supabase.rpc("restore_training_enrollment", {
     p_enrollment_id: enrollmentId,
     p_batch_id: batchId,
     p_reason: reason || null,
   });
   if (error) throw error;
+  return data as "pending_enrollment" | "in_progress";
 }
 
 export async function withdrawTrainingEnrollment(enrollmentId: string, reason = "") {
@@ -777,7 +778,11 @@ export async function getProgramBatches(trainingId: string) {
     startsOn: batch.starts_on,
     endsOn: batch.ends_on,
     studentCount: (enrollments ?? []).filter(
-      (enrollment) => enrollment.batch_id === batch.id && isActiveTrainingStatus(enrollment.workflow_status),
+      (enrollment) =>
+        enrollment.batch_id === batch.id &&
+        (["open", "ongoing"].includes(batch.status)
+          ? isActiveTrainingStatus(enrollment.workflow_status)
+          : true),
     ).length,
     requiredSessions: batch.required_sessions ?? 10,
     cadenceDays: batch.cadence_days ?? 7,

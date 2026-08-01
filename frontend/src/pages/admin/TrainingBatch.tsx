@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Select from "../../components/ui/Select";
@@ -7,22 +7,18 @@ import Modal from "../../components/Modal";
 import { useAuth } from "../../features/auth/auth";
 import {
   completeTraining,
-  reopenTrainingEnrollment,
   completeTrainingCycle,
   completeRemedial,
-  closeTrainingSessionEditing,
   enrollBatchStudents,
   getAvailableMembers,
   getCancelledTrainingEnrollments,
   getTrainingBatchWorkspace,
   isActiveTrainingStatus,
-  reopenTrainingSession,
-  restoreTrainingEnrollment,
   saveAttendance,
   scheduleRemedial,
-  resetTrainingCycleForDemo,
   startTrainingCycle,
   rescheduleTrainingSession,
+  restoreTrainingEnrollment,
   withdrawTrainingEnrollment,
   trainingErrorMessage,
   attendanceStatusLabel,
@@ -31,7 +27,6 @@ import {
 
 export default function TrainingBatch() {
   const { batchId, programSlug } = useParams();
-  const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { hasPermission } = useAuth();
@@ -79,6 +74,7 @@ export default function TrainingBatch() {
   const classStarted = workspace?.batch.status === "ongoing";
   const activeStudents = workspace?.enrollments.filter((student) => isActiveTrainingStatus(student.status)) ?? [];
   const completedStudents = workspace?.enrollments.filter((student) => student.status === "completed") ?? [];
+  const historicalStudents = workspace?.enrollments ?? [];
   const regularSessions = workspace?.sessions.slice(0, workspace.batch.requiredSessions) ?? [];
   const attendanceFor = (studentId: string, sessionId: string) => workspace?.attendance.find((item) => item.member_training_id === studentId && item.session_id === sessionId);
   const remedialFor = (studentId: string, sessionId: string) => workspace?.remedials.find((item) => item.member_training_id === studentId && item.session_id === sessionId && item.status !== "cancelled");
@@ -159,18 +155,6 @@ export default function TrainingBatch() {
         <div className="flex justify-end" style={{ display: "flex", justifyContent: "flex-end", gap: 12, flexWrap: "wrap" }}>
           <Button variant="secondary" onClick={() => { setNotice(""); void load().then((loaded) => { if (loaded) setNotice("Training data reloaded from Supabase."); }); }}>Reload Data</Button>
           {workspace.batch.status === "open" && hasPermission("training.enroll") && <Button onClick={() => { if (!window.confirm("Start this class? All pending students will move to In Progress and attendance will open.")) return; void startTrainingCycle(workspace.batch.id).then(load).catch((reason) => setError(trainingErrorMessage(reason))); }}>Start Class</Button>}
-          {hasPermission("admin.settings") && (
-            <Button variant="secondary" onClick={() => {
-              if (!window.confirm("Reset this Current Class for the demo? Active students will be cancelled and the class will move to history. Nothing will be deleted.")) return;
-              setError("");
-              void resetTrainingCycleForDemo(workspace.batch.id)
-                .then((count) => {
-                  window.alert(`${count} active student records were cancelled. Historical data was preserved.`);
-                  navigate(`/admin/training/${programSlug}`);
-                })
-                .catch((reason) => setError(trainingErrorMessage(reason)));
-            }}>Reset Current Class</Button>
-          )}
           {hasPermission("training.complete") && (
           <Button
             variant="secondary"
@@ -201,10 +185,9 @@ export default function TrainingBatch() {
           <p style={{ color: "#64748b", margin: "8px 0 0" }}>{workspace.batch.requiredSessions} required sessions · Future weeks appear after the current week is recorded for every active student.</p>
           {!classStarted ? <p style={{ margin: "20px 0 0", padding: 16, borderRadius: 12, background: "#f8fafc", color: "#64748b" }}>Week 1 will open when the class starts.</p> : <div className="mt-6 space-y-5">{visibleSessions.length === 0 ? <p className="text-slate-500">No sessions configured.</p> : visibleSessions.map((session, visibleIndex) => {
             const isCurrent = currentSessionIndex === visibleIndex;
-            const isReopened = Boolean(session.attendance_reopened_at);
-            const canEditAttendance = isCurrent || isReopened;
+            const canEditAttendance = isCurrent;
             return (
-            <article key={session.id} tabIndex={hasPermission("training.enroll") && activeCycle ? 0 : undefined} role={hasPermission("training.enroll") && activeCycle ? "button" : undefined} onClick={() => { if (!hasPermission("training.enroll") || !activeCycle) return; setSelectedSession(session); setSessionTitle(session.title); setSessionDate(session.session_date?.slice(0,10) ?? ""); }} onKeyDown={(event) => { if (["Enter"," "].includes(event.key)) event.currentTarget.click(); }} className="rounded-xl border border-slate-200 p-5" style={{ cursor: hasPermission("training.enroll") && activeCycle ? "pointer" : "default", padding: "clamp(14px, 3.5vw, 20px)", border: isCurrent ? "2px solid #667b38" : "1px solid #dbe3ec", borderRadius: 14, minWidth: 0 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}><div><p className="font-semibold" style={{ margin: 0 }}>{session.title} <span style={{ color: "#64748b", fontWeight: 400 }}>· {session.session_date ? new Date(session.session_date).toLocaleDateString("en-PH") : "Date not recorded"}</span></p><small style={{ color: isCurrent ? "#4d5f2a" : "#64748b" }}>{isCurrent ? "Current session" : isReopened ? "Reopened for correction" : "Completed · Read-only"}</small></div><div onClick={(event) => event.stopPropagation()}>{!isCurrent && hasPermission("admin.settings") && (isReopened ? <Button variant="secondary" onClick={() => { if (!window.confirm("Close this correction window? The session will become read-only again.")) return; void closeTrainingSessionEditing(session.id, "Corrections completed").then(load).catch((reason) => setError(trainingErrorMessage(reason))); }}>Close Editing</Button> : <Button variant="secondary" onClick={() => { if (!window.confirm("Reopen this completed session for attendance corrections? This action is audited.")) return; const reason = window.prompt("Reason for reopening this session") ?? ""; void reopenTrainingSession(session.id, reason).then(load).catch((reasonValue) => setError(trainingErrorMessage(reasonValue))); }}>Reopen Session for Editing</Button>)}</div></div><div className="mt-4 space-y-3" onClick={(event) => event.stopPropagation()}>{activeStudents.map((student) => {
+            <article key={session.id} tabIndex={isCurrent && hasPermission("training.attendance") ? 0 : undefined} role={isCurrent && hasPermission("training.attendance") ? "button" : undefined} onClick={() => { if (!isCurrent || !hasPermission("training.attendance")) return; setSelectedSession(session); setSessionTitle(session.title); setSessionDate(session.session_date?.slice(0,10) ?? ""); }} onKeyDown={(event) => { if (isCurrent && ["Enter"," "].includes(event.key)) event.currentTarget.click(); }} className="rounded-xl border border-slate-200 p-5" style={{ cursor: isCurrent && hasPermission("training.attendance") ? "pointer" : "default", padding: "clamp(16px, 4vw, 22px)", border: isCurrent ? "2px solid #667b38" : "1px solid #dbe3ec", borderRadius: 14, minWidth: 0 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}><div><p className="font-semibold" style={{ margin: 0 }}>{session.title} <span style={{ color: "#64748b", fontWeight: 400 }}>· {session.session_date ? new Date(session.session_date).toLocaleDateString("en-PH") : "Date not recorded"}</span></p><small style={{ color: isCurrent ? "#4d5f2a" : "#64748b" }}>{isCurrent ? "Current session" : "Completed · Read-only"}</small></div></div><div className="mt-4 space-y-3" onClick={(event) => event.stopPropagation()}>{activeStudents.map((student) => {
               const attendance = attendanceFor(student.id, session.id);
               const saveKey = `${student.id}:${session.id}`;
               return <div key={student.id} className="training-attendance-row" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(180px, 100%), 1fr))", alignItems: "center", gap: 12, width: "100%", padding: "12px 14px", borderRadius: 10, background: "#f8fafc", boxSizing: "border-box", minWidth: 0 }}><Link to={`/admin/training/${programSlug}/members/${student.id}`} state={{ returnTo: location.pathname }} className="font-medium hover:text-olive-700" style={{ color: "inherit", textDecoration: "none", fontWeight: 600, minWidth: 0, overflowWrap: "anywhere" }}>{student.firstName} {student.lastName}</Link>{hasPermission("training.attendance") && canEditAttendance ? <Select className="sm:w-44" style={{ width: "100%", minWidth: 0 }} value={attendance?.status ?? ""} disabled={savingAttendance === saveKey} onChange={(event) => { setSavingAttendance(saveKey); setError(""); void saveAttendance(student.id, session.id, event.target.value).then(load).catch((reason) => setError(trainingErrorMessage(reason))).finally(() => setSavingAttendance("")); }}><option value="" disabled>Select attendance</option><option value="present">Present</option><option value="absent">Absent</option><option value="late">Late</option><option value="excused">Excused</option></Select> : <span style={{ color: "#475569" }}>{attendanceStatusLabel(attendance?.status)}</span>}</div>;
@@ -223,7 +206,8 @@ export default function TrainingBatch() {
         ))}</div>
       </section>
 
-      {completedStudents.length > 0 && <section style={{ padding: "clamp(16px, 4vw, 24px)", border: "1px solid #dbe3ec", borderRadius: 18, background: "#fff" }}><h2 style={{ marginTop: 0 }}>Completed Students ({completedStudents.length})</h2><div style={{ display: "grid", gap: 12 }}>{completedStudents.map((student) => <article key={student.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", padding: 16, border: "1px solid #e2e8f0", borderRadius: 12 }}><Link to={`/admin/training/${programSlug}/members/${student.id}`} state={{ returnTo: location.pathname }}>{student.firstName} {student.lastName}</Link>{hasPermission("admin.settings") && <Button variant="secondary" onClick={() => { if (!window.confirm("Reopen this completed student as In Progress? Attendance, notes, dates, and audit history will be preserved.")) return; const reason = window.prompt("Reason for reopening this completion") ?? ""; void reopenTrainingEnrollment(student.id, reason).then(load).catch((reasonValue) => setError(trainingErrorMessage(reasonValue))); }}>Reopen Training</Button>}</article>)}</div></section>}
+      {!activeCycle && <section style={{ padding: "clamp(16px, 4vw, 24px)", border: "1px solid #dbe3ec", borderRadius: 18, background: "#fff" }}><h2 style={{ marginTop: 0 }}>Historical Class Roster ({historicalStudents.length})</h2><p style={{ margin: "-6px 0 16px", color: "#64748b" }}>Every enrollment that belonged to this class is included, regardless of its final status.</p>{historicalStudents.length === 0 ? <p style={{ margin: 0, color: "#64748b" }}>No students belonged to this class.</p> : <div style={{ display: "grid", gap: 12 }}>{historicalStudents.map((student) => <article key={student.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", padding: 16, border: "1px solid #e2e8f0", borderRadius: 12 }}><Link to={`/admin/training/${programSlug}/members/${student.id}`} state={{ returnTo: location.pathname }}>{student.firstName} {student.lastName}</Link><span style={{ color: "#64748b" }}>{trainingStatusLabel(student.status)}</span></article>)}</div>}</section>}
+      {activeCycle && completedStudents.length > 0 && <section style={{ padding: "clamp(16px, 4vw, 24px)", border: "1px solid #dbe3ec", borderRadius: 18, background: "#fff" }}><h2 style={{ marginTop: 0 }}>Completed Students ({completedStudents.length})</h2><p style={{ margin: "-6px 0 16px", color: "#64748b" }}>Completed records are read-only. Open a student to view completion details and history.</p><div style={{ display: "grid", gap: 12 }}>{completedStudents.map((student) => <article key={student.id} style={{ padding: 16, border: "1px solid #e2e8f0", borderRadius: 12 }}><Link to={`/admin/training/${programSlug}/members/${student.id}`} state={{ returnTo: location.pathname }}>{student.firstName} {student.lastName}</Link></article>)}</div></section>}
 
       <Modal open={showStudents} title="Add Students" onClose={() => setShowStudents(false)}>
         <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search members..." />
@@ -239,7 +223,44 @@ export default function TrainingBatch() {
           ))}
         </div>
         <p className="mt-3 text-sm text-slate-600">Selected ({selected.size})</p>
-        {cancelledEnrollments.length > 0 && <section style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid #e2e8f0" }}><h3 style={{ margin: 0, fontSize: 16 }}>Cancelled enrollments</h3><p style={{ margin: "5px 0 12px", color: "#64748b", fontSize: 14 }}>{workspace.batch.status === "open" ? "Restore the original attempt instead of creating a duplicate." : "Restoration is available before the next class starts."}</p><div style={{ display: "grid", gap: 8 }}>{cancelledEnrollments.map((item) => <div key={item.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, padding: 12, border: "1px solid #e2e8f0", borderRadius: 10 }}><span>{item.firstName} {item.lastName}</span><Button variant="secondary" disabled={workspace.batch.status !== "open"} onClick={() => { if (!window.confirm(`Restore ${item.firstName} ${item.lastName} to Pending Enrollment in this class?`)) return; void restoreTrainingEnrollment(item.id, workspace.batch.id, "Restored from Current Class enrollment picker").then(async () => { setNotice(`${item.firstName} ${item.lastName} was restored to Pending Enrollment.`); setShowStudents(false); await load(); }).catch((reason) => setEnrollmentError(trainingErrorMessage(reason))); }}>Restore Enrollment</Button></div>)}</div></section>}
+        {cancelledEnrollments.length > 0 && (
+          <section style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid #e2e8f0" }}>
+            <h3 style={{ margin: 0, fontSize: 16 }}>Cancelled Enrollments</h3>
+            <p style={{ margin: "5px 0 12px", color: "#64748b", fontSize: 14 }}>
+              Restore the original enrollment attempt to this Current Class. Existing attendance, notes, and history are preserved.
+            </p>
+            <div style={{ display: "grid", gap: 8 }}>
+              {cancelledEnrollments.map((item) => (
+                <div key={item.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, padding: 12, border: "1px solid #e2e8f0", borderRadius: 10 }}>
+                  <div>
+                    <strong>{item.firstName} {item.lastName}</strong>
+                    <small style={{ display: "block", marginTop: 4, color: "#64748b" }}>Cancelled</small>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    disabled={enrolling}
+                    onClick={() => {
+                      const destination = workspace.batch.status === "ongoing" ? "In Progress" : "Pending Enrollment";
+                      if (!window.confirm(`Restore ${item.firstName} ${item.lastName} to ${destination} in this Current Class?`)) return;
+                      setEnrolling(true);
+                      setEnrollmentError("");
+                      void restoreTrainingEnrollment(item.id, workspace.batch.id, "Restored from Current Class enrollment picker")
+                        .then(async (restoredStatus) => {
+                          setShowStudents(false);
+                          await load();
+                          setNotice(`${item.firstName} ${item.lastName} was restored to ${trainingStatusLabel(restoredStatus)}.`);
+                        })
+                        .catch((reason) => setEnrollmentError(trainingErrorMessage(reason)))
+                        .finally(() => setEnrolling(false));
+                    }}
+                  >
+                    Restore Enrollment
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
         {enrollmentError && (
           <p className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">
             {enrollmentError}

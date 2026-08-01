@@ -1,7 +1,5 @@
 import { Link } from "react-router-dom";
 import Button from "../../components/ui/Button";
-import { useAuth } from "../../features/auth/auth";
-import { archiveImportedTrainingEnrollments } from "../../features/training/trainingService";
 import { useTrainingOverview } from "../../features/training/useTrainingOverview";
 
 function Stat({ label, value }: { label: string; value: number | null }) {
@@ -15,7 +13,6 @@ function Stat({ label, value }: { label: string; value: number | null }) {
 
 export default function Training() {
   const { programs, pendingCount, loading, error, loadPrograms } = useTrainingOverview();
-  const { hasPermission } = useAuth();
 
   return (
     <div className="space-y-8" style={{ display: "grid", gap: 28 }}>
@@ -26,24 +23,6 @@ export default function Training() {
             Guide members from enrollment through graduation and advancement.
           </p>
         </div>
-        {hasPermission("admin.settings") && (
-          <Button
-            variant="secondary"
-            onClick={() => {
-              if (!window.confirm("Archive all imported Training enrollments? Operational lists will start empty, but audit data will be preserved.")) return;
-              void archiveImportedTrainingEnrollments()
-                .then((count) => {
-                  window.alert(`${count} imported enrollment records archived.`);
-                  void loadPrograms();
-                })
-                .catch((reason: unknown) =>
-                  window.alert(reason instanceof Error ? reason.message : "Unable to archive imported Training data."),
-                );
-            }}
-          >
-            Reset Imported Data
-          </Button>
-        )}
       </header>
 
       {loading ? (

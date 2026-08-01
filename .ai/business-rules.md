@@ -233,9 +233,11 @@ The approved normal transitions are:
 - In Progress to Withdrawn
 - Completed to In Progress through an Administrator reopen action
 
-Cancelled restoration reuses the enrollment record but does not count
-attendance or remedials belonging to its previous class. Workflow changes and
-completion reopening preserve an immutable audit event.
+Cancelled restoration reuses the original enrollment record. An open Current
+Class restores it to Pending Enrollment; an ongoing Current Class restores it
+to In Progress. Existing attendance is never fabricated or deleted, and only
+attendance belonging to the selected Current Class can satisfy completion.
+Workflow changes and completion reopening preserve an immutable audit event.
 
 ---
 
