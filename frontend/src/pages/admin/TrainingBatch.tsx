@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight, GripVertical, Pencil } from "lucide-react";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Select from "../../components/ui/Select";
@@ -21,6 +21,7 @@ import {
   isActiveTrainingStatus,
   saveAttendance,
   saveSessionRequirement,
+  saveTrainingRosterOrder,
   saveTrainingProgramRequirement,
   setTrainingProgramRequirementActive,
   setTrainingSessionRequirements,
@@ -84,6 +85,11 @@ export default function TrainingBatch() {
   const [sessionDate, setSessionDate] = useState("");
   const [savingSession, setSavingSession] = useState(false);
   const [focusedSessionId, setFocusedSessionId] = useState<string | null>(null);
+  const [rosterOrder, setRosterOrder] = useState<string[]>([]);
+  const [genderSectionOrder, setGenderSectionOrder] = useState<string[]>(["female", "male"]);
+  const [draggedStudentId, setDraggedStudentId] = useState<string | null>(null);
+  const [draggedGenderSection, setDraggedGenderSection] = useState<string | null>(null);
+  const [savingRosterOrder, setSavingRosterOrder] = useState(false);
   const [selectedAbsence, setSelectedAbsence] = useState<{ enrollmentId: string; sessionId: string; studentName: string; sessionTitle: string; remedialId?: string } | null>(null);
   const [remedialDate, setRemedialDate] = useState(new Date().toISOString().slice(0, 10));
   const [remedialNotes, setRemedialNotes] = useState("");
@@ -114,7 +120,13 @@ export default function TrainingBatch() {
     ? ["open", "ongoing"].includes(workspace.batch.status)
     : false;
   const classStarted = workspace?.batch.status === "ongoing";
-  const activeStudents = workspace?.enrollments.filter((student) => isActiveTrainingStatus(student.status)) ?? [];
+  const activeStudents = useMemo(() => {
+    const students = workspace?.enrollments.filter((student) => isActiveTrainingStatus(student.status)) ?? [];
+    const order = new Map(rosterOrder.map((id, index) => [id, index]));
+    return [...students].sort((left, right) =>
+      (order.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+    );
+  }, [rosterOrder, workspace]);
   const completedStudents = workspace?.enrollments.filter((student) => student.status === "completed") ?? [];
   const historicalStudents = workspace?.enrollments ?? [];
   const regularSessions = useMemo(
@@ -145,11 +157,24 @@ export default function TrainingBatch() {
   const visibleSessions = regularSessions;
   const focusedSessionIndex = Math.max(0, regularSessions.findIndex((session) => session.id === focusedSessionId));
   const focusedSession = regularSessions[focusedSessionIndex] ?? null;
-  const attendanceGroups = [
-    { label: "FEMALE", students: activeStudents.filter((student) => student.gender?.toLowerCase() === "female") },
-    { label: "MALE", students: activeStudents.filter((student) => student.gender?.toLowerCase() === "male") },
-    { label: "NOT RECORDED", students: activeStudents.filter((student) => !["female", "male"].includes(student.gender?.toLowerCase() ?? "")) },
+  const focusedSessionIsCurrent = Boolean(focusedSession && focusedSession.id === regularSessions[currentSessionIndex]?.id);
+  const focusedSessionIsCompleted = Boolean(
+    focusedSession && classStarted && (currentSessionIndex < 0 || focusedSessionIndex < currentSessionIndex),
+  );
+  const normalizedGender = (value: string | null) => value?.trim().toLowerCase() ?? "";
+  const genderGroups = [
+    ...genderSectionOrder.map((key) => ({
+      key,
+      label: key.toUpperCase(),
+      students: activeStudents.filter((student) => normalizedGender(student.gender) === key),
+    })),
+    {
+      key: "not_recorded",
+      label: "GENDER NOT RECORDED",
+      students: activeStudents.filter((student) => !["female", "male"].includes(normalizedGender(student.gender))),
+    },
   ].filter((group) => group.students.length > 0);
+  const attendanceGroups = genderGroups;
   const unresolvedAbsences = activeStudents.flatMap((student) => regularSessions.flatMap((session) => {
     const attendance = attendanceFor(student.id, session.id);
     const remedial = remedialFor(student.id, session.id);
@@ -160,25 +185,25 @@ export default function TrainingBatch() {
   const completionSummary = completionSession
     ? activeStudents.reduce((summary, student) => {
         const status = attendanceStatusFor(student.id, completionSession.id);
-        const resolvedStatus: "present" | "late" | "excused" | "absent" =
-          status === "present" || status === "late" || status === "excused" ? status : "absent";
+        const resolvedStatus: "present" | "late" | "excused" | "notMarked" =
+          status === "present" || status === "late" || status === "excused" ? status : "notMarked";
         summary[resolvedStatus] += 1;
         return summary;
-      }, { present: 0, late: 0, excused: 0, absent: 0 })
-    : { present: 0, late: 0, excused: 0, absent: 0 };
+      }, { present: 0, late: 0, excused: 0, notMarked: 0 })
+    : { present: 0, late: 0, excused: 0, notMarked: 0 };
   const focusedAttendanceSummary = focusedSession
     ? activeStudents.reduce((summary, student) => {
-        const isFocusedCurrentSession = focusedSession.id === regularSessions[currentSessionIndex]?.id;
-        const status = isFocusedCurrentSession
+        const status = focusedSessionIsCurrent
           ? attendanceStatusFor(student.id, focusedSession.id)
           : attendanceFor(student.id, focusedSession.id)?.status ?? null;
-        if (!status && !isFocusedCurrentSession) return summary;
-        const resolvedStatus: "present" | "late" | "excused" | "absent" =
-          status === "present" || status === "late" || status === "excused" ? status : "absent";
+        if (!status && !focusedSessionIsCurrent) return summary;
+        const resolvedStatus: "present" | "late" | "excused" | "absent" | "notMarked" = status
+          ? status === "present" || status === "late" || status === "excused" ? status : "absent"
+          : "notMarked";
         summary[resolvedStatus] += 1;
         return summary;
-      }, { present: 0, late: 0, excused: 0, absent: 0 })
-    : { present: 0, late: 0, excused: 0, absent: 0 };
+      }, { present: 0, late: 0, excused: 0, absent: 0, notMarked: 0 })
+    : { present: 0, late: 0, excused: 0, absent: 0, notMarked: 0 };
 
   useEffect(() => {
     if (!regularSessions.length) {
@@ -191,6 +216,64 @@ export default function TrainingBatch() {
       return regularSessions[regularSessions.length - 1].id;
     });
   }, [currentSessionIndex, regularSessions]);
+
+  useEffect(() => {
+    if (!workspace) return;
+    setRosterOrder(workspace.enrollments.map((student) => student.id));
+    const savedSections = workspace.batch.genderSectionOrder.filter((section) => ["female", "male"].includes(section));
+    setGenderSectionOrder(savedSections.length === 2 ? savedSections : ["female", "male"]);
+  }, [workspace]);
+
+  const persistRosterOrder = async (nextRosterOrder: string[], nextGenderOrder: string[]) => {
+    if (!batchId || savingRosterOrder) return;
+    setSavingRosterOrder(true);
+    setError("");
+    setNotice("");
+    try {
+      await saveTrainingRosterOrder(batchId, nextRosterOrder, nextGenderOrder);
+      setNotice("Order Saved");
+      await load();
+    } catch (reason) {
+      setError(trainingErrorMessage(reason));
+      await load();
+    } finally {
+      setSavingRosterOrder(false);
+    }
+  };
+
+  const reorderStudent = (sourceId: string, targetId: string) => {
+    if (sourceId === targetId) return;
+    const sourceStudent = activeStudents.find((student) => student.id === sourceId);
+    const targetStudent = activeStudents.find((student) => student.id === targetId);
+    if (!sourceStudent || !targetStudent || normalizedGender(sourceStudent.gender) !== normalizedGender(targetStudent.gender)) return;
+    const nextOrder = [...rosterOrder];
+    const sourceIndex = nextOrder.indexOf(sourceId);
+    const targetIndex = nextOrder.indexOf(targetId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+    nextOrder.splice(sourceIndex, 1);
+    nextOrder.splice(targetIndex, 0, sourceId);
+    setRosterOrder(nextOrder);
+    void persistRosterOrder(nextOrder, genderSectionOrder);
+  };
+
+  const moveStudentWithinSection = (studentId: string, direction: -1 | 1) => {
+    const group = genderGroups.find((item) => item.students.some((student) => student.id === studentId));
+    if (!group) return;
+    const index = group.students.findIndex((student) => student.id === studentId);
+    const target = group.students[index + direction];
+    if (target) reorderStudent(studentId, target.id);
+  };
+
+  const reorderGenderSection = (source: string, target: string) => {
+    if (source === target || !["female", "male"].includes(source) || !["female", "male"].includes(target)) return;
+    const nextOrder = [...genderSectionOrder];
+    const sourceIndex = nextOrder.indexOf(source);
+    const targetIndex = nextOrder.indexOf(target);
+    nextOrder.splice(sourceIndex, 1);
+    nextOrder.splice(targetIndex, 0, source);
+    setGenderSectionOrder(nextOrder);
+    void persistRosterOrder(rosterOrder, nextOrder);
+  };
 
   const openStudentPicker = useCallback(async () => {
     if (!workspace) return;
@@ -295,7 +378,9 @@ export default function TrainingBatch() {
           {!classStarted && <p style={{ margin: "16px 0 0", padding: 14, borderRadius: 10, background: "#f8fafc", color: "#64748b" }}>Attendance will open when the class starts. Session names, dates, and requirements may be configured now.</p>}
           {focusedSession && <><nav aria-label="Training session navigation" className="training-session-navigation"><Button variant="secondary" disabled={focusedSessionIndex === 0} onClick={() => setFocusedSessionId(regularSessions[focusedSessionIndex - 1]?.id ?? null)}><ChevronLeft size={17} aria-hidden="true" /> Previous Session</Button><span>Week {focusedSession.display_order} of {regularSessions.length}</span><Button variant="secondary" disabled={focusedSessionIndex >= regularSessions.length - 1} onClick={() => setFocusedSessionId(regularSessions[focusedSessionIndex + 1]?.id ?? null)}>Next Session <ChevronRight size={17} aria-hidden="true" /></Button></nav><dl className="training-attendance-summary" aria-label="Session attendance summary">{([
             { key: "present", label: "Present", color: "#15803d", background: "#ecfdf3" },
-            { key: "absent", label: "Absent", color: "#dc2626", background: "#fef2f2" },
+            ...(focusedSessionIsCompleted
+              ? [{ key: "absent" as const, label: "Absent", color: "#dc2626", background: "#fef2f2" }]
+              : [{ key: "notMarked" as const, label: "Not Marked", color: "#64748b", background: "#f8fafc" }]),
             { key: "late", label: "Late", color: "#b45309", background: "#fffbeb" },
             { key: "excused", label: "Excused", color: "#1d4ed8", background: "#eff6ff" },
           ] as const).map((item) => <div key={item.key} style={{ borderColor: item.color, background: item.background }}><dt><span aria-hidden="true" style={{ background: item.color }} />{item.label}</dt><dd>{focusedAttendanceSummary[item.key]}</dd></div>)}</dl></>}
@@ -306,18 +391,19 @@ export default function TrainingBatch() {
             const isFuture = !classStarted || (currentSessionIndex >= 0 && visibleIndex > currentSessionIndex);
             const canEditAttendance = isCurrent;
             return (
-            <article key={session.id} className="rounded-xl border border-slate-200 p-5" style={{ padding: "clamp(16px, 4vw, 22px)", border: isCurrent ? "2px solid #667b38" : "1px solid #dbe3ec", borderRadius: 14, minWidth: 0 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}><div style={{ minWidth: 0 }}><strong style={{ display: "block", fontSize: 14, color: "#475569" }}>Week {session.display_order}</strong><div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 4 }}><p className="font-semibold" style={{ margin: 0, fontSize: 17, overflowWrap: "anywhere" }}>{session.title}</p>{!isCompleted && hasPermission("training.attendance") && <button type="button" className="training-icon-button" aria-label={`Edit Week ${session.display_order} session details`} title="Edit Session" onClick={() => { setSelectedSession(session); setSessionTitle(session.title); setSessionDate(session.session_date?.slice(0,10) ?? ""); }}><Pencil size={15} aria-hidden="true" /></button>}</div><small style={{ display: "block", marginTop: 4, color: "#64748b" }}>{session.session_date ? new Date(session.session_date).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" }) : "Date not recorded"}</small><small style={{ display: "block", marginTop: 3, color: isCurrent ? "#4d5f2a" : "#64748b" }}>{isCurrent ? "Current session" : isCompleted ? "Completed · Read-only" : "Upcoming session"}</small></div><div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>{!isCompleted && hasPermission("training.enroll") && <Button variant="secondary" style={{ minHeight: 34, padding: "7px 11px", fontSize: 13 }} onClick={() => { setRequirementSession({ id: session.id, title: session.title }); setSessionRequirementDraft(workspace.sessionRequirements.filter((assignment) => assignment.sessionId===session.id).map((assignment) => assignment.requirementId)); }}>Configure Requirements</Button>}{isCurrent && hasPermission("training.attendance") && <Button style={{ minHeight: 34, padding: "7px 12px", fontSize: 13 }} disabled={activeStudents.length === 0 || completingSession} onClick={() => setCompletionSession({ id: session.id, title: session.title, sessionDate: session.session_date })}>Complete Session</Button>}</div></div>{isCurrent && activeStudents.length > 0 && <p style={{ margin: "12px 0 0", color: "#475569", fontSize: 14 }}>Check each student who attended. Unchecked students will be recorded as Absent when this session is completed.</p>}<div className="mt-4 space-y-3">{isFuture ? <div style={{ padding: 12, borderRadius: 9, background: "#f8fafc", color: "#64748b" }}>{requirementsForSession(session.id).length ? `Requirements: ${requirementsForSession(session.id).map((requirement) => requirement.name).join(", ")}` : "No additional requirements"}</div> : <div className="training-gender-groups">{attendanceGroups.map((group) => <section key={group.label} className="training-gender-group"><header><strong>{group.label}</strong><span>{group.students.length}</span></header><div>{group.students.map((student) => {
+            <article key={session.id} className="rounded-xl border border-slate-200 p-5" style={{ padding: "clamp(16px, 4vw, 22px)", border: isCurrent ? "2px solid #667b38" : "1px solid #dbe3ec", borderRadius: 14, minWidth: 0 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}><div style={{ minWidth: 0 }}><strong style={{ display: "block", fontSize: 14, color: "#475569" }}>Week {session.display_order}</strong><div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 4 }}><p className="font-semibold" style={{ margin: 0, fontSize: 17, overflowWrap: "anywhere" }}>{session.title}</p>{!isCompleted && hasPermission("training.attendance") && <button type="button" className="training-icon-button" aria-label={`Edit Week ${session.display_order} session details`} title="Edit Session" onClick={() => { setSelectedSession(session); setSessionTitle(session.title); setSessionDate(session.session_date?.slice(0,10) ?? ""); }}><Pencil size={15} aria-hidden="true" /></button>}</div><small style={{ display: "block", marginTop: 4, color: "#64748b" }}>{session.session_date ? new Date(session.session_date).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" }) : "Date not recorded"}</small><small style={{ display: "block", marginTop: 3, color: isCurrent ? "#4d5f2a" : "#64748b" }}>{isCurrent ? "Current session" : isCompleted ? "Completed · Read-only" : "Upcoming session"}</small></div><div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>{!isCompleted && hasPermission("training.enroll") && <Button variant="secondary" style={{ minHeight: 34, padding: "7px 11px", fontSize: 13 }} onClick={() => { setRequirementSession({ id: session.id, title: session.title }); setSessionRequirementDraft(workspace.sessionRequirements.filter((assignment) => assignment.sessionId===session.id).map((assignment) => assignment.requirementId)); }}>Configure Requirements</Button>}{isCurrent && hasPermission("training.attendance") && <Button style={{ minHeight: 34, padding: "7px 12px", fontSize: 13 }} disabled={activeStudents.length === 0 || completingSession} onClick={() => setCompletionSession({ id: session.id, title: session.title, sessionDate: session.session_date })}>Complete Session</Button>}</div></div>{isCurrent && activeStudents.length > 0 && <p style={{ margin: "12px 0 0", color: "#475569", fontSize: 14 }}>Check each student who attended. Unchecked students remain Not Marked until this session is completed.</p>}<div className="mt-4 space-y-3">{isFuture ? <div style={{ padding: 12, borderRadius: 9, background: "#f8fafc", color: "#64748b" }}>{requirementsForSession(session.id).length ? `Requirements: ${requirementsForSession(session.id).map((requirement) => requirement.name).join(", ")}` : "No additional requirements"}</div> : <div className="training-gender-groups">{attendanceGroups.map((group) => <section key={group.key} className="training-gender-group"><header>{group.key !== "not_recorded" && hasPermission("training.attendance") && <button type="button" className="training-drag-handle" draggable={!savingRosterOrder} aria-label={`Reorder ${group.label} section`} title={`Drag to reorder ${group.label} section`} onDragStart={() => setDraggedGenderSection(group.key)} onDragEnd={() => setDraggedGenderSection(null)} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (draggedGenderSection) reorderGenderSection(draggedGenderSection, group.key); setDraggedGenderSection(null); }} onKeyDown={(event) => { if (event.altKey && (event.key === "ArrowUp" || event.key === "ArrowDown")) { event.preventDefault(); const direction = event.key === "ArrowUp" ? -1 : 1; const target = genderSectionOrder[genderSectionOrder.indexOf(group.key) + direction]; if (target) reorderGenderSection(group.key, target); } }}><GripVertical size={16} aria-hidden="true" /></button>}<strong>{group.label}</strong><span>{group.students.length}</span></header><div>{group.students.map((student) => {
               const attendance = attendanceFor(student.id, session.id);
               const saveKey = `${student.id}:${session.id}`;
               const resolvedAttendance = canEditAttendance ? attendanceStatusFor(student.id, session.id) : attendance?.status ?? null;
               const checkedIn = Boolean(resolvedAttendance && ["present", "late", "excused"].includes(resolvedAttendance));
               const accent = studentAccent(student.id);
               const initials = `${student.firstName.charAt(0)}${student.lastName.charAt(0)}`.toUpperCase();
-              return <div key={student.id} className="training-attendance-row" style={{ borderColor: accent.border, borderLeftColor: accent.border }}>
+              return <div key={student.id} className="training-attendance-row" style={{ borderColor: accent.border, borderLeftColor: accent.border }} onDragOver={(event) => event.preventDefault()} onDrop={() => { if (draggedStudentId) reorderStudent(draggedStudentId, student.id); setDraggedStudentId(null); }}>
+                {hasPermission("training.attendance") && <button type="button" className="training-drag-handle" draggable={!savingRosterOrder} aria-label={`Reorder ${student.firstName} ${student.lastName}`} title="Drag to reorder student" onDragStart={() => setDraggedStudentId(student.id)} onDragEnd={() => setDraggedStudentId(null)} onKeyDown={(event) => { if (event.altKey && (event.key === "ArrowUp" || event.key === "ArrowDown")) { event.preventDefault(); moveStudentWithinSection(student.id, event.key === "ArrowUp" ? -1 : 1); } }}><GripVertical size={17} aria-hidden="true" /></button>}
                 <Link to={`/admin/training/${programSlug}/members/${student.id}`} state={{ returnTo: location.pathname }} className="training-student-identity"><span aria-hidden="true" style={{ background: accent.bg, color: accent.text }}>{initials}</span><span><strong>{student.firstName} {student.lastName}</strong><small>Guide: {student.guideName ?? "Not assigned"}</small></span></Link>
-                <div className="training-row-attendance"><small>Attendance</small>{hasPermission("training.attendance") && canEditAttendance ? <div><label><input aria-label={`Mark ${student.firstName} ${student.lastName} present`} type="checkbox" checked={checkedIn} disabled={completingSession} onChange={(event) => { setError(""); setNotice(""); setAttendanceDraft((current) => ({ ...current, [saveKey]: event.target.checked ? "present" : "absent" })); }} />Present</label>{checkedIn && <Select aria-label={`Attendance status for ${student.firstName} ${student.lastName}`} value={resolvedAttendance ?? "present"} disabled={completingSession} onChange={(event) => setAttendanceDraft((current) => ({ ...current, [saveKey]: event.target.value }))}><option value="present">Present</option><option value="late">Late</option><option value="excused">Excused</option></Select>}</div> : <span style={{ border: `1px solid ${attendanceBadgeStyle(attendance?.status).border}`, background: attendanceBadgeStyle(attendance?.status).background, color: attendanceBadgeStyle(attendance?.status).color }}>{attendanceStatusLabel(attendance?.status)}</span>}</div>
+                <div className="training-row-attendance"><small>Attendance</small>{hasPermission("training.attendance") && canEditAttendance ? <div><label><input aria-label={`Mark ${student.firstName} ${student.lastName} present`} type="checkbox" checked={checkedIn} disabled={completingSession} onChange={(event) => { setError(""); setNotice(""); setAttendanceDraft((current) => ({ ...current, [saveKey]: event.target.checked ? "present" : null })); }} />Present</label>{checkedIn && <Select aria-label={`Attendance status for ${student.firstName} ${student.lastName}`} value={resolvedAttendance ?? "present"} disabled={completingSession} onChange={(event) => setAttendanceDraft((current) => ({ ...current, [saveKey]: event.target.value }))}><option value="present">Present</option><option value="late">Late</option><option value="excused">Excused</option></Select>}</div> : <span style={{ border: `1px solid ${attendanceBadgeStyle(attendance?.status).border}`, background: attendanceBadgeStyle(attendance?.status).background, color: attendanceBadgeStyle(attendance?.status).color }}>{attendanceStatusLabel(attendance?.status)}</span>}</div>
                 <fieldset className="training-row-requirements"><legend>Requirements</legend>{requirementsForSession(session.id).length === 0 ? <small>None</small> : <div>{requirementsForSession(session.id).map((requirement) => { const checked = requirementCompleted(student.id, session.id, requirement.id); const requirementKey = `${student.id}:${session.id}:${requirement.id}`; return <label key={requirement.id}><input type="checkbox" checked={checked} disabled={!canEditAttendance || !hasPermission("training.attendance") || savingRequirement === requirementKey} onChange={(event) => { setSavingRequirement(requirementKey); setError(""); void saveSessionRequirement(student.id, session.id, requirement.id, event.target.checked).then(load).then(() => setNotice(`${requirement.name} progress saved.`)).catch((reason) => setError(trainingErrorMessage(reason))).finally(() => setSavingRequirement("")); }} />{requirement.name}</label>; })}</div>}</fieldset>
-                {isCompleted && hasPermission("training.attendance") && <button type="button" className="training-icon-button" aria-label={`Edit ${student.firstName} ${student.lastName}'s attendance record`} title="Attendance Correction" onClick={() => { const requirementValues: Record<string, boolean> = {}; requirementsForSession(session.id).forEach((requirement) => { requirementValues[requirement.id] = requirementCompleted(student.id,session.id,requirement.id); }); setCorrection({ enrollmentId: student.id, studentName: `${student.firstName} ${student.lastName}`, sessionId: session.id, sessionTitle: session.title, sessionDate: session.session_date, currentAttendance: attendance?.status ?? null }); setCorrectedAttendance(attendance?.status ?? ""); setCorrectedRequirements(requirementValues); setCorrectionReason(""); }}><Pencil size={15} aria-hidden="true" /></button>}
+                <div className="training-row-actions">{isCompleted && hasPermission("training.attendance") && <button type="button" className="training-icon-button" aria-label={`Edit ${student.firstName} ${student.lastName}'s attendance record`} title="Attendance Correction" onClick={() => { const requirementValues: Record<string, boolean> = {}; requirementsForSession(session.id).forEach((requirement) => { requirementValues[requirement.id] = requirementCompleted(student.id,session.id,requirement.id); }); setCorrection({ enrollmentId: student.id, studentName: `${student.firstName} ${student.lastName}`, sessionId: session.id, sessionTitle: session.title, sessionDate: session.session_date, currentAttendance: attendance?.status ?? null }); setCorrectedAttendance(attendance?.status ?? ""); setCorrectedRequirements(requirementValues); setCorrectionReason(""); }}><Pencil size={15} aria-hidden="true" /></button>}</div>
               </div>;
             })}</div></section>)}</div>}</div></article>
           );})}{activeStudents.length > 0 && <div style={{ marginTop: 14, padding: "12px 14px", border: "1px dashed #3b82f6", borderRadius: 10, background: "#eff6ff", color: "#1d4ed8", fontSize: 14 }}>ⓘ Click a student name to view their Training Profile and full progress.</div>}</div>
@@ -471,9 +557,19 @@ export default function TrainingBatch() {
           <div><strong>{completionSession.title}</strong><p style={{ margin: "5px 0 0", color: "#64748b" }}>{completionSession.sessionDate ? new Date(completionSession.sessionDate).toLocaleDateString("en-PH", { year: "numeric", month: "long", day: "numeric" }) : "Date not recorded"}</p></div>
           <p style={{ margin: 0, color: "#475569" }}>Review the attendance summary before completing this session.</p>
           <dl style={{ display: "grid", gap: 9, margin: 0 }}>
-            {(["present", "late", "excused", "absent"] as const).map((status) => <div key={status} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, padding: "9px 11px", borderRadius: 9, background: attendanceBadgeStyle(status).background, color: attendanceBadgeStyle(status).color }}><dt style={{ fontWeight: 700 }}>{attendanceStatusLabel(status)}{status === "absent" ? " (unchecked)" : ""}</dt><dd style={{ margin: 0, fontWeight: 800 }}>{completionSummary[status]}</dd></div>)}
+            {([
+              { key: "present", label: "Present" },
+              { key: "late", label: "Late" },
+              { key: "excused", label: "Excused" },
+              { key: "notMarked", label: "Not Marked" },
+            ] as const).map((item) => {
+              const style = item.key === "notMarked"
+                ? { background: "#f1f5f9", color: "#475569" }
+                : attendanceBadgeStyle(item.key);
+              return <div key={item.key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, padding: "9px 11px", borderRadius: 9, background: style.background, color: style.color }}><dt style={{ fontWeight: 700 }}>{item.label}</dt><dd style={{ margin: 0, fontWeight: 800 }}>{completionSummary[item.key]}</dd></div>;
+            })}
           </dl>
-          {completionSummary.absent > 0 && <div role="note" style={{ padding: 12, border: "1px solid #fcd34d", borderRadius: 10, background: "#fffbeb", color: "#92400e" }}>⚠ {completionSummary.absent} unchecked student{completionSummary.absent === 1 ? "" : "s"} will be recorded as Absent.</div>}
+          {completionSummary.notMarked > 0 && <div role="note" style={{ padding: 12, border: "1px solid #fcd34d", borderRadius: 10, background: "#fffbeb", color: "#92400e" }}>⚠ {completionSummary.notMarked} Not Marked student{completionSummary.notMarked === 1 ? "" : "s"} will be recorded as Absent.</div>}
           <p style={{ margin: 0, color: "#64748b", fontSize: 14 }}>Requirements are saved independently and will not be changed.</p>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}><Button type="button" variant="secondary" disabled={completingSession} onClick={() => setCompletionSession(null)}>Cancel</Button><Button type="submit" disabled={completingSession || activeStudents.length === 0}>{completingSession ? "Completing Session..." : "Complete Session"}</Button></div>
         </form>}

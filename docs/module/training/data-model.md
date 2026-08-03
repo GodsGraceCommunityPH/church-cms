@@ -210,6 +210,11 @@ Attendance should never summarize multiple sessions into one record.
 
 Each class meeting generates its own attendance record.
 
+`member_trainings.roster_order` stores the class-specific display position for
+an enrollment. `training_batches.gender_section_order` stores whether the
+Female or Male roster section appears first. The protected
+`save_training_roster_order` RPC updates only those presentation fields.
+
 ---
 
 Possible values

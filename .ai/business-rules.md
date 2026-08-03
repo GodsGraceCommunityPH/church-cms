@@ -223,6 +223,16 @@ new values, acting user, timestamp, class, session, and student in the existing
 Training workflow audit history. It must not alter any other student's record
 or the completed session state.
 
+Before a current session is completed, an unchecked attendance box is a draft
+`Not Marked` state, not an Absence. The completion confirmation reports all
+Not Marked students, and only the confirmed completion operation records those
+students as Absent.
+
+Each Training class owns its roster display order. Teachers may reorder students
+within their gender section and may place the Female or Male section first.
+Ordering changes affect presentation only and never change enrollment,
+attendance, Guide assignments, requirements, or historical records.
+
 The generated week number is the session sequence and remains read-only. Each
 session also has an editable lesson name and date. Teachers may edit these
 details for the first, current, and future sessions without changing ordering,

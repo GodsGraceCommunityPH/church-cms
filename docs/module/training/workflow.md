@@ -140,6 +140,15 @@ Possible attendance states:
 - Present
 - Late
 - Excused
+
+During an active session, an unchecked student remains Not Marked. Not Marked
+is a frontend draft state and is not written as an attendance record. The
+session-completion confirmation converts remaining Not Marked students to
+Absent only after the Teacher confirms completion.
+
+Teachers may reorder students within Female and Male roster sections and may
+reorder the two section headers. The class saves this order independently from
+attendance and Training workflow state.
 - Absent
 
 Completed sessions remain completed and read-only. If one student's historical

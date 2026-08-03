@@ -43,6 +43,7 @@ export interface TrainingEnrollment {
   trainerName: string | null;
   gender: string | null;
   guideName: string | null;
+  rosterOrder: number | null;
 }
 
 export interface TrainingProgramDetail {
@@ -292,6 +293,7 @@ function mapEnrollment(item: any): TrainingEnrollment {
     trainerName: item.trainerName ?? null,
     gender: item.members?.gender ?? null,
     guideName: item.guideName ?? null,
+    rosterOrder: item.roster_order ?? null,
   };
 }
 
@@ -305,6 +307,7 @@ const ENROLLMENT_SELECT = `
   cancelled_at,
   withdrawn_at,
   batch_id,
+  roster_order,
   members!member_trainings_member_id_fkey ( first_name, last_name, gender )
 `;
 
@@ -775,6 +778,7 @@ export interface TrainingBatch {
   cadenceDays: number;
   excusedCounts: boolean;
   attendanceProgress: number;
+  genderSectionOrder: string[];
   archivedAt: string | null;
 }
 
@@ -1023,7 +1027,7 @@ export async function archiveImportedTrainingEnrollments() {
 export async function getTrainingBatchWorkspace(batchId: string) {
   const { data: batch, error: batchError } = await supabase
     .from("training_batches")
-    .select("id, training_id, name, trainer_user_id, status, starts_on, ends_on, required_sessions, cadence_days, excused_counts")
+    .select("id, training_id, name, trainer_user_id, status, starts_on, ends_on, required_sessions, cadence_days, excused_counts, gender_section_order")
     .eq("id", batchId)
     .single();
   if (batchError) throw batchError;
@@ -1035,6 +1039,7 @@ export async function getTrainingBatchWorkspace(batchId: string) {
         .select(ENROLLMENT_SELECT)
         .eq("batch_id", batchId)
         .is("archived_at", null)
+        .order("roster_order", { ascending: true, nullsFirst: false })
         .order("created_at"),
       supabase
         .from("training_sessions")
@@ -1109,6 +1114,9 @@ export async function getTrainingBatchWorkspace(batchId: string) {
       cadenceDays: batch.cadence_days ?? 7,
       excusedCounts: batch.excused_counts ?? false,
       attendanceProgress: new Set((attendance ?? []).map((item) => item.session_id)).size,
+      genderSectionOrder: Array.isArray(batch.gender_section_order)
+        ? batch.gender_section_order
+        : ["female", "male"],
     } as TrainingBatch,
     program,
     enrollments: mappedEnrollments,
@@ -1119,6 +1127,19 @@ export async function getTrainingBatchWorkspace(batchId: string) {
     sessionRequirements: (sessionRequirements ?? []).map((item: any) => ({ sessionId: item.training_session_id, requirementId: item.program_requirement_id })) as TrainingSessionRequirementAssignment[],
     requirementProgress: requirementProgress ?? [],
   };
+}
+
+export async function saveTrainingRosterOrder(
+  batchId: string,
+  enrollmentIds: string[],
+  genderSectionOrder: string[],
+) {
+  const { error } = await supabase.rpc("save_training_roster_order", {
+    p_batch_id: batchId,
+    p_member_training_ids: enrollmentIds,
+    p_gender_section_order: genderSectionOrder,
+  });
+  if (error) throw error;
 }
 
 export async function getTrainingProgramRequirements(trainingId: string) {
