@@ -6,7 +6,7 @@ export function ProtectedRoute() {
   const { session, loading, accessError, signOut } = useAuth();
   const location = useLocation();
 
-  if (loading) {
+  if (loading && !session) {
     return <p className="py-16 text-center text-slate-500">Restoring session...</p>;
   }
   if (!session) {

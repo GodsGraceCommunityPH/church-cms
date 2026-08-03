@@ -122,6 +122,11 @@ Member responsibilities:
 
 Enrollment creates a training record.
 
+For SUYNL and LifeClass, enrollment also selects a Guide and snapshots the
+student's current Cell Group and Cell Leader. A Guide is not the class Trainer,
+may serve multiple students, and may change without losing assignment history.
+Guide assignment is informational and does not grant permissions.
+
 Attendance has not yet occurred.
 
 ---
@@ -137,13 +142,29 @@ Possible attendance states:
 - Excused
 - Absent
 
-Attendance history should never be overwritten.
-
-Corrections should update records while preserving audit history.
+Completed sessions remain completed and read-only. If one student's historical
+attendance or configured requirement result is wrong, a Teacher corrects only
+that student record and supplies a required reason. The correction preserves
+the old and new values, actor, timestamp, class, session, and student in the
+existing workflow-event audit history; it does not reopen the session or alter
+other students.
 
 ---
 
 # Stage 4 — Assignments
+
+The current implementation supports multiple configurable, named session
+requirements. Names are reusable within a Training program, while each session
+explicitly selects which names apply. A session may select none, one, or many;
+there is no automatic program-wide assignment. Completion is recorded per
+student only for the requirements assigned to that session, remains separate
+from attendance, and does not yet block completion. Completed-session
+configuration is frozen. Orientation remains a normal named session. Future
+SOL-specific behavior is not yet defined.
+
+Removing an editable session assignment is blocked when student progress
+already exists, preventing hidden or orphaned progress. Teachers must clear the
+current-session progress intentionally before removing that assignment.
 
 Assignments measure participation and understanding.
 

@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -66,12 +67,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [permissions, setPermissions] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [accessError, setAccessError] = useState("");
+  const sessionUserIdRef = useRef<string | null>(null);
 
   const resolveSession = useCallback(async (nextSession: Session | null) => {
+    const previousUserId = sessionUserIdRef.current;
+    const nextUserId = nextSession?.user.id ?? null;
+    sessionUserIdRef.current = nextUserId;
     setSession(nextSession);
-    setPermissions(new Set());
-    setAccessError("");
-    if (!nextSession) return;
+    if (!nextSession) {
+      setPermissions(new Set());
+      setAccessError("");
+      return;
+    }
+    if (previousUserId !== nextUserId) {
+      setPermissions(new Set());
+      setAccessError("");
+    }
     try {
       const nextPermissions = await loadPermissions(nextSession.user.id);
       setPermissions(nextPermissions);
@@ -102,8 +113,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!active) return;
+      const sameAuthenticatedUser = Boolean(
+        nextSession?.user.id && nextSession.user.id === sessionUserIdRef.current,
+      );
+      if (sameAuthenticatedUser && (event === "TOKEN_REFRESHED" || event === "SIGNED_IN")) {
+        setSession(nextSession);
+        return;
+      }
       setLoading(true);
       window.setTimeout(() => {
         void resolveSession(nextSession).finally(() => {

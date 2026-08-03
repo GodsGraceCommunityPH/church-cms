@@ -139,6 +139,10 @@ Enrollment is the center of the Training module.
 
 Every training record belongs to an Enrollment.
 
+An enrollment also preserves its Cell Group and Cell Leader at enrollment.
+Guide assignments are temporal children of the enrollment: one active Guide is
+allowed at a time, and reassignment closes rather than overwrites history.
+
 ---
 
 ## Responsibilities
@@ -185,7 +189,22 @@ One Completion Record
 
 # Entity: Attendance
 
+Attendance is independent from configurable session requirements.
+`training_program_requirements` is the reusable, stable-ID name library.
+`training_session_requirements` assigns zero, one, or multiple library entries
+to an individual class session. `member_training_session_requirement_progress`
+then stores sparse student completion uniquely per enrollment, assigned
+session, and requirement. Renaming or deactivating a library entry does not
+detach existing assignments or historical progress. These additional
+requirements are progress-only in the current SUYNL and LifeClass rollout.
+
 Represents attendance for a single session.
+
+An audited completed-session correction updates only the selected student's
+attendance and session-requirement progress. The corresponding
+`member_training_workflow_events` snapshot stores the previous and corrected
+values, session identity, reason, actor, and timestamp; the session itself is
+not reopened.
 
 Attendance should never summarize multiple sessions into one record.
 

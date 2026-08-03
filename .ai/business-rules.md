@@ -118,6 +118,29 @@ For GGCCC v1, the Completion Checklist contains one requirement:
 
 - Required attendance completed.
 
+Configurable session requirements are tracked separately from the Completion
+Checklist. For the current SUYNL and LifeClass rollout, a program may define
+multiple named requirements (for example, Manual or Memory Verse). Each item is
+recorded independently for each student and session. These progress records do
+not affect completion eligibility in this release.
+
+## Training Guides and Enrollment Context
+
+- Cell Group is the persistent member group. Lighthouse is an activity or
+  event and is never another name for Cell Group.
+- A Guide is distinct from the class Trainer and is scoped to one Training
+  enrollment.
+- Guide assignment is optional when adding a student to any Training program.
+- One Guide may serve multiple students, while each enrollment has at most one
+  active Guide at a time.
+- Guide reassignment ends the previous assignment and preserves Guide history.
+- Guides are informational in this release and receive no special permissions,
+  dashboard, or class-roster grouping.
+- The student's Cell Group and Cell Leader are snapshotted when the enrollment
+  is created. Later member transfers do not rewrite historical Training context.
+- Orientation is an ordinary named Training session and needs no special type.
+- Future SOL Guide and requirement behavior remains unconfirmed.
+
 Once the checklist is satisfied, the student becomes **Eligible for Completion**.
 The normal workflow is attendance completed, eligibility, then Teacher/Admin
 completion from the Current Class page. Completion is not available from the
@@ -193,14 +216,43 @@ from an earlier class or attempt never satisfies a later attempt.
 Regular sessions progress sequentially. Only the current released session
 accepts normal attendance. A future session is released after every active
 student has an attendance value for the preceding session. Completed previous
-sessions are read-only unless an Administrator explicitly reopens one for an
-audited correction.
+sessions remain completed and read-only. A Teacher may correct one student's
+historical attendance and configured requirement results without reopening the
+session. The correction must include a reason and preserve the previous values,
+new values, acting user, timestamp, class, session, and student in the existing
+Training workflow audit history. It must not alter any other student's record
+or the completed session state.
+
+The generated week number is the session sequence and remains read-only. Each
+session also has an editable lesson name and date. Teachers may edit these
+details for the first, current, and future sessions without changing ordering,
+attendance, requirements, progress, or class state. Completed session details
+remain read-only in the normal Teacher workflow.
 
 ---
 
 # Assignments
 
 Assignments exist independently of attendance.
+
+Additional Training requirements use a reusable program-level library with
+stable identifiers. A separate assignment links zero, one, or multiple library
+requirements to each class session. Student completion is recorded only for
+requirements assigned to that enrollment's session; active library entries are
+never implicitly applied to every session.
+
+Completed-session assignments are frozen. Removing a requirement from an
+editable session or deactivating its library name never deletes historical
+progress. Deactivation prevents new assignments while preserving existing
+assignments. Corrections to an existing completed-session student result use
+the audited Correct Student Record workflow.
+
+If any student progress exists for an editable session assignment, removal is
+blocked until that progress is deliberately cleared through the current-session
+workflow. Requirement names may be renamed or reactivated without changing
+their stable IDs; the current label is used consistently in current and
+historical views. Requirement names remain progress-only and do not affect
+completion eligibility.
 
 A member may:
 

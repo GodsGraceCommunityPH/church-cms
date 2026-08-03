@@ -41,6 +41,8 @@ export interface TrainingEnrollment {
   batchId: string | null;
   batchName: string | null;
   trainerName: string | null;
+  gender: string | null;
+  guideName: string | null;
 }
 
 export interface TrainingProgramDetail {
@@ -57,6 +59,29 @@ export interface TrainingSessionAttendance {
   notes: string | null;
   remedialStatus: string | null;
   remedialCompletedAt: string | null;
+  requirements: Array<{ id: string; name: string; completed: boolean }>;
+}
+
+export interface TrainingProgramRequirement {
+  id: string;
+  trainingId: string;
+  name: string;
+  displayOrder: number;
+  isActive: boolean;
+}
+
+export interface TrainingSessionRequirementAssignment {
+  sessionId: string;
+  requirementId: string;
+}
+
+export interface TrainingGuideAssignment {
+  id: string;
+  guideMemberId: string;
+  guideName: string;
+  assignedAt: string;
+  endedAt: string | null;
+  changeReason: string | null;
 }
 
 export interface TrainingNote {
@@ -85,6 +110,11 @@ export interface MemberTrainingProfile {
   remedials: TrainingRemedial[];
   requiredSessions: number;
   excusedCounts: boolean;
+  className: string | null;
+  cellGroupName: string | null;
+  cellLeaderName: string | null;
+  guideHistory: TrainingGuideAssignment[];
+  requirements: TrainingProgramRequirement[];
 }
 
 export interface TrainingBatchOption {
@@ -187,7 +217,11 @@ export function trainingErrorMessage(error: unknown) {
     if (value.code === "23505") return "This member already has an active enrollment in this Training program.";
     if (value.code === "23503") return "This record has Training history and cannot be deleted. Archive it instead.";
     if (value.code === "PGRST202") return "This Training action is unavailable because the required database migration has not been applied.";
-    if (value.code?.startsWith("PGRST")) return "Training data could not be loaded. Please reload and try again.";
+    if (value.code?.startsWith("PGRST")) {
+      return [value.code, value.message, value.details, value.hint]
+        .filter(Boolean)
+        .join(": ");
+    }
     if (value.message) return value.message;
   }
   if (error instanceof Error && error.message.startsWith("Attendance")) return error.message;
@@ -256,6 +290,8 @@ function mapEnrollment(item: any): TrainingEnrollment {
     batchId: item.batch_id,
     batchName: item.batchName ?? null,
     trainerName: item.trainerName ?? null,
+    gender: item.members?.gender ?? null,
+    guideName: item.guideName ?? null,
   };
 }
 
@@ -269,7 +305,7 @@ const ENROLLMENT_SELECT = `
   cancelled_at,
   withdrawn_at,
   batch_id,
-  members ( first_name, last_name )
+  members!member_trainings_member_id_fkey ( first_name, last_name, gender )
 `;
 
 export async function getTrainingProgramDetail(
@@ -353,7 +389,9 @@ export async function getMemberTrainingProfile(
       completed_at,
       cancelled_at,
       withdrawn_at,
-      batch_id
+      batch_id,
+      cell_group_id_at_enrollment,
+      cell_leader_member_id_at_enrollment
     `)
     .eq("id", enrollmentId)
     .single();
@@ -384,7 +422,7 @@ export async function getMemberTrainingProfile(
     : { data: null, error: null };
   if (batchConfigurationError) throw batchConfigurationError;
 
-  const [sessionResult, attendanceResult, notesResult, remedialResult] =
+  const [sessionResult, attendanceResult, notesResult, remedialResult, requirementResult, progressResult, guideResult] =
     await Promise.all([
       enrollmentRecord.batch_id
         ? supabase
@@ -407,6 +445,20 @@ export async function getMemberTrainingProfile(
         .select("id, session_id, scheduled_for, status, notes, completed_at")
         .eq("member_training_id", enrollmentId)
         .order("scheduled_for", { ascending: false }),
+      supabase
+        .from("training_program_requirements")
+        .select("id, training_id, name, display_order, is_active")
+        .eq("training_id", enrollmentRecord.training_id)
+        .order("display_order"),
+      supabase
+        .from("member_training_session_requirement_progress")
+        .select("training_session_id, program_requirement_id, completed")
+        .eq("member_training_id", enrollmentId),
+      supabase
+        .from("member_training_guide_assignments")
+        .select("id, guide_member_id, assigned_at, ended_at, change_reason")
+        .eq("member_training_id", enrollmentId)
+        .order("assigned_at", { ascending: false }),
     ]);
 
   for (const result of [
@@ -414,6 +466,9 @@ export async function getMemberTrainingProfile(
     attendanceResult,
     notesResult,
     remedialResult,
+    requirementResult,
+    progressResult,
+    guideResult,
   ]) {
     if (result.error) throw result.error;
   }
@@ -439,6 +494,36 @@ export async function getMemberTrainingProfile(
       .filter((item: any) => item.session_id && item.status !== "cancelled")
       .map((item: any) => [item.session_id, item]),
   );
+  const contextMemberIds = [
+    enrollmentRecord.cell_leader_member_id_at_enrollment,
+    ...(guideResult.data ?? []).map((item: any) => item.guide_member_id),
+  ].filter(Boolean);
+  const [{ data: contextMembers, error: contextMemberError }, { data: cellGroup, error: cellGroupError }, { data: batchContext, error: batchContextError }] = await Promise.all([
+    contextMemberIds.length
+      ? supabase.from("members").select("id, first_name, last_name").in("id", contextMemberIds)
+      : Promise.resolve({ data: [], error: null }),
+    enrollmentRecord.cell_group_id_at_enrollment
+      ? supabase.from("cell_groups").select("name").eq("id", enrollmentRecord.cell_group_id_at_enrollment).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    enrollmentRecord.batch_id
+      ? supabase.from("training_batches").select("name").eq("id", enrollmentRecord.batch_id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ]);
+  if (contextMemberError) throw contextMemberError;
+  if (cellGroupError) throw cellGroupError;
+  if (batchContextError) throw batchContextError;
+  const contextNames = new Map((contextMembers ?? []).map((item: any) => [item.id, `${item.first_name} ${item.last_name}`]));
+  const requirements = (requirementResult.data ?? []).map((item: any) => ({ id: item.id, trainingId: item.training_id, name: item.name, displayOrder: item.display_order, isActive: item.is_active }));
+  const sessionIds = new Set((sessionResult.data ?? []).map((session: any) => session.id));
+  let requirementAssignments: Array<{ training_session_id: string; program_requirement_id: string }> = [];
+  if (sessionIds.size) {
+    const { data, error } = await supabase.from("training_session_requirements").select("training_session_id, program_requirement_id").in("training_session_id", Array.from(sessionIds));
+    if (error) throw error;
+    requirementAssignments = data ?? [];
+  }
+  const assignmentKeys = new Set(requirementAssignments.map((item) => `${item.training_session_id}:${item.program_requirement_id}`));
+  const assignedRequirementIds = new Set(requirementAssignments.map((item) => item.program_requirement_id));
+  const progressKeys = new Set((progressResult.data ?? []).filter((item: any) => item.completed).map((item: any) => `${item.training_session_id}:${item.program_requirement_id}`));
 
   return {
     enrollment: mapEnrollment(hydratedEnrollment),
@@ -455,6 +540,7 @@ export async function getMemberTrainingProfile(
         notes: attendance?.notes ?? null,
         remedialStatus: remedial?.status ?? null,
         remedialCompletedAt: remedial?.completed_at ?? null,
+        requirements: requirements.filter((requirement) => assignmentKeys.has(`${session.id}:${requirement.id}`)).map((requirement) => ({ id: requirement.id, name: requirement.name, completed: progressKeys.has(`${session.id}:${requirement.id}`) })),
       };
     }),
     notes: (notesResult.data ?? []).map((note: any) => ({
@@ -474,6 +560,11 @@ export async function getMemberTrainingProfile(
     })),
     requiredSessions: batchConfiguration?.required_sessions ?? sessionResult.data?.length ?? 0,
     excusedCounts: batchConfiguration?.excused_counts ?? false,
+    className: batchContext?.name ?? null,
+    cellGroupName: cellGroup?.name ?? null,
+    cellLeaderName: contextNames.get(enrollmentRecord.cell_leader_member_id_at_enrollment) ?? null,
+    guideHistory: (guideResult.data ?? []).map((item: any) => ({ id: item.id, guideMemberId: item.guide_member_id, guideName: contextNames.get(item.guide_member_id) ?? "Member not recorded", assignedAt: item.assigned_at, endedAt: item.ended_at, changeReason: item.change_reason })),
+    requirements: requirements.filter((requirement) => assignedRequirementIds.has(requirement.id)),
   };
 }
 
@@ -714,7 +805,7 @@ export async function getPendingTrainingEnrollments() {
       cancelled_at,
       withdrawn_at,
       batch_id,
-      members ( first_name, last_name ),
+      members!member_trainings_member_id_fkey ( first_name, last_name ),
       trainings ( name )
     `)
     .eq("workflow_status", "pending_enrollment")
@@ -797,7 +888,7 @@ export async function getAvailableMembers(trainingId: string) {
     await Promise.all([
       supabase
         .from("members")
-        .select("id, first_name, last_name, membership_status")
+        .select("id, first_name, last_name, membership_status, cell_group_id, cell_groups!members_cell_group_id_fkey ( name )")
         .order("first_name"),
       supabase
         .from("member_trainings")
@@ -835,10 +926,10 @@ export async function getCancelledTrainingEnrollments(trainingId: string) {
   return Array.from(latestByMember.values()).filter((item) => item.workflow_status === "cancelled").map(mapEnrollment) as CancelledTrainingEnrollment[];
 }
 
-export async function enrollBatchStudents(batchId: string, memberIds: string[]) {
-  const { data, error } = await supabase.rpc("enroll_training_batch_students", {
+export async function enrollBatchStudents(batchId: string, assignments: Array<{ memberId: string; guideMemberId?: string }>) {
+  const { data, error } = await supabase.rpc("enroll_training_batch_students_with_guides", {
     p_batch_id: batchId,
-    p_member_ids: memberIds,
+    p_assignments: assignments.map((item) => ({ member_id: item.memberId, guide_member_id: item.guideMemberId })),
   });
   if (error) throw error;
   return data as number;
@@ -864,6 +955,19 @@ export async function rescheduleTrainingSession(sessionId: string, sessionDate: 
   });
   if (error) throw error;
   return data as number;
+}
+
+export async function updateTrainingSessionDetails(
+  sessionId: string,
+  title: string,
+  sessionDate: string,
+) {
+  const { error } = await supabase.rpc("update_training_session_details", {
+    p_session_id: sessionId,
+    p_title: title.trim(),
+    p_session_date: sessionDate,
+  });
+  if (error) throw error;
 }
 
 export async function reopenTrainingSession(sessionId: string, reason = "") {
@@ -955,18 +1059,40 @@ export async function getTrainingBatchWorkspace(batchId: string) {
   }
   const enrollmentIds = (enrollmentResult.data ?? []).map((item) => item.id);
   const currentSessionIds = (sessionResult.data ?? []).map((session) => session.id);
-  const [{ data: attendance, error: attendanceError }, { data: remedials, error: remedialError }] = await Promise.all([
+  const [{ data: attendance, error: attendanceError }, { data: remedials, error: remedialError }, { data: requirements, error: requirementsError }, { data: sessionRequirements, error: sessionRequirementsError }, { data: requirementProgress, error: requirementProgressError }, { data: guideAssignments, error: guideAssignmentsError }] = await Promise.all([
     enrollmentIds.length && currentSessionIds.length
       ? supabase.from("training_attendance").select("member_training_id, session_id, status").in("member_training_id", enrollmentIds).in("session_id", currentSessionIds)
       : Promise.resolve({ data: [], error: null }),
     enrollmentIds.length && currentSessionIds.length
       ? supabase.from("training_remedials").select("id, member_training_id, session_id, scheduled_for, status, completed_at, notes").in("member_training_id", enrollmentIds).in("session_id", currentSessionIds).neq("status", "cancelled")
       : Promise.resolve({ data: [], error: null }),
+    supabase.from("training_program_requirements").select("id, training_id, name, display_order, is_active").eq("training_id", batch.training_id).order("display_order"),
+    currentSessionIds.length
+      ? supabase.from("training_session_requirements").select("training_session_id, program_requirement_id").in("training_session_id", currentSessionIds)
+      : Promise.resolve({ data: [], error: null }),
+    enrollmentIds.length && currentSessionIds.length
+      ? supabase.from("member_training_session_requirement_progress").select("member_training_id, training_session_id, program_requirement_id, completed").in("member_training_id", enrollmentIds).in("training_session_id", currentSessionIds)
+      : Promise.resolve({ data: [], error: null }),
+    enrollmentIds.length
+      ? supabase.from("member_training_guide_assignments").select("member_training_id, guide_member_id").in("member_training_id", enrollmentIds).is("ended_at", null)
+      : Promise.resolve({ data: [], error: null }),
   ]);
   if (attendanceError) throw attendanceError;
   if (remedialError) throw remedialError;
+  if (requirementsError) throw requirementsError;
+  if (sessionRequirementsError) throw sessionRequirementsError;
+  if (requirementProgressError) throw requirementProgressError;
+  if (guideAssignmentsError) throw guideAssignmentsError;
 
-  const mappedEnrollments = (enrollmentResult.data ?? []).map(mapEnrollment);
+  const guideIds = Array.from(new Set((guideAssignments ?? []).map((item: any) => item.guide_member_id).filter(Boolean)));
+  const { data: guideMembers, error: guideMembersError } = guideIds.length
+    ? await supabase.from("members").select("id, first_name, last_name").in("id", guideIds)
+    : { data: [], error: null };
+  if (guideMembersError) throw guideMembersError;
+  const guideNames = new Map((guideMembers ?? []).map((item: any) => [item.id, `${item.first_name} ${item.last_name}`]));
+  const enrollmentGuides = new Map((guideAssignments ?? []).map((item: any) => [item.member_training_id, guideNames.get(item.guide_member_id) ?? "Not recorded"]));
+
+  const mappedEnrollments = (enrollmentResult.data ?? []).map((item: any) => mapEnrollment({ ...item, guideName: enrollmentGuides.get(item.id) ?? null }));
   const activeEnrollments = mappedEnrollments.filter((item) => isActiveTrainingStatus(item.status));
 
   return {
@@ -989,7 +1115,67 @@ export async function getTrainingBatchWorkspace(batchId: string) {
     sessions: sessionResult.data ?? [],
     attendance: attendance ?? [],
     remedials: remedials ?? [],
+    requirements: (requirements ?? []).map((item: any) => ({ id: item.id, trainingId: item.training_id, name: item.name, displayOrder: item.display_order, isActive: item.is_active })) as TrainingProgramRequirement[],
+    sessionRequirements: (sessionRequirements ?? []).map((item: any) => ({ sessionId: item.training_session_id, requirementId: item.program_requirement_id })) as TrainingSessionRequirementAssignment[],
+    requirementProgress: requirementProgress ?? [],
   };
+}
+
+export async function getTrainingProgramRequirements(trainingId: string) {
+  const { data, error } = await supabase.from("training_program_requirements").select("id, training_id, name, display_order, is_active").eq("training_id", trainingId).order("display_order");
+  if (error) throw error;
+  return (data ?? []).map((item) => ({ id: item.id, trainingId: item.training_id, name: item.name, displayOrder: item.display_order, isActive: item.is_active })) as TrainingProgramRequirement[];
+}
+
+export async function saveTrainingProgramRequirement(trainingId: string, name: string, requirementId?: string) {
+  if (!trainingId) throw new Error("Training program is still loading. Please reload and try again.");
+  const { data, error } = await supabase.rpc("save_training_program_requirement", { p_training_id: trainingId, p_name: name, p_requirement_id: requirementId ?? null });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function setTrainingProgramRequirementActive(requirementId: string, isActive: boolean) {
+  const { error } = await supabase.rpc("set_training_program_requirement_active", { p_requirement_id: requirementId, p_is_active: isActive });
+  if (error) throw error;
+}
+
+export async function setTrainingSessionRequirements(sessionId: string, requirementIds: string[]) {
+  const { error } = await supabase.rpc("set_training_session_requirements", { p_session_id: sessionId, p_requirement_ids: requirementIds });
+  if (error) throw error;
+}
+
+export async function saveSessionRequirement(enrollmentId: string, sessionId: string, requirementId: string, completed: boolean) {
+  const { error } = await supabase.rpc("record_training_session_requirement", { p_enrollment_id: enrollmentId, p_session_id: sessionId, p_requirement_id: requirementId, p_completed: completed });
+  if (error) throw error;
+}
+
+export async function correctCompletedStudentSessionRecord(
+  enrollmentId: string,
+  sessionId: string,
+  attendanceStatus: string | null,
+  requirements: Array<{ requirementId: string; completed: boolean }>,
+  reason: string,
+) {
+  const { error } = await supabase.rpc("correct_completed_student_session_record", {
+    p_enrollment_id: enrollmentId,
+    p_session_id: sessionId,
+    p_attendance_status: attendanceStatus,
+    p_requirements: requirements.map((item) => ({ requirement_id: item.requirementId, completed: item.completed })),
+    p_reason: reason,
+  });
+  if (error) throw error;
+}
+
+export async function changeTrainingGuide(enrollmentId: string, guideMemberId: string, reason = "") {
+  const { data, error } = await supabase.rpc("change_training_guide", { p_member_training_id: enrollmentId, p_guide_member_id: guideMemberId, p_reason: reason || null });
+  if (error) throw error;
+  return data as string;
+}
+
+export async function getGuideCandidates() {
+  const { data, error } = await supabase.from("members").select("id, first_name, last_name, email, membership_status").neq("membership_status", "Inactive").order("first_name");
+  if (error) throw error;
+  return data ?? [];
 }
 
 export async function createTrainingSession(
