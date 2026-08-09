@@ -334,6 +334,20 @@ This preserves audit history.
 
 ---
 
+# Equipment and Assets
+
+Equipment records represent church-owned items and may be tracked as either a
+single identifiable asset or a quantity of interchangeable items. Individual
+assets always have a quantity of one. A custodian is optional and represents
+current responsibility only; it is not a borrowing or checkout workflow.
+
+Normal removal is archival, not deletion. Archived items and their maintenance
+history remain available for historical reference. Maintenance records capture
+lightweight inspection, repair, maintenance, and replacement-part activity;
+they do not create procurement, vendor, or Finance transactions.
+
+---
+
 # Audit Philosophy
 
 Where practical, historical information should be preserved.

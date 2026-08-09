@@ -29,6 +29,9 @@ import TrainingProgram from "./pages/admin/TrainingProgram";
 import MemberTrainingProfile from "./pages/admin/MemberTrainingProfile";
 import PendingTraining from "./pages/admin/PendingTraining";
 import TrainingBatch from "./pages/admin/TrainingBatch";
+import Equipment from "./pages/admin/Equipment";
+import EquipmentForm from "./pages/admin/EquipmentForm";
+import EquipmentDetail from "./pages/admin/EquipmentDetail";
 import {
   PermissionRoute,
   ProtectedRoute,
@@ -100,6 +103,14 @@ function App() {
         </Route>
         <Route element={<PermissionRoute permission="finance.view" />}>
         <Route path="/admin/giving" element={<Giving />} />
+        </Route>
+        <Route element={<PermissionRoute permission="equipment.view" />}>
+          <Route path="/admin/equipment" element={<Equipment />} />
+          <Route path="/admin/equipment/:id" element={<EquipmentDetail />} />
+        </Route>
+        <Route element={<PermissionRoute permission="equipment.manage" />}>
+          <Route path="/admin/equipment/new" element={<EquipmentForm />} />
+          <Route path="/admin/equipment/:id/edit" element={<EquipmentForm />} />
         </Route>
         <Route element={<PermissionRoute permission="admin.settings" />}>
         <Route path="/admin/settings" element={<Settings />} />

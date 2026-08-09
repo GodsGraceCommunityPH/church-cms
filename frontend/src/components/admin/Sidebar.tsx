@@ -5,6 +5,7 @@ import {
   Users,
   Music,
   HandCoins,
+  Package,
   Settings,
   LogOut,
   ArrowLeft,
@@ -24,7 +25,7 @@ type SidebarProps = {
 };
 
 function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
-  const { signOut } = useAuth();
+  const { signOut, hasPermission } = useAuth();
   const [signingOut, setSigningOut] = useState(false);
   const linkClass =
     "flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-gray-100";
@@ -176,6 +177,19 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
               <HandCoins size={18} />
               {!collapsed && "Finance"}
             </NavLink>
+
+            {hasPermission("equipment.view") && <NavLink
+              className={({ isActive }) =>
+                `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`
+              }
+              to="/admin/equipment"
+              onClick={onClose}
+              style={linkStyle}
+              title={collapsed ? "Equipment" : undefined}
+            >
+              <Package size={18} />
+              {!collapsed && "Equipment"}
+            </NavLink>}
 
             <NavLink
               className={linkClass}
