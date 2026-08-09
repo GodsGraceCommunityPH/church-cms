@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
-import { ChevronLeft, ChevronRight, GripVertical, Pencil } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, GripVertical, Pencil } from "lucide-react";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Select from "../../components/ui/Select";
@@ -401,6 +401,43 @@ export default function TrainingBatch() {
         </div>
       )}
       {activeCycle && activeStudents.length > 0 && hasPermission("training.complete") && <p style={{ margin: 0, color: "#64748b", textAlign: "right" }}>The class can close after all active students are completed, withdrawn, or cancelled.</p>}
+
+      {activeCycle && activeStudents.length > 0 && hasPermission("training.attendance") && (
+        <details className="training-mobile-roster-reorder">
+          <summary>Reorder roster</summary>
+          <p>Use these controls on touch devices. Students stay within their gender section.</p>
+          <div>
+            {genderGroups.map((group, groupIndex) => (
+              <section key={group.key}>
+                <header>
+                  <strong>{group.label}</strong>
+                  <span>{group.students.length}</span>
+                  {group.key !== "not_recorded" && (
+                    <span className="training-mobile-reorder-buttons">
+                      <button type="button" disabled={savingRosterOrder || groupIndex === 0} aria-label={`Move ${group.label} section up`} onClick={() => { const target = genderGroups[groupIndex - 1]; if (target?.key !== "not_recorded") reorderGenderSection(group.key, target.key); }}><ChevronUp size={17} aria-hidden="true" /></button>
+                      <button type="button" disabled={savingRosterOrder || groupIndex === genderGroups.length - 1 || genderGroups[groupIndex + 1]?.key === "not_recorded"} aria-label={`Move ${group.label} section down`} onClick={() => { const target = genderGroups[groupIndex + 1]; if (target?.key !== "not_recorded") reorderGenderSection(group.key, target.key); }}><ChevronDown size={17} aria-hidden="true" /></button>
+                    </span>
+                  )}
+                </header>
+                <div>
+                  {group.students.map((student, studentIndex) => (
+                    <div key={student.id}>
+                      <span>{student.firstName} {student.lastName}</span>
+                      {group.key !== "not_recorded" && (
+                        <span className="training-mobile-reorder-buttons">
+                          <button type="button" disabled={savingRosterOrder || studentIndex === 0} aria-label={`Move ${student.firstName} ${student.lastName} up`} onClick={() => moveStudentWithinSection(student.id, -1)}><ChevronUp size={17} aria-hidden="true" /></button>
+                          <button type="button" disabled={savingRosterOrder || studentIndex === group.students.length - 1} aria-label={`Move ${student.firstName} ${student.lastName} down`} onClick={() => moveStudentWithinSection(student.id, 1)}><ChevronDown size={17} aria-hidden="true" /></button>
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+          {savingRosterOrder && <small>Saving order...</small>}
+        </details>
+      )}
 
       <div>
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" style={{ padding: "clamp(16px, 4vw, 26px)", border: "1px solid #dbe3ec", borderRadius: 18, background: "#fff", boxShadow: "0 2px 8px rgba(15,23,42,.06)", minWidth: 0 }}>

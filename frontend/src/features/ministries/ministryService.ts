@@ -32,6 +32,11 @@ function pictureUrl(path: string | null) {
     .publicUrl;
 }
 
+function throwMinistryError(operation: string, error: unknown): never {
+  console.error(`[Ministries] ${operation} failed`, error);
+  throw error;
+}
+
 function mapMember(data: any): MinistryMember {
   return {
     id: data.id,
@@ -62,7 +67,7 @@ export async function getMinistries(): Promise<Ministry[]> {
     .from("ministries")
     .select(ministrySelect)
     .order("name");
-  if (error) throw error;
+  if (error) throwMinistryError("list", error);
   return (data ?? []).map(mapMinistry);
 }
 
@@ -72,7 +77,7 @@ export async function getMinistry(id: string): Promise<Ministry> {
     .select(ministrySelect)
     .eq("id", id)
     .single();
-  if (error) throw error;
+  if (error) throwMinistryError("load", error);
   return mapMinistry(data);
 }
 
@@ -90,7 +95,7 @@ export async function saveMinistry(
     ? supabase.from("ministries").update(payload).eq("id", id)
     : supabase.from("ministries").insert(payload);
   const { data, error } = await query.select("id").single();
-  if (error) throw error;
+  if (error) throwMinistryError(id ? "update" : "create", error);
   return data.id;
 }
 
