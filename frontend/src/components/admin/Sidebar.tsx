@@ -1,8 +1,8 @@
 import {
   LayoutDashboard,
   GraduationCap,
+  User,
   Users,
-  UsersRound,
   Music,
   HandCoins,
   Settings,
@@ -138,7 +138,7 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
               style={linkStyle}
               title={collapsed ? "Members" : undefined}
             >
-              <Users size={18} />
+              <User size={18} />
               {!collapsed && "Members"}
             </NavLink>
 
@@ -149,7 +149,7 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
               style={linkStyle}
               title={collapsed ? "Cell Groups" : undefined}
             >
-              <UsersRound size={18} />
+              <Users size={18} />
               {!collapsed && "Cell Groups"}
             </NavLink>
 
