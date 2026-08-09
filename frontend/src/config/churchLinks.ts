@@ -1,7 +1,11 @@
+export const CHURCH_ADDRESS =
+  "53 Matrix Loop North Matrixville Subdivision, Camarin, Caloocan, Philippines";
+
 export const CHURCH_LINKS = {
   facebook: "https://www.facebook.com/GGCCCCaloocan",
   watch: "https://www.facebook.com/GGCCCCaloocan/videos",
-  directions: "https://www.google.com/maps/search/?api=1&query=God%27s+Grace+Community+Covenant+Church+Caloocan",
+  directions:
+    "https://www.google.com/maps/search/?api=1&query=53+Matrix+Loop+North+Matrixville+Subdivision%2C+Camarin%2C+Caloocan%2C+Philippines",
 } as const;
 
 export interface WorshipMessage {
