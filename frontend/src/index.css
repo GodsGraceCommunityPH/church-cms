@@ -256,6 +256,20 @@ body {
   overflow: hidden;
 }
 
+.training-gender-groups.training-group-dragging .training-gender-group {
+  background: #fff;
+  border: 1px solid #dbe3ec;
+  border-radius: 14px;
+  max-height: 48px;
+  overflow: hidden;
+  padding: 7px 12px 0;
+}
+
+.training-gender-groups.training-group-dragging .training-gender-group > header {
+  border-bottom: 0;
+  margin-bottom: 0;
+}
+
 .training-drag-ghost {
   box-sizing: border-box;
   max-width: calc(100vw - 20px);

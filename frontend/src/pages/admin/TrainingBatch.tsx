@@ -336,6 +336,7 @@ export default function TrainingBatch() {
       drag = null;
       completedDrag.ghost.remove();
       completedDrag.sourceElement.classList.remove("training-drag-source");
+      root.classList.remove("training-group-dragging");
       document.body.classList.remove("training-pointer-dragging");
       setDraggedStudentId(null);
       setDraggedGenderSection(null);
@@ -366,6 +367,7 @@ export default function TrainingBatch() {
       ghost.style.width = `${bounds.width}px`;
       document.body.appendChild(ghost);
       sourceElement.classList.add("training-drag-source");
+      if (type === "group") root.classList.add("training-group-dragging");
       document.body.classList.add("training-pointer-dragging");
       drag = { pointerId: event.pointerId, type, sourceId, sourceElement, ghost, offsetY: event.clientY - bounds.top, changed: false };
       if (type === "student") setDraggedStudentId(sourceId);
