@@ -4,8 +4,11 @@ import {
   BookOpenCheck,
   GraduationCap,
   Shapes,
+  UserRoundCheck,
+  UserX,
   Users,
 } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import { useDashboard } from "../../features/dashboard/useDashboard";
@@ -16,8 +19,11 @@ const genderColors = {
   unknown: "#c9cdd3",
 };
 
+type DashboardView = "all" | "members" | "cell-groups" | "training";
+
 function Dashboard() {
   const { data, loading, error, loadDashboard } = useDashboard();
+  const [dashboardView, setDashboardView] = useState<DashboardView>("all");
 
   if (loading) {
     return <div className="dashboard-state" role="status">Loading dashboard...</div>;
@@ -35,12 +41,36 @@ function Dashboard() {
   const femalePercent = data.genders[0].percentage;
   const malePercent = data.genders[1].percentage;
   const topCellGroups = data.cellGroups.slice(0, 7);
-  const summaryCards = [
+  const assignedMembers = data.totalMembers - data.membersWithoutCellGroup;
+  const allSummaryCards = [
     { label: "Total Members", value: data.totalMembers, link: "/admin/members", action: "View all members", icon: Users },
     { label: "Cell Groups", value: data.totalCellGroups, link: "/admin/cell-groups", action: "View all cell groups", icon: Shapes },
     { label: "In Training", value: data.inTraining, link: "/admin/training", action: "View current students", icon: BookOpenCheck },
     { label: "Completed Training", value: data.completedTraining, link: "/admin/training?status=completed", action: "View completed", icon: GraduationCap },
   ];
+  const memberSummaryCards = [
+    allSummaryCards[0],
+    { label: "Assigned to Cell Groups", value: assignedMembers, link: "/admin/cell-groups", action: "View Cell Groups", icon: UserRoundCheck },
+    { label: "Gender Not Set", value: data.membersWithoutGender, link: "/admin/members?gender=unknown", action: "Review members", icon: UserX },
+    { label: "No Cell Group", value: data.membersWithoutCellGroup, link: "/admin/members?cellGroup=unassigned", action: "Review unassigned", icon: Users },
+  ];
+  const cellGroupSummaryCards = [
+    allSummaryCards[1],
+    { label: "Members Assigned", value: assignedMembers, link: "/admin/cell-groups", action: "View Cell Groups", icon: UserRoundCheck },
+    { label: "Members Unassigned", value: data.membersWithoutCellGroup, link: "/admin/members?cellGroup=unassigned", action: "Review unassigned", icon: UserX },
+  ];
+  const trainingSummaryCards = [allSummaryCards[2], allSummaryCards[3]];
+  const summaryCards = dashboardView === "members"
+    ? memberSummaryCards
+    : dashboardView === "cell-groups"
+      ? cellGroupSummaryCards
+      : dashboardView === "training"
+        ? trainingSummaryCards
+        : allSummaryCards;
+  const showGender = dashboardView === "all" || dashboardView === "members";
+  const showCellGroups = dashboardView !== "training";
+  const showTraining = dashboardView === "all" || dashboardView === "training";
+  const showNeedsAttention = dashboardView === "all" || dashboardView === "members";
 
   return (
     <div className="dashboard-page">
@@ -51,11 +81,16 @@ function Dashboard() {
         </div>
         <label className="dashboard-filter">
           <span>Dashboard view</span>
-          <select aria-label="Dashboard view" defaultValue="all"><option value="all">All Data</option></select>
+          <select aria-label="Dashboard view" value={dashboardView} onChange={(event) => setDashboardView(event.target.value as DashboardView)}>
+            <option value="all">All Data</option>
+            <option value="members">Members</option>
+            <option value="cell-groups">Cell Groups</option>
+            <option value="training">Training</option>
+          </select>
         </label>
       </header>
 
-      <section className="dashboard-summary-grid" aria-label="Summary">
+      <section className={`dashboard-summary-grid dashboard-summary-grid-${summaryCards.length}`} aria-label="Summary">
         {summaryCards.map(({ label, value, link, action, icon: Icon }) => (
           <Link className="dashboard-summary-card" to={link} key={label} aria-label={`${label}: ${value}. ${action}`}>
             <span className="dashboard-summary-icon"><Icon size={21} aria-hidden="true" /></span>
@@ -65,8 +100,8 @@ function Dashboard() {
         ))}
       </section>
 
-      <div className="dashboard-middle-grid">
-        <section className="dashboard-card dashboard-gender-card">
+      {(showGender || showCellGroups) && <div className={`dashboard-middle-grid ${showGender && showCellGroups ? "" : "dashboard-grid-single"}`}>
+        {showGender && <section className="dashboard-card dashboard-gender-card">
           <div className="dashboard-card-heading"><div><h2>Members by Gender</h2><p>All member records, including unset values.</p></div></div>
           <div className="dashboard-gender-content">
             <div className="dashboard-donut" style={{ background: `conic-gradient(${genderColors.female} 0 ${femalePercent}%, ${genderColors.male} ${femalePercent}% ${femalePercent + malePercent}%, ${genderColors.unknown} ${femalePercent + malePercent}% 100%)` }} aria-label={`${data.totalMembers} total members`}>
@@ -81,9 +116,9 @@ function Dashboard() {
               ))}
             </div>
           </div>
-        </section>
+        </section>}
 
-        <section className="dashboard-card dashboard-cell-card">
+        {showCellGroups && <section className="dashboard-card dashboard-cell-card">
           <div className="dashboard-card-heading"><div><h2>Members by Cell Group</h2><p>Distribution across current Cell Groups.</p></div>{data.cellGroups.length > topCellGroups.length && <Link to="/admin/cell-groups">View All</Link>}</div>
           <div className="dashboard-bars">
             {topCellGroups.map((group) => (
@@ -94,11 +129,11 @@ function Dashboard() {
             ))}
             {topCellGroups.length === 0 && <p className="dashboard-empty">No Cell Groups recorded.</p>}
           </div>
-        </section>
-      </div>
+        </section>}
+      </div>}
 
-      <div className="dashboard-bottom-grid">
-        <section className="dashboard-card dashboard-training-card">
+      {(showTraining || showNeedsAttention) && <div className={`dashboard-bottom-grid ${showTraining && showNeedsAttention ? "" : "dashboard-grid-single"}`}>
+        {showTraining && <section className="dashboard-card dashboard-training-card">
           <div className="dashboard-card-heading"><div><h2>Training Overview</h2><p>Current and completed enrollments by approved program.</p></div><Link to="/admin/training">View Training</Link></div>
           <div className="dashboard-training-table">
             <div className="dashboard-training-head"><span>Program</span><span>In Training</span><span>Completed</span><span>Total</span></div>
@@ -108,16 +143,16 @@ function Dashboard() {
               </Link>
             ))}
           </div>
-        </section>
+        </section>}
 
-        <section className="dashboard-card dashboard-attention-card">
+        {showNeedsAttention && <section className="dashboard-card dashboard-attention-card">
           <div className="dashboard-card-heading"><div><h2>Needs Attention</h2><p>Useful member data to complete.</p></div><AlertCircle size={20} aria-hidden="true" /></div>
           <div className="dashboard-attention-list">
             <Link to="/admin/members?gender=unknown"><span>Members without gender</span><strong>{data.membersWithoutGender}</strong></Link>
             <Link to="/admin/members?cellGroup=unassigned"><span>Members without Cell Group</span><strong>{data.membersWithoutCellGroup}</strong></Link>
           </div>
-        </section>
-      </div>
+        </section>}
+      </div>}
     </div>
   );
 }
