@@ -964,12 +964,12 @@ export async function rescheduleTrainingSession(sessionId: string, sessionDate: 
 export async function updateTrainingSessionDetails(
   sessionId: string,
   title: string,
-  sessionDate: string,
+  sessionDate: string | null,
 ) {
   const { error } = await supabase.rpc("update_training_session_details", {
     p_session_id: sessionId,
     p_title: title.trim(),
-    p_session_date: sessionDate,
+    p_session_date: sessionDate || null,
   });
   if (error) throw error;
 }

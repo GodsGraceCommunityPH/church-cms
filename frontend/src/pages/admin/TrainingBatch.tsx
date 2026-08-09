@@ -636,10 +636,10 @@ export default function TrainingBatch() {
         {selectedSession && <form onSubmit={(event) => {
           event.preventDefault();
           const normalizedTitle = sessionTitle.trim();
-          if (!normalizedTitle || !sessionDate) return;
+          if (!normalizedTitle || (selectedSession.session_date && !sessionDate)) return;
           setSavingSession(true);
           setError("");
-          void updateTrainingSessionDetails(selectedSession.id, normalizedTitle, sessionDate)
+          void updateTrainingSessionDetails(selectedSession.id, normalizedTitle, sessionDate || null)
             .then(async () => {
               setSelectedSession(null);
               await load();
@@ -650,9 +650,9 @@ export default function TrainingBatch() {
         }} style={{ display: "grid", gap: 16 }}>
           <div style={{ display: "grid", gap: 5, padding: 12, borderRadius: 9, background: "#f8fafc" }}><span style={{ color: "#64748b", fontSize: 13 }}>Week</span><strong>Week {selectedSession.display_order}</strong></div>
           <label style={{ display: "grid", gap: 7 }}>Session Name *<Input autoFocus required maxLength={120} value={sessionTitle} disabled={savingSession} onChange={(event) => setSessionTitle(event.target.value)} placeholder="e.g. Orientation" /></label>
-          <label style={{ display: "grid", gap: 7 }}>Session Date *<Input required type="date" value={sessionDate} disabled={savingSession} onChange={(event) => setSessionDate(event.target.value)} /></label>
+          <label style={{ display: "grid", gap: 7 }}>Session Date{selectedSession.session_date ? " *" : ""}<Input required={Boolean(selectedSession.session_date)} type="date" value={sessionDate} disabled={savingSession} onChange={(event) => setSessionDate(event.target.value)} />{!selectedSession.session_date && <small style={{ color: "#64748b" }}>Optional for this legacy session. Saving the name will not invent a date.</small>}</label>
           <p style={{ margin: 0, color: "#64748b", fontSize: 14 }}>The week number, session order, attendance, requirements, and progress will not change.</p>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}><Button type="button" variant="secondary" disabled={savingSession} onClick={() => setSelectedSession(null)}>Cancel</Button><Button type="submit" disabled={savingSession || !sessionTitle.trim() || !sessionDate}>{savingSession ? "Saving Changes..." : "Save Changes"}</Button></div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}><Button type="button" variant="secondary" disabled={savingSession} onClick={() => setSelectedSession(null)}>Cancel</Button><Button type="submit" disabled={savingSession || !sessionTitle.trim() || (Boolean(selectedSession.session_date) && !sessionDate)}>{savingSession ? "Saving Changes..." : "Save Changes"}</Button></div>
         </form>}
       </Modal>
       <Modal open={Boolean(selectedAbsence)} title={selectedAbsence?.remedialId ? "Update Remedial Schedule" : "Schedule Remedial Attendance"} onClose={() => setSelectedAbsence(null)}>
