@@ -8,7 +8,8 @@ export async function getCellGroups(): Promise<CellGroup[]> {
     .select(`
       *,
       members!members_cell_group_id_fkey (
-        id
+        id,
+        gender
       )
     `)
     .order("name");

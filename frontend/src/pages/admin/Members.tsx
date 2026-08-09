@@ -1,17 +1,22 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import PrimaryButton from "../../components/PrimaryButton";
 import Button from "../../components/ui/Button";
 import MemberSearch from "../../features/members/MemberSearch";
 import MemberTable from "../../features/members/MemberTable";
 import { useMembers } from "../../features/members/useMembers";
+import Select from "../../components/ui/Select";
+import { getCellGroups } from "../../features/cellGroups/cellGroupService";
+import type { CellGroup } from "../../features/cellGroups/cellGroup";
 
 function Members() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { members, loading, error, loadMembers } = useMembers();
   const [search, setSearch] = useState("");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [cellGroups, setCellGroups] = useState<CellGroup[]>([]);
   const [successMessage, setSuccessMessage] = useState(
     () => location.state?.successMessage ?? "",
   );
@@ -29,12 +34,45 @@ function Members() {
         member.nickname.toLowerCase().includes(keyword);
       const normalizedGender = member.gender.trim().toLowerCase();
       const matchesGender = !genderFilter ||
-        (genderFilter === "unknown" ? !normalizedGender : normalizedGender === genderFilter);
+        (genderFilter === "unknown" ? !["male", "female"].includes(normalizedGender) : normalizedGender === genderFilter);
       const matchesCellGroup = !cellGroupFilter ||
         (cellGroupFilter === "unassigned" ? !member.cellGroupId : member.cellGroupId === cellGroupFilter);
       return matchesSearch && matchesGender && matchesCellGroup;
+    }).sort((left, right) => {
+      const leftName = `${left.firstName} ${left.lastName}`.trim();
+      const rightName = `${right.firstName} ${right.lastName}`.trim();
+      return leftName.localeCompare(rightName, undefined, { sensitivity: "base" }) * (sortOrder === "asc" ? 1 : -1);
     });
-  }, [members, search, searchParams]);
+  }, [members, search, searchParams, sortOrder]);
+
+  useEffect(() => {
+    let active = true;
+    void getCellGroups().then((groups) => {
+      if (active) setCellGroups(groups);
+    }).catch(() => {
+      if (active) setCellGroups([]);
+    });
+    return () => { active = false; };
+  }, []);
+
+  const genderFilter = searchParams.get("gender") ?? "all";
+  const cellGroupFilter = searchParams.get("cellGroup") ?? "all";
+  const hasActiveFilters = sortOrder !== "asc" || genderFilter !== "all" || cellGroupFilter !== "all";
+
+  function updateFilter(name: "gender" | "cellGroup", value: string) {
+    const next = new URLSearchParams(searchParams);
+    if (value === "all") next.delete(name);
+    else next.set(name, value);
+    setSearchParams(next, { replace: true });
+  }
+
+  function clearFilters() {
+    setSortOrder("asc");
+    const next = new URLSearchParams(searchParams);
+    next.delete("gender");
+    next.delete("cellGroup");
+    setSearchParams(next, { replace: true });
+  }
 
   return (
     <div className="space-y-8">
@@ -103,12 +141,12 @@ function Members() {
         )}
         <div className="mb-8" style={{ marginBottom: "32px" }}>
           <MemberSearch value={search} onChange={setSearch} />
-          {(searchParams.has("gender") || searchParams.has("cellGroup")) && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "#f1f5f9", color: "#475569" }}>
-              <span>Dashboard filter applied</span>
-              <button type="button" onClick={() => navigate("/admin/members")} style={{ color: "#4d5f2a", fontWeight: 700 }}>Clear filter</button>
-            </div>
-          )}
+          <div className="list-filter-controls">
+            <label><span>Sort</span><Select aria-label="Sort members" value={sortOrder} onChange={(event) => setSortOrder(event.target.value as "asc" | "desc")}><option value="asc">A–Z</option><option value="desc">Z–A</option></Select></label>
+            <label><span>Gender</span><Select aria-label="Filter members by gender" value={genderFilter} onChange={(event) => updateFilter("gender", event.target.value)}><option value="all">All</option><option value="male">Male</option><option value="female">Female</option><option value="unknown">Unknown / Not Set</option></Select></label>
+            <label><span>Cell Group</span><Select aria-label="Filter members by Cell Group" value={cellGroupFilter} onChange={(event) => updateFilter("cellGroup", event.target.value)}><option value="all">All Cell Groups</option>{cellGroups.filter((group) => group.status?.trim().toLowerCase() !== "inactive").map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}<option value="unassigned">No Cell Group / Unassigned</option></Select></label>
+            {hasActiveFilters && <button type="button" className="list-clear-filters" onClick={clearFilters}>Clear Filters</button>}
+          </div>
         </div>
 
         {loading ? (

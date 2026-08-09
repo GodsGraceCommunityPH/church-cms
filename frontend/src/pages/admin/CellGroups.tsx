@@ -5,6 +5,7 @@ import Modal from "../../components/Modal";
 import PrimaryButton from "../../components/PrimaryButton";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
+import Select from "../../components/ui/Select";
 import type { CellGroup } from "../../features/cellGroups/cellGroup";
 import {
   deleteCellGroup,
@@ -15,6 +16,8 @@ export default function CellGroups() {
   const navigate = useNavigate();
   const [cellGroups, setCellGroups] = useState<CellGroup[]>([]);
   const [search, setSearch] = useState("");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc" | "count-desc" | "count-asc">("asc");
+  const [genderFilter, setGenderFilter] = useState<"all" | "male" | "female" | "unknown">("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [groupToDelete, setGroupToDelete] = useState<CellGroup | null>(null);
@@ -24,11 +27,21 @@ export default function CellGroups() {
 
   const filteredCellGroups = useMemo(() => {
     const keyword = search.trim().toLowerCase();
+    const displayedCount = (group: CellGroup) => genderFilter === "all"
+      ? group.memberCount
+      : group.memberGenderCounts[genderFilter];
 
-    return cellGroups.filter(
-      (group) => !keyword || group.name.toLowerCase().includes(keyword),
-    );
-  }, [cellGroups, search]);
+    return cellGroups
+      .filter((group) => (!keyword || group.name.toLowerCase().includes(keyword)) && (genderFilter === "all" || displayedCount(group) > 0))
+      .map((group) => ({ group, displayedCount: displayedCount(group) }))
+      .sort((left, right) => {
+        if (sortOrder === "count-desc") return right.displayedCount - left.displayedCount || left.group.name.localeCompare(right.group.name);
+        if (sortOrder === "count-asc") return left.displayedCount - right.displayedCount || left.group.name.localeCompare(right.group.name);
+        return left.group.name.localeCompare(right.group.name, undefined, { sensitivity: "base" }) * (sortOrder === "asc" ? 1 : -1);
+      });
+  }, [cellGroups, genderFilter, search, sortOrder]);
+
+  const hasActiveFilters = sortOrder !== "asc" || genderFilter !== "all";
 
   useEffect(() => {
     void loadCellGroups();
@@ -134,6 +147,11 @@ export default function CellGroups() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
+          <div className="list-filter-controls list-filter-controls-cell-groups">
+            <label><span>Sort</span><Select aria-label="Sort Cell Groups" value={sortOrder} onChange={(event) => setSortOrder(event.target.value as typeof sortOrder)}><option value="asc">A–Z</option><option value="desc">Z–A</option><option value="count-desc">Member Count: High → Low</option><option value="count-asc">Member Count: Low → High</option></Select></label>
+            <label><span>Gender</span><Select aria-label="Filter Cell Groups by gender" value={genderFilter} onChange={(event) => setGenderFilter(event.target.value as typeof genderFilter)}><option value="all">All</option><option value="male">Male</option><option value="female">Female</option><option value="unknown">Unknown / Not Set</option></Select></label>
+            {hasActiveFilters && <button type="button" className="list-clear-filters" onClick={() => { setSortOrder("asc"); setGenderFilter("all"); }}>Clear Filters</button>}
+          </div>
         </div>
 
         {loading ? (
@@ -183,7 +201,7 @@ export default function CellGroups() {
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredCellGroups.map((group) => (
+            {filteredCellGroups.map(({ group, displayedCount }) => (
               <div
                 key={group.id}
                 role="button"
@@ -224,7 +242,7 @@ export default function CellGroups() {
                     }}
                   >
                     <Users size={14} aria-hidden="true" />
-                    {group.memberCount} {group.memberCount === 1 ? "member" : "members"}
+                    {displayedCount} {displayedCount === 1 ? "member" : "members"}
                   </p>
                 </div>
 

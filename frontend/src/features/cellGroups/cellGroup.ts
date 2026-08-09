@@ -7,4 +7,9 @@ export interface CellGroup {
   createdAt: string;
 
   memberCount: number;
+  memberGenderCounts: {
+    male: number;
+    female: number;
+    unknown: number;
+  };
 }
