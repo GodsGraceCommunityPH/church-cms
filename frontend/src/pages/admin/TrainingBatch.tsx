@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router-dom";
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, GripVertical, Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight, GripVertical, Pencil } from "lucide-react";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Select from "../../components/ui/Select";
@@ -91,6 +91,9 @@ export default function TrainingBatch() {
   const [draggedStudentId, setDraggedStudentId] = useState<string | null>(null);
   const [draggedGenderSection, setDraggedGenderSection] = useState<string | null>(null);
   const [savingRosterOrder, setSavingRosterOrder] = useState(false);
+  const rosterOrderRef = useRef<string[]>([]);
+  const genderSectionOrderRef = useRef<string[]>(["female", "male"]);
+  const persistRosterOrderRef = useRef<(nextRosterOrder: string[], nextGenderOrder: string[]) => Promise<void>>(async () => undefined);
   const [selectedAbsence, setSelectedAbsence] = useState<{ enrollmentId: string; sessionId: string; studentName: string; sessionTitle: string; remedialId?: string } | null>(null);
   const [remedialDate, setRemedialDate] = useState(new Date().toISOString().slice(0, 10));
   const [remedialNotes, setRemedialNotes] = useState("");
@@ -232,9 +235,13 @@ export default function TrainingBatch() {
 
   useEffect(() => {
     if (!workspace) return;
-    setRosterOrder(workspace.enrollments.map((student) => student.id));
+    const nextRosterOrder = workspace.enrollments.map((student) => student.id);
+    setRosterOrder(nextRosterOrder);
+    rosterOrderRef.current = nextRosterOrder;
     const savedSections = workspace.batch.genderSectionOrder.filter((section) => ["female", "male"].includes(section));
-    setGenderSectionOrder(savedSections.length === 2 ? savedSections : ["female", "male"]);
+    const nextGenderOrder = savedSections.length === 2 ? savedSections : ["female", "male"];
+    setGenderSectionOrder(nextGenderOrder);
+    genderSectionOrderRef.current = nextGenderOrder;
   }, [workspace]);
 
   const persistRosterOrder = async (nextRosterOrder: string[], nextGenderOrder: string[]) => {
@@ -253,6 +260,7 @@ export default function TrainingBatch() {
       setSavingRosterOrder(false);
     }
   };
+  persistRosterOrderRef.current = persistRosterOrder;
 
   const reorderStudent = (sourceId: string, targetId: string) => {
     if (sourceId === targetId) return;
@@ -265,6 +273,7 @@ export default function TrainingBatch() {
     if (sourceIndex < 0 || targetIndex < 0) return;
     nextOrder.splice(sourceIndex, 1);
     nextOrder.splice(targetIndex, 0, sourceId);
+    rosterOrderRef.current = nextOrder;
     setRosterOrder(nextOrder);
     void persistRosterOrder(nextOrder, genderSectionOrder);
   };
@@ -284,9 +293,125 @@ export default function TrainingBatch() {
     const targetIndex = nextOrder.indexOf(target);
     nextOrder.splice(sourceIndex, 1);
     nextOrder.splice(targetIndex, 0, source);
+    genderSectionOrderRef.current = nextOrder;
     setGenderSectionOrder(nextOrder);
     void persistRosterOrder(rosterOrder, nextOrder);
   };
+
+  useEffect(() => {
+    const root = document.querySelector(".training-gender-groups");
+    if (!root || !batchId) return;
+
+    let drag: {
+      pointerId: number;
+      type: "student" | "group";
+      sourceId: string;
+      sourceElement: HTMLElement;
+      ghost: HTMLElement;
+      offsetY: number;
+      changed: boolean;
+    } | null = null;
+
+    const studentIdForRow = (row: Element | null) => {
+      const href = row?.querySelector<HTMLAnchorElement>('a[href*="/members/"]')?.getAttribute("href") ?? "";
+      return href.match(/\/members\/([^/?#]+)/)?.[1] ?? "";
+    };
+    const groupKeyForSection = (section: Element | null) => {
+      const label = section?.querySelector(":scope > header strong")?.textContent?.trim().toLowerCase() ?? "";
+      return label === "female" || label === "male" ? label : "";
+    };
+    const moveInOrder = (order: string[], source: string, target: string) => {
+      if (!source || !target || source === target) return order;
+      const next = [...order];
+      const sourceIndex = next.indexOf(source);
+      const targetIndex = next.indexOf(target);
+      if (sourceIndex < 0 || targetIndex < 0) return order;
+      next.splice(sourceIndex, 1);
+      next.splice(targetIndex, 0, source);
+      return next;
+    };
+    const finishDrag = () => {
+      if (!drag) return;
+      const completedDrag = drag;
+      drag = null;
+      completedDrag.ghost.remove();
+      completedDrag.sourceElement.classList.remove("training-drag-source");
+      document.body.classList.remove("training-pointer-dragging");
+      setDraggedStudentId(null);
+      setDraggedGenderSection(null);
+      if (completedDrag.changed) {
+        void persistRosterOrderRef.current(rosterOrderRef.current, genderSectionOrderRef.current);
+      }
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.button !== 0 || savingRosterOrder) return;
+      const handle = (event.target as Element).closest<HTMLElement>(".training-drag-handle");
+      if (!handle || !root.contains(handle)) return;
+      const row = handle.closest<HTMLElement>(".training-attendance-row");
+      const section = handle.closest<HTMLElement>(".training-gender-group");
+      const type = row ? "student" : "group";
+      const sourceElement = row ?? section;
+      const sourceId = row ? studentIdForRow(row) : groupKeyForSection(section);
+      if (!sourceElement || !sourceId) return;
+
+      event.preventDefault();
+      const bounds = sourceElement.getBoundingClientRect();
+      const ghost = sourceElement.cloneNode(true) as HTMLElement;
+      ghost.classList.add("training-drag-ghost", `training-drag-ghost-${type}`);
+      ghost.style.left = `${bounds.left}px`;
+      ghost.style.top = `${bounds.top}px`;
+      ghost.style.width = `${bounds.width}px`;
+      document.body.appendChild(ghost);
+      sourceElement.classList.add("training-drag-source");
+      document.body.classList.add("training-pointer-dragging");
+      drag = { pointerId: event.pointerId, type, sourceId, sourceElement, ghost, offsetY: event.clientY - bounds.top, changed: false };
+      if (type === "student") setDraggedStudentId(sourceId);
+      else setDraggedGenderSection(sourceId);
+    };
+    const onPointerMove = (event: PointerEvent) => {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      event.preventDefault();
+      drag.ghost.style.top = `${event.clientY - drag.offsetY}px`;
+      if (event.clientY < 80) window.scrollBy({ top: -12, behavior: "auto" });
+      else if (event.clientY > window.innerHeight - 80) window.scrollBy({ top: 12, behavior: "auto" });
+
+      const hovered = document.elementFromPoint(event.clientX, event.clientY);
+      if (drag.type === "student") {
+        const targetRow = hovered?.closest<HTMLElement>(".training-attendance-row") ?? null;
+        const sameSection = targetRow?.closest(".training-gender-group") === drag.sourceElement.closest(".training-gender-group");
+        const targetId = sameSection ? studentIdForRow(targetRow) : "";
+        const next = moveInOrder(rosterOrderRef.current, drag.sourceId, targetId);
+        if (next !== rosterOrderRef.current) {
+          rosterOrderRef.current = next;
+          setRosterOrder(next);
+          drag.changed = true;
+        }
+      } else {
+        const targetSection = hovered?.closest<HTMLElement>(".training-gender-group") ?? null;
+        const targetKey = groupKeyForSection(targetSection);
+        const next = moveInOrder(genderSectionOrderRef.current, drag.sourceId, targetKey);
+        if (next !== genderSectionOrderRef.current) {
+          genderSectionOrderRef.current = next;
+          setGenderSectionOrder(next);
+          drag.changed = true;
+        }
+      }
+    };
+    const preventNativeDrag = (event: Event) => event.preventDefault();
+    root.addEventListener("pointerdown", onPointerDown as EventListener);
+    document.addEventListener("pointermove", onPointerMove, { passive: false });
+    document.addEventListener("pointerup", finishDrag);
+    document.addEventListener("pointercancel", finishDrag);
+    root.addEventListener("dragstart", preventNativeDrag);
+    return () => {
+      finishDrag();
+      root.removeEventListener("pointerdown", onPointerDown as EventListener);
+      document.removeEventListener("pointermove", onPointerMove);
+      document.removeEventListener("pointerup", finishDrag);
+      document.removeEventListener("pointercancel", finishDrag);
+      root.removeEventListener("dragstart", preventNativeDrag);
+    };
+  }, [batchId, focusedSessionId, savingRosterOrder, workspace]);
 
   const openStudentPicker = useCallback(async () => {
     if (!workspace) return;
@@ -401,43 +526,6 @@ export default function TrainingBatch() {
         </div>
       )}
       {activeCycle && activeStudents.length > 0 && hasPermission("training.complete") && <p style={{ margin: 0, color: "#64748b", textAlign: "right" }}>The class can close after all active students are completed, withdrawn, or cancelled.</p>}
-
-      {activeCycle && activeStudents.length > 0 && hasPermission("training.attendance") && (
-        <details className="training-mobile-roster-reorder">
-          <summary>Reorder roster</summary>
-          <p>Use these controls on touch devices. Students stay within their gender section.</p>
-          <div>
-            {genderGroups.map((group, groupIndex) => (
-              <section key={group.key}>
-                <header>
-                  <strong>{group.label}</strong>
-                  <span>{group.students.length}</span>
-                  {group.key !== "not_recorded" && (
-                    <span className="training-mobile-reorder-buttons">
-                      <button type="button" disabled={savingRosterOrder || groupIndex === 0} aria-label={`Move ${group.label} section up`} onClick={() => { const target = genderGroups[groupIndex - 1]; if (target?.key !== "not_recorded") reorderGenderSection(group.key, target.key); }}><ChevronUp size={17} aria-hidden="true" /></button>
-                      <button type="button" disabled={savingRosterOrder || groupIndex === genderGroups.length - 1 || genderGroups[groupIndex + 1]?.key === "not_recorded"} aria-label={`Move ${group.label} section down`} onClick={() => { const target = genderGroups[groupIndex + 1]; if (target?.key !== "not_recorded") reorderGenderSection(group.key, target.key); }}><ChevronDown size={17} aria-hidden="true" /></button>
-                    </span>
-                  )}
-                </header>
-                <div>
-                  {group.students.map((student, studentIndex) => (
-                    <div key={student.id}>
-                      <span>{student.firstName} {student.lastName}</span>
-                      {group.key !== "not_recorded" && (
-                        <span className="training-mobile-reorder-buttons">
-                          <button type="button" disabled={savingRosterOrder || studentIndex === 0} aria-label={`Move ${student.firstName} ${student.lastName} up`} onClick={() => moveStudentWithinSection(student.id, -1)}><ChevronUp size={17} aria-hidden="true" /></button>
-                          <button type="button" disabled={savingRosterOrder || studentIndex === group.students.length - 1} aria-label={`Move ${student.firstName} ${student.lastName} down`} onClick={() => moveStudentWithinSection(student.id, 1)}><ChevronDown size={17} aria-hidden="true" /></button>
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
-          {savingRosterOrder && <small>Saving order...</small>}
-        </details>
-      )}
 
       <div>
         <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" style={{ padding: "clamp(16px, 4vw, 26px)", border: "1px solid #dbe3ec", borderRadius: 18, background: "#fff", boxShadow: "0 2px 8px rgba(15,23,42,.06)", minWidth: 0 }}>
