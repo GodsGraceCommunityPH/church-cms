@@ -21,6 +21,22 @@ function formatDate(value: string | null) {
   }).format(new Date(value));
 }
 
+function getPreviousClassIdentity(programName: string, batchName: string) {
+  const migratedBookMatch = batchName.trim().match(
+    /^(SOL\s+\d+)\s+Book\s+(\d+)\s*[-\u2013\u2014]\s*Book\s+(\d+)$/i,
+  );
+
+  if (!migratedBookMatch) {
+    return { title: batchName || programName, levelBook: null };
+  }
+
+  const [, trainingName, levelBook, legacyBook] = migratedBookMatch;
+  return {
+    title: `${trainingName.toUpperCase()} \u2014 Book ${legacyBook}`,
+    levelBook: `Book ${levelBook}`,
+  };
+}
+
 function nextSunday() {
   const value = new Date();
   const days = (7 - value.getDay()) % 7;
@@ -132,12 +148,27 @@ export default function TrainingProgram() {
           <section>
             <h2 className="text-xl font-semibold">Previous Classes</h2>
             {previousCycles.length === 0 ? <p className="mt-3 rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">No previous runs recorded.</p> : (
-              <div className="mt-3 space-y-3" style={{ display: "grid", gap: 12 }}>{previousCycles.map((cycle) => (
-                <div key={cycle.id} style={{ display: "flex", alignItems: "center", gap: 12 }}><Link to={`/admin/training/${programSlug}/cycles/${cycle.id}`} className="flex flex-wrap items-center justify-between gap-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-olive-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive-600 focus-visible:ring-offset-2" style={{ display: "flex", flex: 1, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 20, padding: 22, border: "1px solid #dbe3ec", borderRadius: 14, color: "inherit", textDecoration: "none" }}>
-                  <div><p className="font-semibold">{formatDate(cycle.startsOn)} – {formatDate(cycle.endsOn)}</p><p className="text-sm text-slate-500">{cycle.studentCount} students</p></div>
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold capitalize">{cycle.status}</span>
-                </Link></div>
-              ))}</div>
+              <div className="mt-3 space-y-3" style={{ display: "grid", gap: 12 }}>{previousCycles.map((cycle) => {
+                const identity = getPreviousClassIdentity(configuredProgram.name, cycle.name);
+                return (
+                  <div key={cycle.id} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <Link
+                      to={`/admin/training/${programSlug}/cycles/${cycle.id}`}
+                      aria-label={`Open ${identity.title}${identity.levelBook ? `, ${identity.levelBook}` : ""}`}
+                      className="flex flex-wrap items-start justify-between gap-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-olive-400 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-olive-600 focus-visible:ring-offset-2"
+                      style={{ display: "flex", flex: 1, flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 20, padding: 22, border: "1px solid #dbe3ec", borderRadius: 14, color: "inherit", textDecoration: "none" }}
+                    >
+                      <div style={{ display: "grid", gap: 5 }}>
+                        <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700 }}>{identity.title}</h3>
+                        {identity.levelBook && <p style={{ margin: 0, fontWeight: 600 }}>{identity.levelBook}</p>}
+                        <p className="text-sm text-slate-600" style={{ margin: "3px 0 0" }}>{formatDate(cycle.startsOn)} – {formatDate(cycle.endsOn)}</p>
+                        <p className="text-sm text-slate-500" style={{ margin: 0 }}>{cycle.studentCount} students</p>
+                      </div>
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold capitalize" style={{ whiteSpace: "nowrap" }}>{cycle.status}</span>
+                    </Link>
+                  </div>
+                );
+              })}</div>
             )}
           </section>
         </>
