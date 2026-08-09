@@ -1,23 +1,17 @@
 import { useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import PrimaryButton from "../../components/PrimaryButton";
 import Button from "../../components/ui/Button";
-import Modal from "../../components/Modal";
 import MemberSearch from "../../features/members/MemberSearch";
 import MemberTable from "../../features/members/MemberTable";
-import type { Member } from "../../features/members/member";
-import { deactivateMember, deleteMember } from "../../features/members/memberService";
 import { useMembers } from "../../features/members/useMembers";
 
 function Members() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { members, loading, error, loadMembers } = useMembers();
   const [search, setSearch] = useState("");
-  const [memberToDeactivate, setMemberToDeactivate] = useState<Member | null>(null);
-  const [memberToDelete, setMemberToDelete] = useState<Member | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [actionError, setActionError] = useState("");
   const [successMessage, setSuccessMessage] = useState(
     () => location.state?.successMessage ?? "",
   );
@@ -26,39 +20,21 @@ function Members() {
     const keyword = search.trim().toLowerCase();
 
     return members.filter((member) => {
+      const genderFilter = searchParams.get("gender");
+      const cellGroupFilter = searchParams.get("cellGroup");
       const matchesSearch =
         !keyword ||
         member.firstName.toLowerCase().includes(keyword) ||
         member.lastName.toLowerCase().includes(keyword) ||
         member.nickname.toLowerCase().includes(keyword);
-      return matchesSearch;
+      const normalizedGender = member.gender.trim().toLowerCase();
+      const matchesGender = !genderFilter ||
+        (genderFilter === "unknown" ? !normalizedGender : normalizedGender === genderFilter);
+      const matchesCellGroup = !cellGroupFilter ||
+        (cellGroupFilter === "unassigned" ? !member.cellGroupId : member.cellGroupId === cellGroupFilter);
+      return matchesSearch && matchesGender && matchesCellGroup;
     });
-  }, [members, search]);
-
-  async function handleDeactivate() {
-    if (!memberToDeactivate) return;
-
-    setIsSaving(true);
-    setActionError("");
-
-    try {
-      await deactivateMember(memberToDeactivate.id);
-      setMemberToDeactivate(null);
-      await loadMembers();
-      setSuccessMessage("Member archived successfully.");
-    } catch {
-      setActionError("Unable to deactivate this member. Please try again.");
-    } finally {
-      setIsSaving(false);
-    }
-  }
-  async function handleDelete() {
-    if (!memberToDelete) return;
-    setIsSaving(true); setActionError("");
-    try { await deleteMember(memberToDelete.id); setMemberToDelete(null); await loadMembers(); setSuccessMessage("Member permanently deleted."); }
-    catch (reason) { setActionError(reason && typeof reason === "object" && "message" in reason ? String(reason.message) : "Unable to delete this member. Deactivate the member instead."); }
-    finally { setIsSaving(false); }
-  }
+  }, [members, search, searchParams]);
 
   return (
     <div className="space-y-8">
@@ -127,6 +103,12 @@ function Members() {
         )}
         <div className="mb-8" style={{ marginBottom: "32px" }}>
           <MemberSearch value={search} onChange={setSearch} />
+          {(searchParams.has("gender") || searchParams.has("cellGroup")) && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 12, padding: "10px 12px", borderRadius: 8, background: "#f1f5f9", color: "#475569" }}>
+              <span>Dashboard filter applied</span>
+              <button type="button" onClick={() => navigate("/admin/members")} style={{ color: "#4d5f2a", fontWeight: 700 }}>Clear filter</button>
+            </div>
+          )}
         </div>
 
         {loading ? (
@@ -151,39 +133,10 @@ function Members() {
           <MemberTable
             members={filteredMembers}
             onOpen={(id) => navigate(`/admin/members/${id}`)}
-            onDeactivate={setMemberToDeactivate}
-            onDelete={setMemberToDelete}
           />
         )}
       </section>
 
-      <Modal
-        open={memberToDeactivate !== null}
-        title="Deactivate Member"
-        onClose={() => {
-          if (!isSaving) {
-            setMemberToDeactivate(null);
-            setActionError("");
-          }
-        }}
-      >
-        <p className="mb-3">
-          Deactivate <strong>{memberToDeactivate?.firstName} {memberToDeactivate?.lastName}</strong>?
-        </p>
-        <p className="mb-6 text-sm text-slate-500">
-          Their record and related history will be kept for reporting.
-        </p>
-        {actionError && <p className="mb-4 text-sm text-red-600">{actionError}</p>}
-        <div className="flex justify-end gap-3">
-          <Button type="button" variant="secondary" disabled={isSaving} onClick={() => setMemberToDeactivate(null)}>
-            Cancel
-          </Button>
-          <Button type="button" variant="danger" disabled={isSaving} onClick={() => void handleDeactivate()}>
-            {isSaving ? "Deactivating..." : "Deactivate"}
-          </Button>
-        </div>
-      </Modal>
-      <Modal open={memberToDelete !== null} title="Permanently Delete Member" onClose={() => { if (!isSaving) { setMemberToDelete(null); setActionError(""); } }}><p>Delete <strong>{memberToDelete?.firstName} {memberToDelete?.lastName}</strong> permanently?</p><p style={{ color: "#64748b" }}>This cannot be undone. Members with ministry, Training, attendance, or other historical records cannot be deleted; deactivate them instead.</p>{actionError && <p style={{ color: "#b91c1c" }}>{actionError}</p>}<div style={{ display: "flex", justifyContent: "flex-end", gap: 12, flexWrap: "wrap" }}><Button variant="secondary" disabled={isSaving} onClick={() => setMemberToDelete(null)}>Cancel</Button><Button variant="danger" disabled={isSaving} onClick={() => void handleDelete()}>{isSaving ? "Deleting..." : "Delete Permanently"}</Button></div></Modal>
     </div>
   );
 }

@@ -178,6 +178,12 @@ Enrollment may depend on:
 - church leadership
 - member readiness
 
+An unfinished Current Class enrollment selection is a local administrative
+draft. Selected members and optional Guide assignments may be restored when the
+staff member returns, but no `member_trainings` record exists until they
+explicitly confirm enrollment. Drafts never affect the official class roster,
+attendance, reporting, or history.
+
 ---
 
 ## Advancement

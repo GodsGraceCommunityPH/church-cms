@@ -3,7 +3,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import type { Member } from "../../features/members/member";
-import { getMember } from "../../features/members/memberService";
+import { deactivateMember, deleteMember, getMember } from "../../features/members/memberService";
+import Button from "../../components/ui/Button";
+import Modal from "../../components/Modal";
 
 import ProfileCard from "../../components/profile/ProfileCard";
 import InfoRow from "../../components/profile/InfoRow";
@@ -27,6 +29,9 @@ export default function MemberProfile() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [trainingJourney, setTrainingJourney] = useState<MemberTrainingJourneyItem[]>([]);
+  const [memberAction, setMemberAction] = useState<"deactivate" | "delete" | null>(null);
+  const [savingAction, setSavingAction] = useState(false);
+  const [actionError, setActionError] = useState("");
 
   const loadMember = useCallback(async () => {
     if (!id) {
@@ -228,6 +233,28 @@ export default function MemberProfile() {
       <ProfileCard title="Remarks">
         <InfoRow label="Remarks" value={member.remarks} />
       </ProfileCard>
+
+      <section style={{ marginTop: 20, padding: 20, border: "1px solid #e2e8f0", borderRadius: 12, background: "#fff" }}>
+        <h2 style={{ margin: 0, fontSize: 18 }}>Member Actions</h2>
+        <p style={{ margin: "6px 0 16px", color: "#64748b", fontSize: 14 }}>Use deactivation for normal lifecycle changes. Permanent deletion is only for mistaken, test, or duplicate records without history.</p>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {member.membershipStatus !== "Inactive" && <Button variant="secondary" onClick={() => { setActionError(""); setMemberAction("deactivate"); }}>Deactivate</Button>}
+          <Button variant="danger" onClick={() => { setActionError(""); setMemberAction("delete"); }}>Delete</Button>
+        </div>
+      </section>
+
+      <Modal open={memberAction === "deactivate"} title="Deactivate Member" onClose={() => { if (!savingAction) setMemberAction(null); }}>
+        <p>Deactivate <strong>{member.firstName} {member.lastName}</strong>?</p>
+        <p style={{ color: "#64748b" }}>Their record and linked history will be preserved.</p>
+        {actionError && <p style={{ color: "#b91c1c" }}>{actionError}</p>}
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}><Button variant="secondary" disabled={savingAction} onClick={() => setMemberAction(null)}>Cancel</Button><Button variant="danger" disabled={savingAction} onClick={() => { setSavingAction(true); setActionError(""); void deactivateMember(member.id).then(async () => { setMemberAction(null); await loadMember(); }).catch(() => setActionError("Unable to deactivate this member. Please try again.")).finally(() => setSavingAction(false)); }}>{savingAction ? "Deactivating..." : "Deactivate"}</Button></div>
+      </Modal>
+      <Modal open={memberAction === "delete"} title="Permanently Delete Member" onClose={() => { if (!savingAction) setMemberAction(null); }}>
+        <p>Delete <strong>{member.firstName} {member.lastName}</strong> permanently?</p>
+        <p style={{ color: "#64748b" }}>This cannot be undone. Members with ministry, Training, attendance, or other historical records cannot be deleted; deactivate them instead.</p>
+        {actionError && <p style={{ color: "#b91c1c" }}>{actionError}</p>}
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}><Button variant="secondary" disabled={savingAction} onClick={() => setMemberAction(null)}>Cancel</Button><Button variant="danger" disabled={savingAction} onClick={() => { setSavingAction(true); setActionError(""); void deleteMember(member.id).then(() => navigate("/admin/members", { state: { successMessage: "Member permanently deleted." } })).catch((reason) => setActionError(reason && typeof reason === "object" && "message" in reason ? String(reason.message) : "Unable to delete this member. Deactivate the member instead.")).finally(() => setSavingAction(false)); }}>{savingAction ? "Deleting..." : "Delete Permanently"}</Button></div>
+      </Modal>
     </div>
   );
 }

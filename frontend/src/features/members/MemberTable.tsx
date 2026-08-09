@@ -4,15 +4,11 @@ import MemberRow from "./MemberRow";
 interface MemberTableProps {
   members: Member[];
   onOpen: (id: string) => void;
-  onDeactivate: (member: Member) => void;
-  onDelete: (member: Member) => void;
 }
 
 export default function MemberTable({
   members,
   onOpen,
-  onDeactivate,
-  onDelete,
 }: MemberTableProps) {
   return (
     <div className="w-full min-w-0 overflow-x-hidden">
@@ -22,9 +18,8 @@ export default function MemberTable({
       >
         <thead className="bg-slate-50 text-slate-600" style={{ background: "#f8fafc", color: "#475569" }}>
           <tr>
-            <th className="px-5 py-3 font-medium" style={{ padding: "12px" }}>Name</th>
-            <th className="px-5 py-3 font-medium" style={{ padding: "12px" }}>Cell Group</th>
-            <th className="px-5 py-3 text-right font-medium" style={{ width: "190px", padding: "12px", textAlign: "right" }}>Actions</th>
+            <th colSpan={2} className="px-5 py-3 font-medium" style={{ padding: "12px" }}>Member</th>
+            <th className="px-5 py-3 text-right font-medium" style={{ width: "56px", padding: "12px", textAlign: "right" }}><span className="sr-only">Edit</span></th>
           </tr>
         </thead>
         <tbody>
@@ -33,8 +28,6 @@ export default function MemberTable({
               key={member.id}
               member={member}
               onOpen={onOpen}
-              onDeactivate={onDeactivate}
-              onDelete={onDelete}
             />
           ))}
         </tbody>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
+import { Pencil } from "lucide-react";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import SearchableSelect from "../../components/ui/SearchableSelect";
@@ -55,7 +56,7 @@ export default function MemberTrainingProfile() {
     <header><Link to={returnTo}>← Back to Current Class</Link><div style={{ marginTop: 16 }}><p style={{ margin: 0, color: "#55613b", fontWeight: 700 }}>{profile.programName}</p><h1 style={{ margin: "5px 0 8px", fontSize: "clamp(26px,5vw,36px)" }}>{enrollment.firstName} {enrollment.lastName}</h1><span style={{ display: "inline-block", padding: "5px 11px", borderRadius: 999, background: "#f1f5f9", fontWeight: 700 }}>{trainingStatusLabel(enrollment.status)}</span></div></header>
     {error && <p style={{ color: "#b91c1c", margin: 0 }}>{error}</p>}
 
-    <section style={panel}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}><h2 style={{ margin: 0, fontSize: 20 }}>Enrollment Overview</h2>{activeEnrollment && hasPermission("training.enroll") && <Button variant="secondary" onClick={() => void openGuideDialog()}>Change Guide</Button>}</div><dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(150px,100%),1fr))", gap: 16, margin: "18px 0 0" }}>
+    <section style={panel}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}><h2 style={{ margin: 0, fontSize: 20 }}>Enrollment Overview</h2>{activeEnrollment && hasPermission("training.enroll") && <button type="button" className="training-icon-button" aria-label="Change Guide" title="Change Guide" onClick={() => void openGuideDialog()}><Pencil size={16} aria-hidden="true" /></button>}</div><dl style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(150px,100%),1fr))", gap: 16, margin: "18px 0 0" }}>
       <div><dt style={labelStyle}>Cell Group</dt><dd>{profile.cellGroupName ?? "Not recorded"}</dd></div><div><dt style={labelStyle}>Guide</dt><dd>{currentGuide?.guideName ?? "Guide not assigned"}</dd></div><div><dt style={labelStyle}>Status</dt><dd>{trainingStatusLabel(enrollment.status)}</dd></div>
     </dl></section>
 
