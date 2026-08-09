@@ -17,5 +17,21 @@ select id, name, public
 from storage.buckets
 where id = 'ministry-pictures';
 
-select public.has_permission('ministries.view') as can_view_ministries,
-       public.has_permission('ministries.manage') as can_manage_ministries;
+-- Supabase SQL Editor does not run as a portal user, so auth.uid() is null and
+-- calling has_permission() here would always return false. Verify the
+-- Administrator grants structurally instead; exercise has_permission() from
+-- an authenticated portal session or REST request.
+select permission.code,
+       exists (
+         select 1
+         from public.role_permissions role_permission
+         join public.roles role on role.id = role_permission.role_id
+         where role_permission.permission_id = permission.id
+           and role.code = 'administrator'
+       ) as granted_to_administrator
+from public.permissions permission
+where permission.code in ('ministries.view', 'ministries.manage')
+order by permission.code;
+
+select auth.uid() as sql_editor_auth_uid,
+       'Expected to be null in Supabase SQL Editor' as note;
