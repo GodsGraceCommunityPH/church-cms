@@ -358,6 +358,9 @@ export default function TrainingBatch() {
       const bounds = sourceElement.getBoundingClientRect();
       const ghost = sourceElement.cloneNode(true) as HTMLElement;
       ghost.classList.add("training-drag-ghost", `training-drag-ghost-${type}`);
+      if (type === "group") {
+        ghost.querySelector(":scope > div")?.remove();
+      }
       ghost.style.left = `${bounds.left}px`;
       ghost.style.top = `${bounds.top}px`;
       ghost.style.width = `${bounds.width}px`;
