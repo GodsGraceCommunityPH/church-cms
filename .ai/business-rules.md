@@ -60,6 +60,15 @@ Registration does **not** automatically make someone a church member.
 
 Church leaders determine whether a visitor becomes a member.
 
+An invite registration checks for exact normalized First Name + Last Name
+matches before creating a Member. Normalization trims outer whitespace,
+collapses repeated spaces, and compares case-insensitively; it is never fuzzy.
+One match requires the registrant to confirm the existing name before that
+same Member UUID is updated. A declined match creates a distinct person. More
+than one match is preserved in a private staff review queue and is never
+automatically connected. Public confirmation reveals only the matched name,
+and blank optional submissions never erase existing profile values.
+
 ---
 
 ## Profile Ownership

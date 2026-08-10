@@ -11,6 +11,7 @@ type PrimaryButtonProps = {
   className?: string;
   type?: "button" | "submit";
   style?: CSSProperties;
+  disabled?: boolean;
 };
 
 function PrimaryButton({
@@ -23,6 +24,7 @@ function PrimaryButton({
   className = "",
   type = "button", // <-- Add this
   style,
+  disabled = false,
 }: PrimaryButtonProps) {
   const styles = {
     primary:
@@ -40,6 +42,8 @@ function PrimaryButton({
     padding: "12px 24px",
     boxSizing: "border-box",
     whiteSpace: "nowrap",
+    opacity: disabled ? 0.6 : undefined,
+    cursor: disabled ? "not-allowed" : undefined,
     ...style,
   };
 
@@ -66,7 +70,7 @@ function PrimaryButton({
   }
 
   return (
-    <button type={type} onClick={onClick} className={buttonClass} style={buttonStyle}>
+    <button type={type} onClick={onClick} className={buttonClass} style={buttonStyle} disabled={disabled}>
       {children}
     </button>
   );

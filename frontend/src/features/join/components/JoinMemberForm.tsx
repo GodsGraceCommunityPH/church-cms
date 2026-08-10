@@ -22,9 +22,10 @@ type JoinMember = Pick<
 
 interface JoinMemberFormProps {
   onSubmit: (member: JoinMember) => Promise<void>;
+  submitting?: boolean;
 }
 
-export default function JoinMemberForm({ onSubmit }: JoinMemberFormProps) {
+export default function JoinMemberForm({ onSubmit, submitting = false }: JoinMemberFormProps) {
   const [member, setMember] = useState<JoinMember>({
     firstName: "",
     lastName: "",
@@ -165,8 +166,8 @@ export default function JoinMemberForm({ onSubmit }: JoinMemberFormProps) {
       </section>
 
       <div className="flex justify-end">
-        <PrimaryButton type="submit">
-          <p style={{ padding: "10px" }}>Join Cell Group</p>
+        <PrimaryButton type="submit" disabled={submitting}>
+          <p style={{ padding: "10px" }}>{submitting ? "Submitting..." : "Join Cell Group"}</p>
         </PrimaryButton>
       </div>
     </form>
