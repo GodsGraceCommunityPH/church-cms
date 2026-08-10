@@ -50,7 +50,9 @@ declare
   candidate text;
   suffix integer := 1;
 begin
-  if tg_op = 'UPDATE' and new.name is not distinct from old.name then
+  if tg_op = 'UPDATE'
+     and new.name is not distinct from old.name
+     and old.slug is not null then
     return new;
   end if;
 
