@@ -1177,10 +1177,18 @@ export async function correctCompletedStudentSessionRecord(
   requirements: Array<{ requirementId: string; completed: boolean }>,
   reason: string,
 ) {
+  const normalizedAttendanceStatus = attendanceStatus?.trim().toLowerCase() || null;
+  if (
+    normalizedAttendanceStatus !== null &&
+    !["present", "late", "absent", "excused"].includes(normalizedAttendanceStatus)
+  ) {
+    throw new Error("Invalid attendance correction status.");
+  }
+
   const { error } = await supabase.rpc("correct_completed_student_session_record", {
     p_enrollment_id: enrollmentId,
     p_session_id: sessionId,
-    p_attendance_status: attendanceStatus,
+    p_attendance_status: normalizedAttendanceStatus,
     p_requirements: requirements.map((item) => ({ requirement_id: item.requirementId, completed: item.completed })),
     p_reason: reason,
   });

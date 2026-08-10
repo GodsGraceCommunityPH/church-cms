@@ -32,6 +32,10 @@ import TrainingBatch from "./pages/admin/TrainingBatch";
 import Equipment from "./pages/admin/Equipment";
 import EquipmentForm from "./pages/admin/EquipmentForm";
 import EquipmentDetail from "./pages/admin/EquipmentDetail";
+import Events from "./pages/admin/Events";
+import EventForm from "./pages/admin/EventForm";
+import EventDetail from "./pages/admin/EventDetail";
+import EventRegistrationPage from "./pages/EventRegistrationPage";
 import WorshipMessages from "./pages/admin/WorshipMessages";
 import WorshipMessageForm from "./pages/admin/WorshipMessageForm";
 import {
@@ -49,6 +53,8 @@ function App() {
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/give" element={<GivePage />} />
         <Route path="/gallery/:albumSlug" element={<GalleryPage />} />
+        <Route path="/events/:slug" element={<EventRegistrationPage />} />
+        <Route path="/events/:slug/register" element={<EventRegistrationPage />} />
       </Route>
 
       {/* Staff Portal Login */}
@@ -113,6 +119,14 @@ function App() {
         <Route element={<PermissionRoute permission="equipment.manage" />}>
           <Route path="/admin/equipment/new" element={<EquipmentForm />} />
           <Route path="/admin/equipment/:id/edit" element={<EquipmentForm />} />
+        </Route>
+        <Route element={<PermissionRoute permission="events.view" />}>
+          <Route path="/admin/events" element={<Events />} />
+          <Route path="/admin/events/:id" element={<EventDetail />} />
+        </Route>
+        <Route element={<PermissionRoute permission="events.manage" />}>
+          <Route path="/admin/events/new" element={<EventForm />} />
+          <Route path="/admin/events/:id/edit" element={<EventForm />} />
         </Route>
         <Route element={<PermissionRoute permission="website_content.view" />}>
           <Route path="/admin/worship-messages" element={<WorshipMessages />} />

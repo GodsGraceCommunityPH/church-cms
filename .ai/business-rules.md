@@ -357,6 +357,21 @@ they do not create procurement, vendor, or Finance transactions.
 
 ---
 
+# Events and Registration
+
+An Event registration is participation in one church event. It never creates,
+merges, or modifies a Member record. A registration may reference an existing
+Member only when a unique email or mobile match is found; otherwise it remains
+a guest registration.
+
+Draft events are private. Only published events may accept public registrations.
+Capacity, opening, and closing rules are enforced in the database before a
+registration is created. Cancelled registrations remain historical but do not
+consume capacity. Public visitors can read only safe published-event details
+and can never browse Members, registrations, or administrative information.
+
+---
+
 # Audit Philosophy
 
 Where practical, historical information should be preserved.

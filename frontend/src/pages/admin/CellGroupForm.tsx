@@ -21,6 +21,8 @@ export default function CellGroupForm() {
 
   const isEdit = !!id;
 
+  // The loaders intentionally rerun only when the route identity changes.
+  /* oxlint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     loadMembers();
 
@@ -28,6 +30,7 @@ export default function CellGroupForm() {
       loadCellGroup();
     }
   }, [id]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   async function loadCellGroup() {
     const { data, error } = await supabase
@@ -44,6 +47,7 @@ export default function CellGroupForm() {
     setName(data.name);
     setDescription(data.description ?? "");
     setStatus(data.status);
+    setLeaderMemberId(data.leader_id ?? "");
   }
 
   async function loadMembers() {
@@ -72,6 +76,7 @@ export default function CellGroupForm() {
           name,
           description: description || null,
           status,
+          leader_id: leaderMemberId || null,
         })
         .eq("id", id));
     } else {
@@ -79,6 +84,7 @@ export default function CellGroupForm() {
         name,
         description: description || null,
         status,
+        leader_id: leaderMemberId || null,
       }));
     }
 

@@ -6,6 +6,7 @@ import {
   Music,
   HandCoins,
   Package,
+  CalendarDays,
   Video,
   Settings,
   LogOut,
@@ -53,7 +54,7 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
     >
       <div
         style={{ padding: collapsed ? "20px 12px 0" : "20px 0 0 20px" }}
-        className="flex h-full w-full flex-col p-6"
+        className="admin-sidebar-content flex h-full w-full flex-col p-6"
       >
         {/* Mobile Close Button */}
         <div
@@ -107,7 +108,7 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
           {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
         </button>
 
-        <nav className="flex-1 overflow-y-auto">
+        <nav className="admin-sidebar-nav flex-1 overflow-y-auto">
           <div className="flex flex-col gap-2">
             <NavLink
               className={linkClass}
@@ -192,6 +193,19 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
               {!collapsed && "Equipment"}
             </NavLink>}
 
+            {hasPermission("events.view") && <NavLink
+              className={({ isActive }) =>
+                `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`
+              }
+              to="/admin/events"
+              onClick={onClose}
+              style={linkStyle}
+              title={collapsed ? "Events" : undefined}
+            >
+              <CalendarDays size={18} />
+              {!collapsed && "Events"}
+            </NavLink>}
+
             {hasPermission("website_content.view") && <NavLink
               className={({ isActive }) =>
                 `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`
@@ -218,10 +232,7 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
           </div>
         </nav>
 
-        <div
-          style={{ marginBottom: "180px" }}
-          className="border-t pt-4 flex flex-col gap-2"
-        >
+        <div className="admin-sidebar-footer border-t pt-4 flex flex-col gap-2">
           <NavLink
             className={linkClass}
             to="/"

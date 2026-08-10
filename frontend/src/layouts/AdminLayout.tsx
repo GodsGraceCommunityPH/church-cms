@@ -19,7 +19,7 @@ function AdminLayout() {
   }, [sidebarCollapsed]);
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50" style={{ display: "flex", minHeight: "100vh", alignItems: "stretch" }}>
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div

@@ -1,10 +1,11 @@
-import type { InputHTMLAttributes } from "react";
+import { forwardRef, type InputHTMLAttributes } from "react";
 
 type InputProps = InputHTMLAttributes<HTMLInputElement>;
 
-export default function Input({ className = "", ...props }: InputProps) {
+const Input = forwardRef<HTMLInputElement, InputProps>(function Input({ className = "", ...props }, ref) {
   return (
     <input
+      ref={ref}
       {...props}
       className={`
         w-full
@@ -24,4 +25,6 @@ export default function Input({ className = "", ...props }: InputProps) {
       `}
     />
   );
-}
+});
+
+export default Input;

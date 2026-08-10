@@ -1,0 +1,5 @@
+# Local development output
+vite-local.log
+
+# Workspace-specific editor settings
+.vscode/
