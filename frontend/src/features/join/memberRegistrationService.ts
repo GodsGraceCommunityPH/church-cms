@@ -32,6 +32,29 @@ export async function resolveCellGroupRegistrationIdentifier(identifier: string)
   const { data, error } = await supabase.rpc("resolve_cell_group_registration_identifier", {
     p_identifier: identifier,
   });
+  if (error?.code === "PGRST202") {
+    const { data: legacyInvite, error: legacyError } = await supabase
+      .from("cell_group_invites")
+      .select("token,cell_group_id,cell_groups(name)")
+      .eq("token", identifier)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (legacyError) throw legacyError;
+    if (!legacyInvite) return null;
+
+    const relatedGroup = Array.isArray(legacyInvite.cell_groups)
+      ? legacyInvite.cell_groups[0]
+      : legacyInvite.cell_groups;
+
+    return {
+      cell_group_id: legacyInvite.cell_group_id,
+      group_name: relatedGroup?.name ?? "",
+      current_slug: identifier,
+      is_canonical: true,
+      registration_token: legacyInvite.token,
+    } satisfies ResolvedCellGroupRegistration;
+  }
   if (error) throw error;
   return (data?.[0] as ResolvedCellGroupRegistration | undefined) ?? null;
 }

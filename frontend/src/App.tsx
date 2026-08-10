@@ -53,6 +53,7 @@ function App() {
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/give" element={<GivePage />} />
         <Route path="/gallery/:albumSlug" element={<GalleryPage />} />
+        <Route path="/join/:token" element={<JoinCellGroup />} />
         <Route path="/events/:slug" element={<EventRegistrationPage />} />
         <Route path="/events/:slug/register" element={<EventRegistrationPage />} />
       </Route>
@@ -100,7 +101,6 @@ function App() {
           <Route path="/admin/cell-groups/new" element={<CellGroupForm />} />
           <Route path="/admin/cell-groups/:id/edit" element={<CellGroupForm />} />
         </Route>
-        <Route path="/join/:token" element={<JoinCellGroup />} />
         <Route element={<PermissionRoute permission="ministries.view" />}>
         <Route path="/admin/ministries" element={<Ministries />} />
         <Route path="/admin/ministries/:id" element={<MinistryProfile />} />
