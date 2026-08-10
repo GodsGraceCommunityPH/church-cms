@@ -55,6 +55,7 @@
 .worship-card h3 { font-size: 1.1rem; margin: 0 0 8px; }
 .worship-date { color: #64748b; margin: 0 0 18px; }
 .worship-link { color: #527724; font-weight: 800; }
+.worship-loading { color: #64748b; grid-column: 1 / -1; padding: 34px; text-align: center; }
 
 @media (max-width: 760px) {
   .homepage-hero { display: flex; flex-direction: column; min-height: 0; padding: 0; }

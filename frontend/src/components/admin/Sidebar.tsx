@@ -6,6 +6,7 @@ import {
   Music,
   HandCoins,
   Package,
+  Video,
   Settings,
   LogOut,
   ArrowLeft,
@@ -189,6 +190,19 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
             >
               <Package size={18} />
               {!collapsed && "Equipment"}
+            </NavLink>}
+
+            {hasPermission("website_content.view") && <NavLink
+              className={({ isActive }) =>
+                `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`
+              }
+              to="/admin/worship-messages"
+              onClick={onClose}
+              style={linkStyle}
+              title={collapsed ? "Worship Messages" : undefined}
+            >
+              <Video size={18} />
+              {!collapsed && "Worship Messages"}
             </NavLink>}
 
             <NavLink
