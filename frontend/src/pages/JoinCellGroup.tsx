@@ -74,7 +74,12 @@ export default function JoinCellGroup() {
       finishRegistration(result.status);
     } catch (error) {
       console.error("Member registration failed", error);
-      setRegistrationError("Registration could not be completed. Please try again or contact GGCCC staff.");
+      const databaseError = error as { code?: string; message?: string };
+      setRegistrationError(
+        databaseError.message
+          ? `Registration failed (${databaseError.code ?? "unknown"}): ${databaseError.message}`
+          : "Registration could not be completed. Please try again or contact GGCCC staff.",
+      );
     } finally {
       setSubmitting(false);
     }
