@@ -100,7 +100,7 @@ begin
 
   -- Serialize public submissions for the same normalized name. Names remain
   -- non-unique because distinct people are allowed to share them.
-  perform pg_advisory_xact_lock(hashtextextended(normalized_first || chr(0) || normalized_last, 0));
+  perform pg_advisory_xact_lock(hashtextextended(normalized_first || chr(31) || normalized_last, 0));
 
   select count(*)
   into match_count
