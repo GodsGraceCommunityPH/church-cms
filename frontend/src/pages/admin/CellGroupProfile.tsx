@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 
 import type { CellGroup } from "../../features/cellGroups/cellGroup";
@@ -21,9 +21,11 @@ import {
 import { generateInviteToken } from "../../features/cellGroups/cellGroupUtils";
 
 import Button from "../../components/ui/Button";
+import { useAuth } from "../../features/auth/auth";
 
 export default function CellGroupProfile() {
   const { id } = useParams();
+  const { hasPermission } = useAuth();
 
   const navigate = useNavigate();
 
@@ -213,19 +215,46 @@ export default function CellGroupProfile() {
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
+                flexWrap: "wrap",
+                gap: "12px",
               }}
             >
-              <div>
-                <div style={{ fontWeight: 600 }}>
-                  {member.first_name} {member.last_name}
-                </div>
+              <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+                {hasPermission("members.view") ? (
+                  <Link
+                    to={`/admin/members/${member.id}`}
+                    aria-label={`Open member profile for ${member.first_name} ${member.last_name}`}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      minHeight: "44px",
+                      margin: "-8px 0 -4px",
+                      color: "#172033",
+                      fontWeight: 600,
+                      overflowWrap: "anywhere",
+                      textDecoration: "underline",
+                      textDecorationColor: "transparent",
+                      textUnderlineOffset: "3px",
+                    }}
+                    onMouseEnter={(event) => { event.currentTarget.style.textDecorationColor = "#526a28"; }}
+                    onMouseLeave={(event) => { event.currentTarget.style.textDecorationColor = "transparent"; }}
+                    onFocus={(event) => { event.currentTarget.style.textDecorationColor = "#526a28"; }}
+                    onBlur={(event) => { event.currentTarget.style.textDecorationColor = "transparent"; }}
+                  >
+                    {member.first_name} {member.last_name}
+                  </Link>
+                ) : (
+                  <div style={{ fontWeight: 600, overflowWrap: "anywhere" }}>
+                    {member.first_name} {member.last_name}
+                  </div>
+                )}
 
                 <div style={{ color: "#64748b", fontSize: 14 }}>
                   {member.mobile || "No mobile number"}
                 </div>
               </div>
 
-              <div style={{ display: "flex", gap: "8px" }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                 <Button
                   type="button"
                   onClick={() => {
