@@ -110,12 +110,13 @@ export default function CellGroupProfile() {
     navigate("/admin/cell-groups");
   }
 
-  async function handleInvite(cellGroupId: string, slug: string) {
+  async function handleInvite(cellGroupId: string, slug?: string) {
     // Check if an invite already exists
     const { data: invite } = await getInvite(cellGroupId);
 
     if (invite) {
-      const link = `${window.location.origin}/join/${slug}`;
+      const identifier = slug?.trim() || invite.token;
+      const link = `${window.location.origin}/join/${identifier}`;
 
       setInviteLink(link);
       setShowInviteModal(true);
@@ -133,16 +134,12 @@ export default function CellGroupProfile() {
       return;
     }
 
-    const link = `${window.location.origin}/join/${slug}`;
+    const identifier = slug?.trim() || token;
+    const link = `${window.location.origin}/join/${identifier}`;
 
     setInviteLink(link);
     setShowInviteModal(true);
   }
-
-  console.log({
-    showTransferModal,
-    showRemoveModal,
-  });
 
   return (
     <div style={{ padding: 30, maxWidth: 900, margin: "0 auto" }}>
