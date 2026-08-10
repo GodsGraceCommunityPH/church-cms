@@ -1,11 +1,14 @@
 export const CHURCH_ADDRESS =
   "53 Matrix Loop North Matrixville Subdivision, Camarin, Caloocan, Philippines";
 
+export const CHURCH_MAP_QUERY =
+  `God's Grace Community Covenant Church, ${CHURCH_ADDRESS}`;
+
 export const CHURCH_LINKS = {
   facebook: "https://www.facebook.com/GGCCCCaloocan",
   watch: "https://www.facebook.com/GGCCCCaloocan/videos",
   directions:
-    "https://www.google.com/maps/search/?api=1&query=53+Matrix+Loop+North+Matrixville+Subdivision%2C+Camarin%2C+Caloocan%2C+Philippines",
+    `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(CHURCH_MAP_QUERY)}`,
 } as const;
 
 export interface WorshipMessage {

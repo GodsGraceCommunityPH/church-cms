@@ -1,10 +1,10 @@
 import { Mail, MapPin } from "lucide-react";
 import FacebookIcon from "../components/FacebookIcon";
 import PublicPage from "../components/PublicPage";
-import { CHURCH_ADDRESS, CHURCH_LINKS } from "../config/churchLinks";
+import { CHURCH_ADDRESS, CHURCH_LINKS, CHURCH_MAP_QUERY } from "../config/churchLinks";
 
 const email = "ggccc.g12@gmail.com";
-const mapEmbedUrl = `https://www.google.com/maps?q=${encodeURIComponent(CHURCH_ADDRESS)}&output=embed`;
+const mapEmbedUrl = `https://www.google.com/maps?q=${encodeURIComponent(CHURCH_MAP_QUERY)}&output=embed`;
 
 export default function ContactPage() {
   return (
