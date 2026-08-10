@@ -36,7 +36,9 @@ export function getMemberSaveError(error: unknown): string {
   }
 
   if (databaseError.code === "42501" || databaseError.code === "PGRST301") {
-    return "Your session does not have permission to create members. Sign out, sign back in, and try again.";
+    return databaseError.message
+      ? `Member save was rejected (${databaseError.code}): ${databaseError.message}`
+      : `Member save was rejected (${databaseError.code}). Sign out, sign back in, and try again.`;
   }
 
   if (databaseError.code === "23514" || databaseError.code === "22P02") {
