@@ -38,6 +38,12 @@ export const galleryAlbums: GalleryAlbum[] = [
     description: "Worship, fellowship, and another year of grace.",
     count: 24,
   },
+  {
+    slug: "42nd-anniversary",
+    title: "42nd Anniversary",
+    description: "Beyond the Four Walls — “Therefore go and make disciples of all nations…” — Matthew 28:19–20",
+    count: 23,
+  },
 ];
 
 export function albumImagePath(slug: string, index: number, thumbnail = false) {
