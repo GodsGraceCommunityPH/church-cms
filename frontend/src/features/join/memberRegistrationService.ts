@@ -20,6 +20,22 @@ export interface CellGroupRegistrationResult {
   display_name?: string;
 }
 
+export interface ResolvedCellGroupRegistration {
+  cell_group_id: string;
+  group_name: string;
+  current_slug: string;
+  is_canonical: boolean;
+  registration_token: string;
+}
+
+export async function resolveCellGroupRegistrationIdentifier(identifier: string) {
+  const { data, error } = await supabase.rpc("resolve_cell_group_registration_identifier", {
+    p_identifier: identifier,
+  });
+  if (error) throw error;
+  return (data?.[0] as ResolvedCellGroupRegistration | undefined) ?? null;
+}
+
 export async function submitCellGroupMemberRegistration(
   input: CellGroupRegistrationInput,
   decision: RegistrationDecision = null,

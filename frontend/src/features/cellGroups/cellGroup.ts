@@ -1,6 +1,7 @@
 export interface CellGroup {
   id: string;
   name: string;
+  slug: string;
   leaderId: string | null;
   description: string | null;
   status: string;

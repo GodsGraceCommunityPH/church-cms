@@ -110,12 +110,12 @@ export default function CellGroupProfile() {
     navigate("/admin/cell-groups");
   }
 
-  async function handleInvite(cellGroupId: string) {
+  async function handleInvite(cellGroupId: string, slug: string) {
     // Check if an invite already exists
     const { data: invite } = await getInvite(cellGroupId);
 
     if (invite) {
-      const link = `${window.location.origin}/join/${invite.token}`;
+      const link = `${window.location.origin}/join/${slug}`;
 
       setInviteLink(link);
       setShowInviteModal(true);
@@ -125,7 +125,7 @@ export default function CellGroupProfile() {
     // Create a new invite
     const token = generateInviteToken();
 
-    const { data, error } = await createInvite(cellGroupId, token);
+    const { error } = await createInvite(cellGroupId, token);
 
     if (error) {
       console.error(error);
@@ -133,7 +133,7 @@ export default function CellGroupProfile() {
       return;
     }
 
-    const link = `${window.location.origin}/join/${data.token}`;
+    const link = `${window.location.origin}/join/${slug}`;
 
     setInviteLink(link);
     setShowInviteModal(true);
@@ -172,8 +172,8 @@ export default function CellGroupProfile() {
             Delete
           </Button>
 
-          <Button type="button" onClick={() => handleInvite(group.id)}>
-            Invite
+          <Button type="button" onClick={() => handleInvite(group.id, group.slug)}>
+            Invite Members
           </Button>
 
           <InviteLinkModal
@@ -183,6 +183,10 @@ export default function CellGroupProfile() {
             onClose={() => setShowInviteModal(false)}
           />
         </div>
+
+        <p style={{ marginTop: 12, color: "#64748b", fontSize: 14 }}>
+          Share this registration link with members of this Cell Group so they can register their information.
+        </p>
 
         {members.length > 0 && (
           <p

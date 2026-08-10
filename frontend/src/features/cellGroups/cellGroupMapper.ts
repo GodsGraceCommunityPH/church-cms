@@ -13,6 +13,7 @@ export function mapCellGroup(data: any): CellGroup {
   return {
     id: data.id,
     name: data.name,
+    slug: data.slug,
     leaderId: data.leader_id,
     description: data.description,
     status: data.status,

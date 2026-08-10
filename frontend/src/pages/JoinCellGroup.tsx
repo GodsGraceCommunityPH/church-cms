@@ -5,18 +5,19 @@ import Modal from "../components/Modal";
 import Button from "../components/ui/Button";
 import JoinMemberForm from "../features/join/components/JoinMemberForm";
 import {
+  resolveCellGroupRegistrationIdentifier,
   submitCellGroupMemberRegistration,
   type CellGroupRegistrationInput,
   type RegistrationDecision,
 } from "../features/join/memberRegistrationService";
-import { supabase } from "../lib/supabase";
 
 export default function JoinCellGroup() {
-  const { token = "" } = useParams();
+  const { token: identifier = "" } = useParams();
   const navigate = useNavigate();
   const requestIdRef = useRef(crypto.randomUUID());
   const [loading, setLoading] = useState(true);
   const [groupName, setGroupName] = useState("");
+  const [registrationToken, setRegistrationToken] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [registrationError, setRegistrationError] = useState("");
   const [pendingRegistration, setPendingRegistration] = useState<CellGroupRegistrationInput | null>(null);
@@ -24,19 +25,21 @@ export default function JoinCellGroup() {
   const [success, setSuccess] = useState<{ title: string; message: string } | null>(null);
 
   const loadInvite = useCallback(async () => {
-    const { data: invite, error } = await supabase
-      .from("cell_group_invites")
-      .select("cell_groups(name)")
-      .eq("token", token)
-      .eq("is_active", true)
-      .maybeSingle();
-
-    if (!error && invite) {
-      const group = Array.isArray(invite.cell_groups) ? invite.cell_groups[0] : invite.cell_groups;
-      setGroupName(group?.name ?? "");
+    try {
+      const registration = await resolveCellGroupRegistrationIdentifier(identifier);
+      if (registration) {
+        if (!registration.is_canonical) {
+          navigate(`/join/${registration.current_slug}`, { replace: true });
+          return;
+        }
+        setGroupName(registration.group_name);
+        setRegistrationToken(registration.registration_token);
+      }
+    } catch (error) {
+      console.error("Cell Group invitation resolution failed", error);
     }
     setLoading(false);
-  }, [token]);
+  }, [identifier, navigate]);
 
   useEffect(() => {
     void loadInvite();
@@ -78,7 +81,7 @@ export default function JoinCellGroup() {
   };
 
   const handleJoin = async (member: Omit<CellGroupRegistrationInput, "requestId" | "inviteToken">) => {
-    await submitRegistration({ ...member, requestId: requestIdRef.current, inviteToken: token });
+    await submitRegistration({ ...member, requestId: requestIdRef.current, inviteToken: registrationToken });
   };
 
   const closeSuccess = () => {
