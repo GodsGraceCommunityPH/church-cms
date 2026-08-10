@@ -15,6 +15,7 @@ import SearchableSelect from "../../components/ui/SearchableSelect";
 import { type MemberValidationErrors, validateMemberDetails, yesterdayDateInputValue } from "../../utils/memberValidation";
 import {
   createMember,
+  getMemberSaveError,
   getMember,
   updateMember,
 } from "../../features/members/memberService";
@@ -117,8 +118,8 @@ function MemberForm() {
       membership_status: member.membershipStatus,
       cell_group_id: member.cellGroupId || null,
 
-      mobile: member.mobile.trim(),
-      email: member.email.trim(),
+      mobile: member.mobile.trim() || null,
+      email: member.email.trim() || null,
       address: member.address.trim(),
 
       remarks: member.remarks.trim(),
@@ -132,8 +133,9 @@ function MemberForm() {
       } else {
         await createMember(payload);
       }
-    } catch {
-      setFormError("Unable to save the member. Please try again.");
+    } catch (error) {
+      console.error("[Members] save failed", error);
+      setFormError(getMemberSaveError(error));
       setIsSaving(false);
       return;
     }

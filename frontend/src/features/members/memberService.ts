@@ -18,10 +18,36 @@ export interface MemberPayload {
   birthday: string | null;
   membership_status: string;
   cell_group_id: string | null;
-  mobile: string;
-  email: string;
+  mobile: string | null;
+  email: string | null;
   address: string;
   remarks: string;
+}
+
+export function getMemberSaveError(error: unknown): string {
+  const databaseError = error as { code?: string; message?: string };
+
+  if (databaseError.code === "23505") {
+    return "A member already uses this email or mobile number. Check the existing member list before trying again.";
+  }
+
+  if (databaseError.code === "23503") {
+    return "The selected Cell Group is no longer available. Clear the Cell Group selection and try again.";
+  }
+
+  if (databaseError.code === "42501" || databaseError.code === "PGRST301") {
+    return "Your session does not have permission to create members. Sign out, sign back in, and try again.";
+  }
+
+  if (databaseError.code === "23514" || databaseError.code === "22P02") {
+    return databaseError.message
+      ? `One of the member details is invalid: ${databaseError.message}`
+      : "One of the member details is invalid. Review the form and try again.";
+  }
+
+  return databaseError.message
+    ? `Unable to save the member: ${databaseError.message}`
+    : "Unable to save the member. Please try again.";
 }
 
 export async function getMembers(): Promise<Member[]> {
