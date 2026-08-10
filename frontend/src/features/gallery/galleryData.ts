@@ -42,7 +42,7 @@ export const galleryAlbums: GalleryAlbum[] = [
     slug: "42nd-anniversary",
     title: "42nd Anniversary",
     description: "Beyond the Four Walls — “Therefore go and make disciples of all nations…” — Matthew 28:19–20",
-    count: 23,
+    count: 47,
   },
 ];
 
