@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import { useTrainingOverview } from "../../features/training/useTrainingOverview";
 
@@ -12,15 +12,17 @@ function Stat({ label, value }: { label: string; value: number | null }) {
 }
 
 export default function Training() {
+  const [searchParams] = useSearchParams();
+  const showCompleted = searchParams.get("status") === "completed";
   const { programs, pendingCount, loading, error, loadPrograms } = useTrainingOverview();
 
   return (
     <div className="space-y-8" style={{ display: "grid", gap: 28 }}>
       <header className="flex flex-wrap items-start justify-between gap-4" style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
         <div>
-          <h1 className="text-3xl font-bold">Training</h1>
+          <h1 className="text-3xl font-bold">{showCompleted ? "Completed Training" : "Training"}</h1>
           <p className="mt-2 text-slate-600">
-            Guide members from enrollment through graduation and advancement.
+            {showCompleted ? "Review completed enrollments in each program's previous classes." : "Guide members from enrollment through graduation and advancement."}
           </p>
         </div>
       </header>
@@ -38,7 +40,7 @@ export default function Training() {
         </div>
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 22 }}>
-          <Link
+          {!showCompleted && <Link
             to="/admin/training/pending"
             aria-label="Open Pending Enrollment"
             onKeyDown={(event) => {
@@ -57,12 +59,12 @@ export default function Training() {
               Review waiting members and move them into their approved Training program.
             </p>
             <span className="mt-6 text-sm font-semibold text-amber-800 group-hover:text-amber-900">View pending enrollment →</span>
-          </Link>
+          </Link>}
 
           {programs.map((program) => (
             <Link
               key={program.slug}
-              to={`/admin/training/${program.slug}`}
+              to={`/admin/training/${program.slug}${showCompleted ? "#previous-classes" : ""}`}
               aria-label={`Open ${program.name} Training program`}
               onKeyDown={(event) => {
                 if (event.key === " ") {

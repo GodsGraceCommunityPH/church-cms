@@ -42,6 +42,10 @@ function Dashboard() {
   const malePercent = data.genders[1].percentage;
   const topCellGroups = data.cellGroups.slice(0, 7);
   const assignedMembers = data.totalMembers - data.membersWithoutCellGroup;
+  const needsAttentionItems = [
+    { label: "Members without gender", count: data.membersWithoutGender, link: "/admin/members?gender=unknown" },
+    { label: "Members without Cell Group", count: data.membersWithoutCellGroup, link: "/admin/members?cellGroup=unassigned" },
+  ].filter((item) => item.count > 0);
   const allSummaryCards = [
     { label: "Total Members", value: data.totalMembers, link: "/admin/members", action: "View all members", icon: Users },
     { label: "Cell Groups", value: data.totalCellGroups, link: "/admin/cell-groups", action: "View all cell groups", icon: Shapes },
@@ -148,8 +152,8 @@ function Dashboard() {
         {showNeedsAttention && <section className="dashboard-card dashboard-attention-card">
           <div className="dashboard-card-heading"><div><h2>Needs Attention</h2><p>Useful member data to complete.</p></div><AlertCircle size={20} aria-hidden="true" /></div>
           <div className="dashboard-attention-list">
-            <Link to="/admin/members?gender=unknown"><span>Members without gender</span><strong>{data.membersWithoutGender}</strong></Link>
-            <Link to="/admin/members?cellGroup=unassigned"><span>Members without Cell Group</span><strong>{data.membersWithoutCellGroup}</strong></Link>
+            {needsAttentionItems.map((item) => <Link to={item.link} key={item.label}><span>{item.label}</span><strong>{item.count}</strong></Link>)}
+            {needsAttentionItems.length === 0 && <p className="dashboard-empty">No member data needs attention.</p>}
           </div>
         </section>}
       </div>}

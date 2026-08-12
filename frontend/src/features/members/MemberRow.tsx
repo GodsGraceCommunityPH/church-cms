@@ -4,11 +4,13 @@ import type { Member } from "./member";
 interface MemberRowProps {
   member: Member;
   onOpen: (id: string) => void;
+  onEdit: (id: string) => void;
 }
 
 export default function MemberRow({
   member,
   onOpen,
+  onEdit,
 }: MemberRowProps) {
   const initials = `${member.firstName.charAt(0)}${member.lastName.charAt(0)}`.toUpperCase();
 
@@ -28,7 +30,7 @@ export default function MemberRow({
         </div>
       </td>
       <td style={{ width: 56, padding: "12px", textAlign: "right" }}>
-        <button type="button" className="training-icon-button" aria-label={`Edit ${member.firstName} ${member.lastName}`} title="Edit Member" onClick={(event) => { event.stopPropagation(); onOpen(member.id); }}><Pencil size={16} aria-hidden="true" /></button>
+        <button type="button" className="training-icon-button" aria-label={`Edit ${member.firstName} ${member.lastName}`} title="Edit Member" onClick={(event) => { event.stopPropagation(); onEdit(member.id); }}><Pencil size={16} aria-hidden="true" /></button>
       </td>
     </tr>
   );

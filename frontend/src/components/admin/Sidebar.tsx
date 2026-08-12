@@ -3,7 +3,7 @@ import {
   GraduationCap,
   User,
   Users,
-  Music,
+  HandHeart,
   HandCoins,
   Package,
   CalendarDays,
@@ -166,7 +166,7 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
               style={linkStyle}
               title={collapsed ? "Ministries" : undefined}
             >
-              <Music size={18} />
+              <HandHeart size={18} />
               {!collapsed && "Ministries"}
             </NavLink>
 

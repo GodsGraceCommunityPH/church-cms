@@ -145,7 +145,7 @@ export default function TrainingProgram() {
             </section>
           )}
 
-          <section>
+          <section id="previous-classes">
             <h2 className="text-xl font-semibold">Previous Classes</h2>
             {previousCycles.length === 0 ? <p className="mt-3 rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">No previous runs recorded.</p> : (
               <div className="mt-3 space-y-3" style={{ display: "grid", gap: 12 }}>{previousCycles.map((cycle) => {

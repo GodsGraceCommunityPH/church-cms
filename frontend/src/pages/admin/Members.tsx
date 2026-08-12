@@ -171,6 +171,7 @@ function Members() {
           <MemberTable
             members={filteredMembers}
             onOpen={(id) => navigate(`/admin/members/${id}`)}
+            onEdit={(id) => navigate(`/admin/members/${id}/edit`)}
           />
         )}
       </section>

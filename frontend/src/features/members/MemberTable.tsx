@@ -4,11 +4,13 @@ import MemberRow from "./MemberRow";
 interface MemberTableProps {
   members: Member[];
   onOpen: (id: string) => void;
+  onEdit: (id: string) => void;
 }
 
 export default function MemberTable({
   members,
   onOpen,
+  onEdit,
 }: MemberTableProps) {
   return (
     <div className="w-full min-w-0 overflow-x-hidden">
@@ -28,6 +30,7 @@ export default function MemberTable({
               key={member.id}
               member={member}
               onOpen={onOpen}
+              onEdit={onEdit}
             />
           ))}
         </tbody>
