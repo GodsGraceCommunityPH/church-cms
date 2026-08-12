@@ -38,6 +38,8 @@ import EventDetail from "./pages/admin/EventDetail";
 import EventRegistrationPage from "./pages/EventRegistrationPage";
 import WorshipMessages from "./pages/admin/WorshipMessages";
 import WorshipMessageForm from "./pages/admin/WorshipMessageForm";
+import HelpCenter from "./pages/admin/HelpCenter";
+import HelpArticle from "./pages/admin/HelpArticle";
 import {
   PermissionRoute,
   ProtectedRoute,
@@ -65,6 +67,8 @@ function App() {
       <Route element={<ProtectedRoute />}>
       <Route element={<AdminLayout />}>
         <Route path="/admin/dashboard" element={<Dashboard />} />
+        <Route path="/admin/help" element={<HelpCenter />} />
+        <Route path="/admin/help/:articleKey" element={<HelpArticle />} />
         <Route element={<PermissionRoute permission="training.view" />}>
         <Route path="/admin/training" element={<Training />} />
         <Route path="/admin/training/pending" element={<PendingTraining />} />

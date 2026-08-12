@@ -8,6 +8,7 @@ import {
   Package,
   CalendarDays,
   Video,
+  BookOpen,
   Settings,
   LogOut,
   ArrowLeft,
@@ -218,6 +219,19 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
               <Video size={18} />
               {!collapsed && "Worship Messages"}
             </NavLink>}
+
+            <NavLink
+              className={({ isActive }) =>
+                `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`
+              }
+              to="/admin/help"
+              onClick={onClose}
+              style={linkStyle}
+              title={collapsed ? "How To's" : undefined}
+            >
+              <BookOpen size={18} />
+              {!collapsed && "How To's"}
+            </NavLink>
 
             <NavLink
               className={linkClass}
