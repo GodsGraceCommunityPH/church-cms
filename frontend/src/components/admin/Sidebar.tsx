@@ -3,8 +3,7 @@ import {
   GraduationCap,
   User,
   Users,
-  HandHeart,
-  HandCoins,
+  Church,
   Package,
   CalendarDays,
   Video,
@@ -166,19 +165,8 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
               style={linkStyle}
               title={collapsed ? "Ministries" : undefined}
             >
-              <HandHeart size={18} />
+              <Church size={18} />
               {!collapsed && "Ministries"}
-            </NavLink>
-
-            <NavLink
-              className={linkClass}
-              to="/admin/giving"
-              onClick={onClose}
-              style={linkStyle}
-              title={collapsed ? "Finance" : undefined}
-            >
-              <HandCoins size={18} />
-              {!collapsed && "Finance"}
             </NavLink>
 
             {hasPermission("equipment.view") && <NavLink
