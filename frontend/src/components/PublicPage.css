@@ -31,7 +31,7 @@
 .pastor-card h3 { font-size: 1.08rem; margin: 0; padding: 20px 20px 6px; }
 .pastor-card span { color: #556b2f; display: block; font-size: .86rem; font-weight: 700; padding: 0 20px 18px; }
 .pastor-profile-back { align-items: center; color: #556b2f; display: inline-flex; gap: 8px; margin-bottom: 28px; text-decoration: none; }
-.pastor-profile-main img { aspect-ratio: 3/2; border-radius: 22px; box-shadow: 0 14px 34px rgba(25,39,17,.16); display: block; margin: 0 auto; max-width: 900px; object-fit: cover; object-position: center 34%; width: 100%; }
+.pastor-profile-main img { aspect-ratio: 3/2; border-radius: 22px; box-shadow: 0 14px 34px rgba(25,39,17,.16); display: block; margin: 0 auto; max-width: 900px; object-fit: cover; object-position: center center; width: 100%; }
 .pastor-profile-more { margin-top: 64px; }
 .pastor-profile-photo-grid { display: grid; gap: 18px; grid-template-columns: repeat(3,minmax(0,1fr)); }
 .pastor-profile-photo-grid img { aspect-ratio: 4/3; border-radius: 16px; display: block; object-fit: cover; object-position: center 32%; width: 100%; }
