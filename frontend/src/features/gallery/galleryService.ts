@@ -4,11 +4,11 @@ import { albumImagePath, galleryAlbums as staticAlbums } from "./galleryData";
 export type GalleryPhoto = { id: string; imagePath: string; thumbnailPath: string; storagePath: string; displayOrder: number };
 export type ManagedGalleryAlbum = { id: string; slug: string; title: string; description: string; displayOrder: number; coverPhotoId: string; coverPhoto?: GalleryPhoto; photos: GalleryPhoto[] };
 
-const fields = "id,slug,title,description,display_order,cover_photo_id,church_life_photos(id,image_path,thumbnail_path,storage_path,display_order)";
+const fields = "id,slug,title,description,display_order,cover_photo_id,photos:church_life_photos!church_life_photos_album_id_fkey(id,image_path,thumbnail_path,storage_path,display_order)";
 const publicUrl = (path: string) => path.startsWith("/") ? path : supabase.storage.from("church-life-images").getPublicUrl(path).data.publicUrl;
 
 function mapAlbum(row: any): ManagedGalleryAlbum {
-  const photos = (row.church_life_photos ?? []).sort((a: any,b: any) => a.display_order-b.display_order).map((p: any) => ({
+  const photos = (row.photos ?? []).sort((a: any,b: any) => a.display_order-b.display_order).map((p: any) => ({
       id:p.id, imagePath:publicUrl(p.image_path), thumbnailPath:publicUrl(p.thumbnail_path || p.image_path), storagePath:p.storage_path ?? "", displayOrder:p.display_order,
     }));
   const coverPhotoId = row.cover_photo_id ?? "";
