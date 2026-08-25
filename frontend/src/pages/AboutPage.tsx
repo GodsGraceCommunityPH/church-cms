@@ -1,18 +1,11 @@
 import { MapPin } from "lucide-react";
+import { Link } from "react-router-dom";
 import churchImage from "../assets/church-building.jpg";
-import edwardMoralesPhoto from "../assets/pastors/edward-morales.webp";
-import enricoGustiloPhoto from "../assets/pastors/enrico-gustilo.webp";
-import victorinoCalmaPhoto from "../assets/pastors/victorino-calma.webp";
 import PublicPage from "../components/PublicPage";
 import { CHURCH_LINKS } from "../config/churchLinks";
+import { pastors } from "../features/pastors/pastorData";
 
 function AboutPage() {
-  const pastors = [
-    { name: "Pastor Edward Morales", photo: edwardMoralesPhoto },
-    { name: "Pastor Enrico Gustilo", photo: enricoGustiloPhoto },
-    { name: "Pastor Victorino Calma", photo: victorinoCalmaPhoto },
-  ];
-
   return (
     <PublicPage eyebrow="About GGCCC" title="A church family growing together" description="Know Jesus, grow in faith, and live out the Gospel in a welcoming community.">
       <section className="public-section about-intro">
@@ -32,14 +25,15 @@ function AboutPage() {
         </div>
       </section>
 
-      <section className="public-section" aria-labelledby="pastors-heading">
+      <section className="public-section" id="meet-our-pastors" aria-labelledby="pastors-heading">
         <div className="public-section-heading"><h2 id="pastors-heading">Meet Our Pastors</h2><p>Serving God's Grace Community Covenant Church.</p></div>
         <div className="pastor-grid">
           {pastors.map((pastor) => (
-            <article className="public-card pastor-card" key={pastor.name}>
+            <Link className="public-card pastor-card" key={pastor.name} to={`/about/pastors/${pastor.slug}`} aria-label={`View profile for ${pastor.name}`}>
               <img className="pastor-photo" src={pastor.photo} alt={pastor.name} />
               <h3>{pastor.name}</h3>
-            </article>
+              <span>View Profile →</span>
+            </Link>
           ))}
         </div>
       </section>

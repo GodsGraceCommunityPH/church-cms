@@ -18,6 +18,7 @@ import JoinCellGroup from "./pages/JoinCellGroup";
 
 import HomePage from "./pages/HomePage";
 import AboutPage from "./pages/AboutPage";
+import PastorProfilePage from "./pages/PastorProfilePage";
 import ContactPage from "./pages/ContactPage";
 import GivePage from "./pages/GivePage";
 import GalleryPage from "./pages/GalleryPage";
@@ -54,6 +55,7 @@ function App() {
       <Route element={<PublicLayout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/about" element={<AboutPage />} />
+        <Route path="/about/pastors/:pastorSlug" element={<PastorProfilePage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/give" element={<GivePage />} />
         <Route path="/gallery/:albumSlug" element={<GalleryPage />} />

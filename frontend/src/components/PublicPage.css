@@ -24,9 +24,17 @@
 .identity-grid,.pastor-grid,.giving-grid { display: grid; gap: 22px; grid-template-columns: repeat(3,minmax(0,1fr)); }
 .identity-card { padding: 27px 24px; }
 .identity-card h3 { color: #36521e; font-family: "Source Serif 4",serif; font-size: 1.45rem; margin: 0; }
-.pastor-card { overflow: hidden; text-align: center; }
+.pastor-card { color: inherit; display: block; overflow: hidden; text-align: center; text-decoration: none; transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+.pastor-card:hover { border-color: #9bad82; box-shadow: 0 15px 34px rgba(25,39,17,.14); transform: translateY(-3px); }
+.pastor-card:focus-visible,.pastor-profile-back:focus-visible { outline: 3px solid #708255; outline-offset: 4px; }
 .pastor-photo { display: block; height: 210px; object-fit: cover; object-position: center 34%; width: 100%; }
-.pastor-card h3 { font-size: 1.08rem; margin: 0; padding: 20px; }
+.pastor-card h3 { font-size: 1.08rem; margin: 0; padding: 20px 20px 6px; }
+.pastor-card span { color: #556b2f; display: block; font-size: .86rem; font-weight: 700; padding: 0 20px 18px; }
+.pastor-profile-back { align-items: center; color: #556b2f; display: inline-flex; gap: 8px; margin-bottom: 28px; text-decoration: none; }
+.pastor-profile-main img { aspect-ratio: 3/2; border-radius: 22px; box-shadow: 0 14px 34px rgba(25,39,17,.16); display: block; margin: 0 auto; max-width: 900px; object-fit: cover; object-position: center 34%; width: 100%; }
+.pastor-profile-more { margin-top: 64px; }
+.pastor-profile-photo-grid { display: grid; gap: 18px; grid-template-columns: repeat(3,minmax(0,1fr)); }
+.pastor-profile-photo-grid img { aspect-ratio: 4/3; border-radius: 16px; display: block; object-fit: cover; object-position: center 32%; width: 100%; }
 
 .contact-layout { align-items: stretch; display: grid; gap: 28px; grid-template-columns: minmax(0,.8fr) minmax(0,1.2fr); }
 .contact-card { padding: 30px; }
@@ -82,6 +90,7 @@
   .identity-grid,.pastor-grid,.giving-grid { grid-template-columns: 1fr; }
   .bank-card { grid-column: auto; }
   .pastor-photo { height: 220px; }
+  .pastor-profile-photo-grid { grid-template-columns: 1fr; }
   .contact-card,.giving-copy,.scripture-card,.giving-card { padding: 23px 20px; }
   .contact-actions { flex-direction: column; }
   .contact-actions .public-action { width: 100%; }
