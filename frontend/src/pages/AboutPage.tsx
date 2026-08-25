@@ -1,10 +1,17 @@
 import { MapPin } from "lucide-react";
 import churchImage from "../assets/church-building.jpg";
+import edwardMoralesPhoto from "../assets/pastors/edward-morales.webp";
+import enricoGustiloPhoto from "../assets/pastors/enrico-gustilo.webp";
+import victorinoCalmaPhoto from "../assets/pastors/victorino-calma.webp";
 import PublicPage from "../components/PublicPage";
 import { CHURCH_LINKS } from "../config/churchLinks";
 
 function AboutPage() {
-  const pastors = ["Pastor Edward Morales", "Pastor Enrico Gustilo", "Pastor Victorino Calma"];
+  const pastors = [
+    { name: "Pastor Edward Morales", photo: edwardMoralesPhoto },
+    { name: "Pastor Enrico Gustilo", photo: enricoGustiloPhoto },
+    { name: "Pastor Victorino Calma", photo: victorinoCalmaPhoto },
+  ];
 
   return (
     <PublicPage eyebrow="About GGCCC" title="A church family growing together" description="Know Jesus, grow in faith, and live out the Gospel in a welcoming community.">
@@ -28,10 +35,12 @@ function AboutPage() {
       <section className="public-section" aria-labelledby="pastors-heading">
         <div className="public-section-heading"><h2 id="pastors-heading">Meet Our Pastors</h2><p>Serving God's Grace Community Covenant Church.</p></div>
         <div className="pastor-grid">
-          {pastors.map((name) => {
-            const initials = name.replace("Pastor ", "").split(" ").map((part) => part[0]).join("");
-            return <article className="public-card pastor-card" key={name}><div className="pastor-placeholder" role="img" aria-label={`Photo placeholder for ${name}`}>{initials}</div><h3>{name}</h3></article>;
-          })}
+          {pastors.map((pastor) => (
+            <article className="public-card pastor-card" key={pastor.name}>
+              <img className="pastor-photo" src={pastor.photo} alt={pastor.name} />
+              <h3>{pastor.name}</h3>
+            </article>
+          ))}
         </div>
       </section>
     </PublicPage>

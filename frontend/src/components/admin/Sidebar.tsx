@@ -9,7 +9,6 @@ import {
   Video,
   Images,
   BookOpen,
-  Settings,
   LogOut,
   ArrowLeft,
   ChevronLeft,
@@ -230,16 +229,6 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
               {!collapsed && "How To's"}
             </NavLink>
 
-            <NavLink
-              className={linkClass}
-              to="/admin/settings"
-              onClick={onClose}
-              style={linkStyle}
-              title={collapsed ? "Settings" : undefined}
-            >
-              <Settings size={18} />
-              {!collapsed && "Settings"}
-            </NavLink>
           </div>
         </nav>
 
