@@ -22,6 +22,7 @@ import PastorProfilePage from "./pages/PastorProfilePage";
 import ContactPage from "./pages/ContactPage";
 import GivePage from "./pages/GivePage";
 import GalleryPage from "./pages/GalleryPage";
+import GalleryArchivePage from "./pages/GalleryArchivePage";
 
 import Login from "./pages/admin/Login";
 import Dashboard from "./pages/admin/Dashboard";
@@ -59,6 +60,7 @@ function App() {
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/give" element={<GivePage />} />
         <Route path="/gallery/:albumSlug" element={<GalleryPage />} />
+        <Route path="/gallery" element={<GalleryArchivePage />} />
         <Route path="/join/:token" element={<JoinCellGroup />} />
         <Route path="/events/:slug" element={<EventRegistrationPage />} />
         <Route path="/events/:slug/register" element={<EventRegistrationPage />} />

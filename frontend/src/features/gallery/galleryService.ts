@@ -17,14 +17,14 @@ function mapAlbum(row: any): ManagedGalleryAlbum {
 }
 
 export async function getGalleryAlbums() {
-  const { data,error } = await supabase.from("church_life_albums").select(fields).order("display_order");
+  const { data,error } = await supabase.from("church_life_albums").select(fields).order("display_order",{ascending:false});
   if(error) throw error; return (data ?? []).map(mapAlbum);
 }
 export async function getPublicGalleryAlbums() {
   try { return await getGalleryAlbums(); }
   catch (error) {
     console.warn("[Church Life] managed gallery unavailable; preserving the static gallery", error);
-    return staticAlbums.map((album,index):ManagedGalleryAlbum=>{const photos=Array.from({length:album.count},(_,photoIndex)=>({id:`static-${album.slug}-${photoIndex+1}`,imagePath:albumImagePath(album.slug,photoIndex+1),thumbnailPath:albumImagePath(album.slug,photoIndex+1,true),storagePath:"",displayOrder:photoIndex+1}));return {id:`static-${album.slug}`,slug:album.slug,title:album.title,description:album.description,displayOrder:index+1,coverPhotoId:"",coverPhoto:photos[0],photos};});
+    return staticAlbums.map((album,index):ManagedGalleryAlbum=>{const photos=Array.from({length:album.count},(_,photoIndex)=>({id:`static-${album.slug}-${photoIndex+1}`,imagePath:albumImagePath(album.slug,photoIndex+1),thumbnailPath:albumImagePath(album.slug,photoIndex+1,true),storagePath:"",displayOrder:photoIndex+1}));return {id:`static-${album.slug}`,slug:album.slug,title:album.title,description:album.description,displayOrder:index+1,coverPhotoId:"",coverPhoto:photos[0],photos};}).reverse();
   }
 }
 export async function getGalleryAlbum(idOrSlug: string) {

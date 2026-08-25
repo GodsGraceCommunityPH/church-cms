@@ -14,7 +14,7 @@ export default function CommunityGallery() {
           <p>A glimpse of worship, fellowship, and milestones at GGCCC.</p>
         </div>
         <div className="album-card-grid">
-          {albums.map((album) => (
+          {albums.slice(0, 3).map((album) => (
             <Link
               className="album-card"
               key={album.slug}
@@ -40,6 +40,7 @@ export default function CommunityGallery() {
             </Link>
           ))}
         </div>
+        <div className="church-life-view-all"><Link to="/gallery">View All Church Life <span aria-hidden="true">→</span></Link></div>
       </div>
     </section>
   );

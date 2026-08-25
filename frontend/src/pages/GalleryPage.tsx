@@ -63,9 +63,9 @@ export default function GalleryPage() {
             <Link to="/gallery/camp-day-2" aria-current={album.slug === "camp-day-2" ? "page" : undefined}>Day 2</Link>
           </nav>
         )}
-        {photos[0] && <div className="gallery-cover">
+        {album.coverPhoto && <div className="gallery-cover">
           <img
-            src={photos[0].imagePath}
+            src={album.coverPhoto.imagePath}
             alt={`${album.title} cover`}
             width="1800"
             height="1100"

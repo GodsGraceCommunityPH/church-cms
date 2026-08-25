@@ -1,0 +1,14 @@
+import { useEffect, useState } from "react";
+import { Clipboard, Download, Monitor, Printer, QrCode, X } from "lucide-react";
+import QRCode from "qrcode";
+import Button from "../../components/ui/Button";
+
+export default function EventRegistrationTools({eventName,slug}:{eventName:string;slug:string}) {
+  const [showQr,setShowQr]=useState(false),[qrData,setQrData]=useState(""),[copied,setCopied]=useState(false);
+  const url=`${window.location.origin}/events/${encodeURIComponent(slug)}`;
+  useEffect(()=>{if(!showQr||qrData)return;void QRCode.toDataURL(url,{width:720,margin:3,errorCorrectionLevel:"M",color:{dark:"#172033",light:"#ffffff"}}).then(setQrData);},[showQr,qrData,url]);
+  async function copy(){await navigator.clipboard.writeText(url);setCopied(true);window.setTimeout(()=>setCopied(false),1800);}
+  function print(){if(!qrData)return;const popup=window.open("","_blank","noopener,noreferrer");if(!popup)return;popup.document.write(`<!doctype html><title>${escapeHtml(eventName)} registration QR</title><style>body{font-family:Arial,sans-serif;text-align:center;padding:48px;color:#172033}h1{font-size:36px;margin-bottom:8px}p{font-size:20px}img{width:min(70vw,560px);display:block;margin:24px auto}.url{font-size:14px;overflow-wrap:anywhere}@media print{button{display:none}}</style><h1>${escapeHtml(eventName)}</h1><p>Scan to Register</p><img src="${qrData}" alt="Registration QR code"><p class="url">${escapeHtml(url)}</p><button onclick="window.print()">Print</button>`);popup.document.close();}
+  return <section className="events-panel event-registration-tools"><div><h2>Public Registration</h2><p>Share the public form or open a fresh shared-device form.</p></div><div className="event-registration-actions"><Button variant="secondary" onClick={()=>void copy()}><Clipboard size={16}/>{copied?"Copied":"Copy Registration Link"}</Button><Button variant="secondary" onClick={()=>setShowQr(true)}><QrCode size={16}/>Show QR Code</Button><a className="event-link-button" href={`/events/${slug}?desk=1`} target="_blank" rel="noreferrer"><Monitor size={16}/>Registration Desk</a></div>{showQr&&<div className="qr-overlay" role="dialog" aria-modal="true" aria-label={`${eventName} registration QR code`}><div className="qr-card"><button className="qr-close" onClick={()=>setShowQr(false)} aria-label="Close QR code"><X/></button><h2>{eventName}</h2><p>Scan to Register</p>{qrData?<img src={qrData} alt={`QR code for ${url}`}/>:<div className="qr-loading">Generating QR code...</div>}<small>{url}</small><div className="qr-actions"><a className="event-link-button" href={qrData} download={`${slug}-registration-qr.png`}><Download size={16}/>Download</a><Button onClick={print} disabled={!qrData}><Printer size={16}/>Print</Button></div></div></div>}</section>;
+}
+function escapeHtml(value:string){return value.replace(/[&<>'"]/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[char]!);}

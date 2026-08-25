@@ -17,6 +17,10 @@
 .album-card h3 { color: #152238; font-size: 1.35rem; line-height: 1.25; margin: 0; }
 .album-card-count { color: #65758b; flex: 0 0 auto; font-size: .86rem; }
 .album-card-description { color: #52627a; line-height: 1.6; margin: 10px 0 0; }
+.church-life-view-all { display: flex; justify-content: center; margin-top: 34px; }
+.church-life-view-all a { border: 1px solid #8da06c; border-radius: 999px; color: #405222; font-weight: 700; padding: 12px 20px; text-decoration: none; }
+.church-life-view-all a:hover { background: #f3f6ed; }
+.gallery-archive-grid { margin-top: 32px; }
 
 .gallery-page { background: #f7f9fb; min-height: 70vh; padding: 142px 24px 96px; }
 .gallery-page-inner { margin: 0 auto; max-width: 1160px; }
