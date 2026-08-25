@@ -2,16 +2,18 @@ import { supabase } from "../../lib/supabase";
 import { albumImagePath, galleryAlbums as staticAlbums } from "./galleryData";
 
 export type GalleryPhoto = { id: string; imagePath: string; thumbnailPath: string; storagePath: string; displayOrder: number };
-export type ManagedGalleryAlbum = { id: string; slug: string; title: string; description: string; displayOrder: number; photos: GalleryPhoto[] };
+export type ManagedGalleryAlbum = { id: string; slug: string; title: string; description: string; displayOrder: number; coverPhotoId: string; coverPhoto?: GalleryPhoto; photos: GalleryPhoto[] };
 
-const fields = "id,slug,title,description,display_order,church_life_photos(id,image_path,thumbnail_path,storage_path,display_order)";
+const fields = "id,slug,title,description,display_order,cover_photo_id,church_life_photos(id,image_path,thumbnail_path,storage_path,display_order)";
 const publicUrl = (path: string) => path.startsWith("/") ? path : supabase.storage.from("church-life-images").getPublicUrl(path).data.publicUrl;
 
 function mapAlbum(row: any): ManagedGalleryAlbum {
-  return { id: row.id, slug: row.slug, title: row.title, description: row.description ?? "", displayOrder: row.display_order,
-    photos: (row.church_life_photos ?? []).sort((a: any,b: any) => a.display_order-b.display_order).map((p: any) => ({
+  const photos = (row.church_life_photos ?? []).sort((a: any,b: any) => a.display_order-b.display_order).map((p: any) => ({
       id:p.id, imagePath:publicUrl(p.image_path), thumbnailPath:publicUrl(p.thumbnail_path || p.image_path), storagePath:p.storage_path ?? "", displayOrder:p.display_order,
-    })) };
+    }));
+  const coverPhotoId = row.cover_photo_id ?? "";
+  return { id: row.id, slug: row.slug, title: row.title, description: row.description ?? "", displayOrder: row.display_order,
+    coverPhotoId, coverPhoto: photos.find((photo:GalleryPhoto)=>photo.id===coverPhotoId) ?? photos[0], photos };
 }
 
 export async function getGalleryAlbums() {
@@ -22,8 +24,7 @@ export async function getPublicGalleryAlbums() {
   try { return await getGalleryAlbums(); }
   catch (error) {
     console.warn("[Church Life] managed gallery unavailable; preserving the static gallery", error);
-    return staticAlbums.map((album,index):ManagedGalleryAlbum=>({id:`static-${album.slug}`,slug:album.slug,title:album.title,description:album.description,displayOrder:index+1,
-      photos:Array.from({length:album.count},(_,photoIndex)=>({id:`static-${album.slug}-${photoIndex+1}`,imagePath:albumImagePath(album.slug,photoIndex+1),thumbnailPath:albumImagePath(album.slug,photoIndex+1,true),storagePath:"",displayOrder:photoIndex+1}))}));
+    return staticAlbums.map((album,index):ManagedGalleryAlbum=>{const photos=Array.from({length:album.count},(_,photoIndex)=>({id:`static-${album.slug}-${photoIndex+1}`,imagePath:albumImagePath(album.slug,photoIndex+1),thumbnailPath:albumImagePath(album.slug,photoIndex+1,true),storagePath:"",displayOrder:photoIndex+1}));return {id:`static-${album.slug}`,slug:album.slug,title:album.title,description:album.description,displayOrder:index+1,coverPhotoId:"",coverPhoto:photos[0],photos};});
   }
 }
 export async function getGalleryAlbum(idOrSlug: string) {
@@ -45,6 +46,9 @@ export async function uploadGalleryPhotos(albumId:string, files:File[]) {
     const {error:insertError}=await supabase.from("church_life_photos").insert({album_id:albumId,image_path:path,storage_path:path,display_order:++order});
     if(insertError){await supabase.storage.from("church-life-images").remove([path]); failed.push(file.name);} else uploaded.push(file.name);
   } return {uploaded,failed};
+}
+export async function setGalleryCoverPhoto(albumId:string, photoId:string){
+  const {error}=await supabase.from("church_life_albums").update({cover_photo_id:photoId}).eq("id",albumId); if(error) throw error;
 }
 export async function removeGalleryPhoto(photo:GalleryPhoto){
   const {error}=await supabase.from("church_life_photos").delete().eq("id",photo.id); if(error) throw error;

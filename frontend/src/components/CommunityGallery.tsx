@@ -22,8 +22,8 @@ export default function CommunityGallery() {
               aria-label={`Open ${album.title} album, ${album.photos.length} photos`}
             >
               <div className="album-card-image">
-                {album.photos[0] ? <img
-                  src={album.photos[0].thumbnailPath}
+                {album.coverPhoto ? <img
+                  src={album.coverPhoto.thumbnailPath}
                   alt=""
                   width="720"
                   height="450"

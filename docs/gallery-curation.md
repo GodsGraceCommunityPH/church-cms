@@ -4,7 +4,7 @@
 
 The public Church Life gallery is managed through **Admin → Church Life**. Album metadata and ordered photo records are stored in Supabase. The original curated WebP files remain under `/images/galleries` and are seeded as non-storage-backed photo records by migration `045_church_life_gallery_manager.sql`; admin removal never deletes these repository assets. New uploads use the public `church-life-images` bucket and generated collision-resistant paths.
 
-The first remaining ordered photo is the album cover. Photo ordering is upload order in V1.
+Admins may select any existing album photo as the cover. Albums without a manual selection use the first ordered photo, and deleting a selected cover clears the reference so the first remaining photo becomes the fallback. Photo ordering remains upload order in V1.
 
 The source ZIP archives remain unchanged outside the repository. The website uses a curated set of 148 photos, each exported as a small grid thumbnail and a larger WebP lightbox image.
 
