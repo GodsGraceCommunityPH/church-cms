@@ -7,6 +7,7 @@ import {
   Package,
   CalendarDays,
   Video,
+  Images,
   BookOpen,
   Settings,
   LogOut,
@@ -206,6 +207,14 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
             >
               <Video size={18} />
               {!collapsed && "Worship Messages"}
+            </NavLink>}
+
+            {hasPermission("website_content.view") && <NavLink
+              className={({ isActive }) => `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`}
+              to="/admin/church-life" onClick={onClose} style={linkStyle} title={collapsed ? "Church Life" : undefined}
+            >
+              <Images size={18} />
+              {!collapsed && "Church Life"}
             </NavLink>}
 
             <NavLink

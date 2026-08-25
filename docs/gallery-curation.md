@@ -1,6 +1,12 @@
 # Church Life Gallery Curation
 
-The source ZIP archives remain unchanged outside the repository. The website uses a curated set of 101 photos, each exported as a small grid thumbnail and a larger WebP lightbox image.
+## Managed gallery
+
+The public Church Life gallery is managed through **Admin → Church Life**. Album metadata and ordered photo records are stored in Supabase. The original curated WebP files remain under `/images/galleries` and are seeded as non-storage-backed photo records by migration `045_church_life_gallery_manager.sql`; admin removal never deletes these repository assets. New uploads use the public `church-life-images` bucket and generated collision-resistant paths.
+
+The first remaining ordered photo is the album cover. Photo ordering is upload order in V1.
+
+The source ZIP archives remain unchanged outside the repository. The website uses a curated set of 148 photos, each exported as a small grid thumbnail and a larger WebP lightbox image.
 
 ## Source review
 
@@ -11,6 +17,7 @@ The source ZIP archives remain unchanged outside the repository. The website use
 | Camp — Day 2 | 23 | 15 | Excluded 40 MOV videos and repeated group-photo frames. |
 | 40th Anniversary | 244 | 24 | Excluded repetitive worship frames, obstructed faces, blur, and awkward crops. |
 | 41st Anniversary | 213 | 24 | Excluded repetitive activity frames, obstructed faces, blur, and awkward crops. |
+| 42nd Anniversary | Not recorded | 47 | Existing curated public album preserved by the managed-gallery migration. |
 
 The automated review found no byte-for-byte duplicate stills. It flagged five visually similar camp pairs; only the strongest representative frames were retained. `.DS_Store` and all videos were excluded from display. No original was deleted.
 

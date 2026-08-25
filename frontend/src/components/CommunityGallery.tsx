@@ -1,8 +1,11 @@
 import { Link } from "react-router-dom";
-import { albumImagePath, galleryAlbums } from "../features/gallery/galleryData";
+import { useEffect, useState } from "react";
+import { getPublicGalleryAlbums, type ManagedGalleryAlbum } from "../features/gallery/galleryService";
 import "../features/gallery/Gallery.css";
 
 export default function CommunityGallery() {
+  const [albums, setAlbums] = useState<ManagedGalleryAlbum[]>([]);
+  useEffect(() => { void getPublicGalleryAlbums().then(setAlbums); }, []);
   return (
     <section className="church-life-section" id="church-life" aria-labelledby="church-life-title">
       <div className="church-life-inner">
@@ -11,27 +14,26 @@ export default function CommunityGallery() {
           <p>A glimpse of worship, fellowship, and milestones at GGCCC.</p>
         </div>
         <div className="album-card-grid">
-          {galleryAlbums.map((album) => (
+          {albums.map((album) => (
             <Link
               className="album-card"
               key={album.slug}
               to={`/gallery/${album.slug}`}
-              aria-label={`Open ${album.title} album, ${album.count} photos`}
+              aria-label={`Open ${album.title} album, ${album.photos.length} photos`}
             >
               <div className="album-card-image">
-                <img
-                  src={albumImagePath(album.slug, 1, true)}
+                {album.photos[0] ? <img
+                  src={album.photos[0].thumbnailPath}
                   alt=""
                   width="720"
                   height="450"
                   loading="lazy"
-                  style={{ objectPosition: album.coverPosition }}
-                />
+                /> : <div className="album-card-placeholder">No photos yet</div>}
               </div>
               <div className="album-card-body">
                 <div className="album-card-title-row">
                   <h3>{album.title}</h3>
-                  <span className="album-card-count">{album.count} photos</span>
+                  <span className="album-card-count">{album.photos.length} photos</span>
                 </div>
                 <p className="album-card-description">{album.description}</p>
               </div>

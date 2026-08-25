@@ -1,27 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, ChevronLeft, ChevronRight, X } from "lucide-react";
-import { Link, Navigate, useParams } from "react-router-dom";
-import {
-  albumAlt,
-  albumImagePath,
-  findGalleryAlbum,
-} from "../features/gallery/galleryData";
+import { Link, useParams } from "react-router-dom";
+import { getPublicGalleryAlbums, type ManagedGalleryAlbum } from "../features/gallery/galleryService";
 import "../features/gallery/Gallery.css";
 
 export default function GalleryPage() {
   const { albumSlug } = useParams();
-  const album = findGalleryAlbum(albumSlug);
+  const [album, setAlbum] = useState<ManagedGalleryAlbum | null>(null);
+  const [loading, setLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const touchStartX = useRef<number | null>(null);
 
   const close = useCallback(() => setActiveIndex(null), []);
   const previous = useCallback(() => {
     if (!album) return;
-    setActiveIndex((current) => current === null ? null : (current - 1 + album.count) % album.count);
+    setActiveIndex((current) => current === null ? null : (current - 1 + album.photos.length) % album.photos.length);
   }, [album]);
   const next = useCallback(() => {
     if (!album) return;
-    setActiveIndex((current) => current === null ? null : (current + 1) % album.count);
+    setActiveIndex((current) => current === null ? null : (current + 1) % album.photos.length);
   }, [album]);
 
   useEffect(() => {
@@ -39,9 +36,11 @@ export default function GalleryPage() {
     };
   }, [activeIndex, close, next, previous]);
 
-  if (!album) return <Navigate to="/" replace />;
+  useEffect(() => { if (!albumSlug) return; setLoading(true); void getPublicGalleryAlbums().then(albums=>setAlbum(albums.find(item=>item.slug===albumSlug)??null)).finally(() => setLoading(false)); }, [albumSlug]);
+  if (loading) return <main className="gallery-page"><p className="gallery-loading">Loading album...</p></main>;
+  if (!album) return <main className="gallery-page"><p className="gallery-loading">This album is not available. <Link to="/#church-life">Back to Church Life</Link></p></main>;
 
-  const photos = Array.from({ length: album.count }, (_, index) => index + 1);
+  const photos = album.photos;
   const isCamp = album.slug.startsWith("camp-day-");
 
   return (
@@ -55,7 +54,7 @@ export default function GalleryPage() {
             <h1>{album.title}</h1>
             <p>{album.description}</p>
           </div>
-          <div className="gallery-count">{album.count} photos</div>
+          <div className="gallery-count">{photos.length} photos</div>
         </header>
         {isCamp && (
           <nav className="camp-switcher" aria-label="GGCCC Camp albums">
@@ -64,30 +63,29 @@ export default function GalleryPage() {
             <Link to="/gallery/camp-day-2" aria-current={album.slug === "camp-day-2" ? "page" : undefined}>Day 2</Link>
           </nav>
         )}
-        <div className="gallery-cover">
+        {photos[0] && <div className="gallery-cover">
           <img
-            src={albumImagePath(album.slug, 1)}
-            alt={albumAlt(album, 1)}
+            src={photos[0].imagePath}
+            alt={`${album.title} cover`}
             width="1800"
             height="1100"
-            style={{ objectPosition: album.coverPosition }}
           />
-        </div>
+        </div>}
         <div className="photo-grid">
-          {photos.map((photoNumber) => (
+          {photos.map((photo, index) => (
             <button
               className="photo-tile"
-              key={photoNumber}
+              key={photo.id}
               type="button"
-              onClick={() => setActiveIndex(photoNumber - 1)}
-              aria-label={`Open photo ${photoNumber} of ${album.count}`}
+              onClick={() => setActiveIndex(index)}
+              aria-label={`Open photo ${index + 1} of ${photos.length}`}
             >
               <img
-                src={albumImagePath(album.slug, photoNumber, true)}
-                alt={albumAlt(album, photoNumber)}
+                src={photo.thumbnailPath}
+                alt={`${album.title} church life moment, photo ${index + 1}`}
                 width="720"
                 height="540"
-                loading={photoNumber > 6 ? "lazy" : "eager"}
+                loading={index > 5 ? "lazy" : "eager"}
               />
             </button>
           ))}
@@ -112,9 +110,9 @@ export default function GalleryPage() {
         >
           <button className="lightbox-control lightbox-close" type="button" onClick={close} aria-label="Close photo viewer"><X /></button>
           <button className="lightbox-control lightbox-prev" type="button" onClick={previous} aria-label="Previous photo"><ChevronLeft /></button>
-          <img src={albumImagePath(album.slug, activeIndex + 1)} alt={albumAlt(album, activeIndex + 1)} />
+          <img src={photos[activeIndex].imagePath} alt={`${album.title} photo ${activeIndex + 1}`} />
           <button className="lightbox-control lightbox-next" type="button" onClick={next} aria-label="Next photo"><ChevronRight /></button>
-          <div className="lightbox-position" aria-live="polite">{activeIndex + 1} of {album.count}</div>
+          <div className="lightbox-position" aria-live="polite">{activeIndex + 1} of {photos.length}</div>
         </div>
       )}
     </main>

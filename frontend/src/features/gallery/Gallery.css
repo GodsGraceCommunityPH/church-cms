@@ -9,6 +9,8 @@
 .album-card:focus-visible { outline: 3px solid #708255; outline-offset: 4px; }
 .album-card-image { aspect-ratio: 16 / 10; background: #e7ebdf; overflow: hidden; }
 .album-card-image img { display: block; height: 100%; object-fit: cover; transition: transform .35s ease; width: 100%; }
+.album-card-placeholder { align-items: center; color: #64748b; display: flex; height: 100%; justify-content: center; }
+.gallery-loading { margin: 0 auto; max-width: 1160px; color: #52627a; }
 .album-card:hover .album-card-image img { transform: scale(1.035); }
 .album-card-body { padding: 24px 25px 26px; }
 .album-card-title-row { align-items: center; display: flex; gap: 14px; justify-content: space-between; }

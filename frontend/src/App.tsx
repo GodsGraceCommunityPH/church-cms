@@ -38,6 +38,8 @@ import EventDetail from "./pages/admin/EventDetail";
 import EventRegistrationPage from "./pages/EventRegistrationPage";
 import WorshipMessages from "./pages/admin/WorshipMessages";
 import WorshipMessageForm from "./pages/admin/WorshipMessageForm";
+import ChurchLife from "./pages/admin/ChurchLife";
+import ChurchLifeForm from "./pages/admin/ChurchLifeForm";
 import HelpCenter from "./pages/admin/HelpCenter";
 import HelpArticle from "./pages/admin/HelpArticle";
 import {
@@ -134,10 +136,13 @@ function App() {
         </Route>
         <Route element={<PermissionRoute permission="website_content.view" />}>
           <Route path="/admin/worship-messages" element={<WorshipMessages />} />
+          <Route path="/admin/church-life" element={<ChurchLife />} />
         </Route>
         <Route element={<PermissionRoute permission="website_content.manage" />}>
           <Route path="/admin/worship-messages/new" element={<WorshipMessageForm />} />
           <Route path="/admin/worship-messages/:id/edit" element={<WorshipMessageForm />} />
+          <Route path="/admin/church-life/new" element={<ChurchLifeForm />} />
+          <Route path="/admin/church-life/:id/edit" element={<ChurchLifeForm />} />
         </Route>
         <Route element={<PermissionRoute permission="admin.settings" />}>
         <Route path="/admin/settings" element={<Settings />} />
