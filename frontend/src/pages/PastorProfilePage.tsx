@@ -12,7 +12,7 @@ export default function PastorProfilePage() {
     <PublicPage eyebrow="Meet Our Pastors" title={pastor.name} description="Serving God's Grace Community Covenant Church.">
       <Link className="pastor-profile-back" to="/about#meet-our-pastors"><ArrowLeft size={18} aria-hidden="true" /> Back to About</Link>
       <section className="pastor-profile-main" aria-label={`${pastor.name} profile`}>
-        <img src={pastor.photo} alt={`${pastor.name} portrait`} />
+        <img src={pastor.profilePhoto ?? pastor.photo} alt={`${pastor.name} portrait`} />
       </section>
       <section className="pastor-profile-more" aria-labelledby="more-photos-heading">
         <div className="public-section-heading"><h2 id="more-photos-heading">More Photos</h2></div>
