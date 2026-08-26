@@ -34,7 +34,14 @@
 .pastor-profile-main img { aspect-ratio: 3/2; border-radius: 22px; box-shadow: 0 14px 34px rgba(25,39,17,.16); display: block; margin: 0 auto; max-width: 900px; object-fit: cover; object-position: center center; width: 100%; }
 .pastor-profile-more { margin-top: 64px; }
 .pastor-profile-photo-grid { display: grid; gap: 18px; grid-template-columns: repeat(3,minmax(0,1fr)); }
+.pastor-profile-photo-button { background: transparent; border: 0; border-radius: 16px; cursor: zoom-in; display: block; padding: 0; width: 100%; }
+.pastor-profile-photo-button:focus-visible { outline: 3px solid #708255; outline-offset: 4px; }
 .pastor-profile-photo-grid img { aspect-ratio: 4/3; border-radius: 16px; display: block; object-fit: cover; object-position: center 32%; width: 100%; }
+.pastor-photo-viewer { align-items: center; background: rgba(3,8,18,.94); display: flex; inset: 0; justify-content: center; overflow: hidden; padding: 64px 24px 24px; position: fixed; z-index: 200; }
+.pastor-photo-viewer > img { display: block; height: auto; max-height: calc(100dvh - 88px); max-width: min(1100px,100%); object-fit: contain; width: auto; }
+.pastor-photo-viewer-close { align-items: center; background: rgba(255,255,255,.94); border: 0; border-radius: 999px; color: #172033; cursor: pointer; display: flex; height: 46px; justify-content: center; position: absolute; right: 20px; top: 16px; width: 46px; }
+.pastor-photo-viewer-close:hover { background: #fff; transform: scale(1.04); }
+.pastor-photo-viewer-close:focus-visible { outline: 3px solid #a3b18a; outline-offset: 3px; }
 
 .contact-layout { align-items: stretch; display: grid; gap: 28px; grid-template-columns: minmax(0,.8fr) minmax(0,1.2fr); }
 .contact-card { padding: 30px; }
@@ -91,6 +98,9 @@
   .bank-card { grid-column: auto; }
   .pastor-photo { height: 220px; }
   .pastor-profile-photo-grid { grid-template-columns: 1fr; }
+  .pastor-photo-viewer { padding: 58px 12px 12px; }
+  .pastor-photo-viewer > img { max-height: calc(100dvh - 70px); max-width: 100%; }
+  .pastor-photo-viewer-close { height: 42px; right: 12px; top: 10px; width: 42px; }
   .contact-card,.giving-copy,.scripture-card,.giving-card { padding: 23px 20px; }
   .contact-actions { flex-direction: column; }
   .contact-actions .public-action { width: 100%; }
