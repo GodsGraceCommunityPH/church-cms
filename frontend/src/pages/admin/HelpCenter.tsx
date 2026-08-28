@@ -1,13 +1,18 @@
 import {
   BookOpen,
   CalendarDays,
+  FileText,
   GraduationCap,
+  HandHeart,
+  Images,
   LayoutDashboard,
+  Library,
   Music,
   Package,
   Search,
   UserRound,
   UsersRound,
+  WifiOff,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -25,11 +30,16 @@ const categoryIcons = {
   "Admin Portal Basics": BookOpen,
   Dashboard: LayoutDashboard,
   Members: UserRound,
+  Evangelism: HandHeart,
+  Resources: Library,
+  "Offline Resources": WifiOff,
+  "Discussion Notes": FileText,
   "Cell Groups": UsersRound,
   Training: GraduationCap,
   Ministries: Music,
   Equipment: Package,
   Events: CalendarDays,
+  "Church Life": Images,
 } as const;
 
 const copy = {

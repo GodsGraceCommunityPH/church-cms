@@ -280,6 +280,28 @@ Events
 → Copy Public Link
 → Share
 
+33. EVENT DAY REGISTRATION DESK
+
+Open the Event and use the registration tools.
+
+Use Show QR Code when you want people to scan and register from their own phone.
+
+Use Registration Desk when a worker will encode attendees from one device.
+
+After each successful registration, use Register Next Attendee if more people are lining up.
+
+34. CHECK-IN, UNDO, AND CANCEL
+
+Registration means the person submitted or was encoded for the event.
+
+Check In means the person arrived.
+
+Use Check In when the attendee is present.
+
+Use Undo if someone was checked in by mistake.
+
+Use Cancel Registration only when the registration should no longer count.
+
 MOST IMPORTANT RULES
 
 1. Double-check Date, Time, and Location.
@@ -561,6 +583,28 @@ Events
 → Save
 → Copy Link
 → Share
+
+33. EVENT DAY REGISTRATION DESK
+
+Buksan ang Event at gamitin ang registration tools.
+
+Gamitin ang Show QR Code kung gusto mong mag-scan ang attendees gamit ang sarili nilang phone.
+
+Gamitin ang Registration Desk kung worker ang mag-e-encode ng attendees sa isang device.
+
+Pag successful ang registration, gamitin ang Register Next Attendee kung may kasunod pa sa pila.
+
+34. CHECK-IN, UNDO, AT CANCEL
+
+Registration ibig sabihin na-submit o na-encode ang attendee for the event.
+
+Check In ibig sabihin dumating na ang attendee.
+
+Gamitin ang Check In kapag present na ang attendee.
+
+Gamitin ang Undo kung na-check in by mistake.
+
+Gamitin ang Cancel Registration kung hindi na dapat mabilang ang registration.
 
 PINAKA-IMPORTANTENG RULES
 

@@ -1,10 +1,15 @@
 import { adminPortalBasics } from "./articles/adminPortalBasics";
 import { cellGroups } from "./articles/cellGroups";
+import { churchLife } from "./articles/churchLife";
+import { discussionNotes } from "./articles/discussionNotes";
 import { dashboard } from "./articles/dashboard";
 import { equipment } from "./articles/equipment";
 import { events } from "./articles/events";
+import { evangelism } from "./articles/evangelism";
 import { members } from "./articles/members";
 import { ministries } from "./articles/ministries";
+import { offlineResources } from "./articles/offlineResources";
+import { resources } from "./articles/resources";
 import { training } from "./articles/training";
 import type { HelpArticle, HelpLanguage } from "./helpTypes";
 
@@ -35,20 +40,56 @@ export const helpArticles: HelpArticle[] = [
     versions: members,
   },
   {
-    key: "cell-groups",
-    category: "Cell Groups",
+    key: "evangelism",
+    category: "Evangelism",
     order: 4,
     isPublished: true,
     commonTitles: {
-      en: "How to Invite Cell Group Members",
-      tl: "Paano Mag-invite ng Cell Group Members",
+      en: "How to Add an Evangelism Contact",
+      tl: "Paano Mag-add ng Evangelism Contact",
     },
+    versions: evangelism,
+  },
+  {
+    key: "resources",
+    category: "Resources",
+    order: 5,
+    isPublished: true,
+    versions: resources,
+  },
+  {
+    key: "offline-resources",
+    category: "Offline Resources",
+    order: 6,
+    isPublished: true,
+    commonTitles: {
+      en: "How to Save a Lesson for Offline Use",
+      tl: "Paano Mag-save ng Lesson for Offline Use",
+    },
+    versions: offlineResources,
+  },
+  {
+    key: "discussion-notes",
+    category: "Discussion Notes",
+    order: 7,
+    isPublished: true,
+    commonTitles: {
+      en: "How to Use Discussion Notes",
+      tl: "Paano Gumamit ng Discussion Notes",
+    },
+    versions: discussionNotes,
+  },
+  {
+    key: "cell-groups",
+    category: "Cell Groups",
+    order: 8,
+    isPublished: true,
     versions: cellGroups,
   },
   {
     key: "training",
     category: "Training",
-    order: 5,
+    order: 9,
     isPublished: true,
     commonTitles: {
       en: "How to Record Training Attendance",
@@ -59,27 +100,34 @@ export const helpArticles: HelpArticle[] = [
   {
     key: "ministries",
     category: "Ministries",
-    order: 6,
+    order: 10,
     isPublished: true,
     versions: ministries,
   },
   {
-    key: "equipment",
-    category: "Equipment",
-    order: 7,
-    isPublished: true,
-    versions: equipment,
-  },
-  {
     key: "events",
     category: "Events",
-    order: 8,
+    order: 11,
     isPublished: true,
     commonTitles: {
-      en: "How to Create an Event",
-      tl: "Paano Gumawa ng Event",
+      en: "How to Register Event Attendees",
+      tl: "Paano Mag-register ng Event Attendee",
     },
     versions: events,
+  },
+  {
+    key: "church-life",
+    category: "Church Life",
+    order: 12,
+    isPublished: true,
+    versions: churchLife,
+  },
+  {
+    key: "equipment",
+    category: "Equipment",
+    order: 13,
+    isPublished: true,
+    versions: equipment,
   },
 ];
 
