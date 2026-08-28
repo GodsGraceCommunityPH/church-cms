@@ -8,6 +8,7 @@ import {
 } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../../lib/supabase";
+import { clearProtectedOfflineData } from "../resources/offlineStore";
 import { AuthContext, type AuthContextValue } from "./auth";
 
 class PortalAccessError extends Error {
@@ -21,6 +22,7 @@ class PortalAccessError extends Error {
     this.code = code;
   }
 }
+const OFFLINE_PERMISSIONS_KEY = "ggccc-offline-permissions";
 
 async function loadPermissions(userId: string) {
   const { data: profile, error: profileError } = await supabase
@@ -86,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const nextPermissions = await loadPermissions(nextSession.user.id);
       setPermissions(nextPermissions);
+      localStorage.setItem(OFFLINE_PERMISSIONS_KEY, JSON.stringify([...nextPermissions]));
       if (nextPermissions.size === 0) {
         setAccessError(
           "Your account is signed in but does not have a portal role. Contact an administrator.",
@@ -96,6 +99,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .update({ last_login_at: new Date().toISOString() })
         .eq("id", nextSession.user.id);
     } catch (error) {
+      if (!navigator.onLine) {
+        const cached = JSON.parse(localStorage.getItem(OFFLINE_PERMISSIONS_KEY) ?? "[]") as string[];
+        if (cached.includes("resources.view")) {
+          setPermissions(new Set(cached));
+          setAccessError("");
+          return;
+        }
+      }
       const detail =
         error instanceof PortalAccessError
           ? ` (${error.code}: ${error.message})`
@@ -141,6 +152,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut() {
+    await clearProtectedOfflineData();
+    localStorage.removeItem(OFFLINE_PERMISSIONS_KEY);
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
   }
