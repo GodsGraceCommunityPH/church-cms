@@ -47,6 +47,9 @@ import HelpArticle from "./pages/admin/HelpArticle";
 import Evangelism from "./pages/admin/Evangelism";
 import EvangelismForm from "./pages/admin/EvangelismForm";
 import EvangelismDetail from "./pages/admin/EvangelismDetail";
+import Resources from "./pages/admin/Resources";
+import ResourceForm from "./pages/admin/ResourceForm";
+import ResourceDetail from "./pages/admin/ResourceDetail";
 import {
   PermissionRoute,
   ProtectedRoute,
@@ -106,6 +109,14 @@ function App() {
         <Route element={<PermissionRoute permission="evangelism.manage" />}>
           <Route path="/admin/evangelism/new" element={<EvangelismForm />} />
           <Route path="/admin/evangelism/:id/edit" element={<EvangelismForm />} />
+        </Route>
+        <Route element={<PermissionRoute permission="resources.view" />}>
+          <Route path="/admin/resources" element={<Resources />} />
+          <Route path="/admin/resources/:id" element={<ResourceDetail />} />
+        </Route>
+        <Route element={<PermissionRoute permission="resources.manage" />}>
+          <Route path="/admin/resources/new" element={<ResourceForm />} />
+          <Route path="/admin/resources/:id/edit" element={<ResourceForm />} />
         </Route>
         <Route element={<PermissionRoute permission="members.create" />}>
           <Route path="/admin/members/new" element={<MemberForm />} />
