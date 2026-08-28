@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  HeartHandshake,
 } from "lucide-react";
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
@@ -144,6 +145,7 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
               <User size={18} />
               {!collapsed && "Members"}
             </NavLink>
+            {hasPermission("evangelism.view") && <NavLink className={({isActive})=>`${linkClass} ${isActive?"bg-gray-100 font-semibold text-olive-800":""}`} to="/admin/evangelism" onClick={onClose} style={linkStyle} title={collapsed?"Evangelism":undefined}><HeartHandshake size={18}/>{!collapsed&&"Evangelism"}</NavLink>}
 
             <NavLink
               className={linkClass}

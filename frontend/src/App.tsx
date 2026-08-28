@@ -44,6 +44,9 @@ import ChurchLife from "./pages/admin/ChurchLife";
 import ChurchLifeForm from "./pages/admin/ChurchLifeForm";
 import HelpCenter from "./pages/admin/HelpCenter";
 import HelpArticle from "./pages/admin/HelpArticle";
+import Evangelism from "./pages/admin/Evangelism";
+import EvangelismForm from "./pages/admin/EvangelismForm";
+import EvangelismDetail from "./pages/admin/EvangelismDetail";
 import {
   PermissionRoute,
   ProtectedRoute,
@@ -95,6 +98,14 @@ function App() {
         <Route element={<PermissionRoute permission="members.view" />}>
         <Route path="/admin/members" element={<Members />} />
         <Route path="/admin/members/:id" element={<MemberProfile />} />
+        </Route>
+        <Route element={<PermissionRoute permission="evangelism.view" />}>
+          <Route path="/admin/evangelism" element={<Evangelism />} />
+          <Route path="/admin/evangelism/:id" element={<EvangelismDetail />} />
+        </Route>
+        <Route element={<PermissionRoute permission="evangelism.manage" />}>
+          <Route path="/admin/evangelism/new" element={<EvangelismForm />} />
+          <Route path="/admin/evangelism/:id/edit" element={<EvangelismForm />} />
         </Route>
         <Route element={<PermissionRoute permission="members.create" />}>
           <Route path="/admin/members/new" element={<MemberForm />} />

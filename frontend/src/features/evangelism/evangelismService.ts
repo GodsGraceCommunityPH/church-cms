@@ -1,0 +1,9 @@
+import {supabase} from '../../lib/supabase'; import type {EvangelismContact,EvangelismInput} from './evangelism';
+const map=(r:any):EvangelismContact=>({id:r.id,firstName:r.first_name,lastName:r.last_name,mobile:r.mobile??'',normalizedMobile:r.normalized_mobile??'',addressArea:r.address_area??'',dateReached:r.date_reached,reachedBy:r.reached_by??'',source:r.source,sourceOther:r.source_other??'',status:r.status,notes:r.notes??'',memberId:r.member_id,createdAt:r.created_at,updatedAt:r.updated_at});
+const payload=(v:EvangelismInput)=>({first_name:v.firstName.trim(),last_name:v.lastName.trim(),mobile:v.mobile.trim()||null,address_area:v.addressArea.trim()||null,date_reached:v.dateReached,reached_by:v.reachedBy.trim()||null,source:v.source,source_other:v.source==='other'?v.sourceOther.trim():null,status:v.status,notes:v.notes.trim()||null});
+export async function getEvangelismContacts(){const{data,error}=await supabase.from('evangelism_contacts').select('*').order('date_reached',{ascending:false});if(error)throw error;return(data??[]).map(map)}
+export async function getEvangelismContact(id:string){const{data,error}=await supabase.from('evangelism_contacts').select('*').eq('id',id).single();if(error)throw error;return map(data)}
+export async function saveEvangelismContact(v:EvangelismInput,id?:string){const q=id?supabase.from('evangelism_contacts').update(payload(v)).eq('id',id):supabase.from('evangelism_contacts').insert(payload(v));const{data,error}=await q.select('id').single();if(error)throw error;return data.id as string}
+export async function deleteEvangelismContact(id:string){const{error}=await supabase.from('evangelism_contacts').delete().eq('id',id);if(error)throw error}
+export function normalizeMobile(v:string){const d=v.replace(/\D/g,'');return d.length===11&&d.startsWith('09')?'63'+d.slice(1):d}
+export function normalizeContactName(v:string){return v.trim().replace(/\s+/g,' ').toLocaleLowerCase()}
