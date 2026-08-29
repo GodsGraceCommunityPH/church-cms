@@ -24,6 +24,41 @@ export interface MemberPayload {
   remarks: string;
 }
 
+/** Comparison-only normalization; stored member display values are unchanged. */
+export function normalizeMemberMobile(value: string | null | undefined): string {
+  const digits = (value ?? "").replace(/\D/g, "");
+  if (digits.startsWith("+63")) return digits.slice(1);
+  if (digits.startsWith("09") && digits.length === 11) return `63${digits.slice(1)}`;
+  if (digits.startsWith("639") && digits.length === 12) return digits;
+  return digits;
+}
+
+export function normalizeMemberName(value: string | null | undefined): string {
+  return (value ?? "")
+    .trim()
+    .toLocaleLowerCase()
+    .replace(/[\u2010-\u2015-]+/g, " ")
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .replace(/\s+/g, " ");
+}
+
+export async function findPotentialMemberDuplicates(payload: MemberPayload): Promise<Member[]> {
+  const { data, error } = await supabase
+    .from("members")
+    .select(memberWithCellGroup)
+    .order("last_name")
+    .order("first_name");
+  if (error) throw error;
+  const mobile = normalizeMemberMobile(payload.mobile);
+  const first = normalizeMemberName(payload.first_name);
+  const last = normalizeMemberName(payload.last_name);
+  return (data ?? []).map(mapMember).filter((member) => {
+    const mobileMatch = Boolean(mobile) && normalizeMemberMobile(member.mobile) === mobile;
+    const nameMatch = normalizeMemberName(member.firstName) === first && normalizeMemberName(member.lastName) === last;
+    return mobileMatch || nameMatch;
+  });
+}
+
 export function getMemberSaveError(error: unknown): string {
   const databaseError = error as { code?: string; message?: string };
 
