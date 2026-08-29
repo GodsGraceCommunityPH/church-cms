@@ -1,0 +1,7 @@
+[2m9:12:17 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m Re-optimizing dependencies because vite config has changed
+
+  [32m[1mVITE[22m v8.2.0[39m  [2mready in [0m[1m678[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5199[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.1.21:[1m5199[22m/[39m  [2mWi-Fi[22m
+[2m9:12:19 AM[22m [36m[1m[vite][22m[39m [90m[2m(client)[22m[39m [optimizer] bundling dependencies...

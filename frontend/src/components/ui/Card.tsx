@@ -9,9 +9,9 @@ interface CardProps {
 export default function Card({ children, className = "", onClick }: CardProps) {
   return (
     <div
-      style={{ padding: "10px" }}
       onClick={onClick}
       className={`
+        p-5
         rounded-xl
         border border-slate-200
         bg-white

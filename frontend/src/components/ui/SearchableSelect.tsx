@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 
 interface Option {
   id: string;
@@ -22,7 +23,7 @@ export default function SearchableSelect({
   const [search, setSearch] = useState("");
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const selected = options.find((o) => o.id === value);
+  const selected = value ? options.find((o) => o.id === value) : undefined;
   const filteredOptions = options.filter((option) =>
     option.label.toLowerCase().includes(search.toLowerCase()),
   );
@@ -53,14 +54,30 @@ export default function SearchableSelect({
       <div
         onClick={() => setOpen(!open)}
         style={{
-          border: "1px solid #ccc",
-          borderRadius: 10,
-          padding: "12px 16px",
+          border: "1px solid #cbd5e1",
+          borderRadius: 8,
+          padding: "10px 14px",
+          minHeight: 44,
+          boxSizing: "border-box",
           cursor: "pointer",
           background: "white",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 8,
         }}
       >
-        {selected?.label || placeholder}
+        <span>{selected?.label || placeholder}</span>
+        <ChevronDown
+          size={18}
+          aria-hidden="true"
+          style={{
+            flexShrink: 0,
+            color: "#64748b",
+            transform: open ? "rotate(180deg)" : "rotate(0deg)",
+            transition: "transform 150ms ease",
+          }}
+        />
       </div>
 
       {open && (

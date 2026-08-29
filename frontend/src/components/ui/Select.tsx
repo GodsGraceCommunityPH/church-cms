@@ -12,8 +12,9 @@ export default function Select({ className = "", ...props }: SelectProps) {
         border
         border-slate-300
         bg-white
-        px-3
-        py-2
+        px-4
+        py-2.5
+        min-h-11
         text-sm
         outline-none
         transition
