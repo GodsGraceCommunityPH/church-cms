@@ -136,7 +136,7 @@ export default function Login() {
                     height: "48px",
                     boxSizing: "border-box",
                     border: "1px solid #cbd5e1",
-                    borderRadius: "10px",
+                    borderRadius: "12px",
                     padding: "10px 14px 10px 44px",
                     fontSize: "16px",
                   }}
@@ -175,7 +175,7 @@ export default function Login() {
                     height: "48px",
                     boxSizing: "border-box",
                     border: "1px solid #cbd5e1",
-                    borderRadius: "10px",
+                    borderRadius: "12px",
                     padding: "10px 14px 10px 44px",
                     fontSize: "16px",
                   }}
