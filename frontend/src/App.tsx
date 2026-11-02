@@ -10,7 +10,6 @@ import Ministries from "./pages/admin/Ministries";
 import MinistryForm from "./pages/admin/MinistryForm";
 import MinistryProfile from "./pages/admin/MinistryProfile";
 import Giving from "./pages/admin/Giving";
-import Settings from "./pages/admin/Setting";
 import MemberProfile from "./pages/admin/MemberProfile";
 import CellGroupForm from "./pages/admin/CellGroupForm";
 import CellGroupProfile from "./pages/admin/CellGroupProfile";
@@ -169,9 +168,6 @@ function App() {
           <Route path="/admin/worship-messages/:id/edit" element={<WorshipMessageForm />} />
           <Route path="/admin/church-life/new" element={<ChurchLifeForm />} />
           <Route path="/admin/church-life/:id/edit" element={<ChurchLifeForm />} />
-        </Route>
-        <Route element={<PermissionRoute permission="admin.settings" />}>
-        <Route path="/admin/settings" element={<Settings />} />
         </Route>
       </Route>
       </Route>

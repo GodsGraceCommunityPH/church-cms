@@ -8,19 +8,18 @@ export default function Select({ className = "", ...props }: SelectProps) {
       {...props}
       className={`
         w-full
-        rounded-lg
+        rounded-xl
         border
         border-slate-300
         bg-white
         px-4
-        py-2.5
-        min-h-11
+        py-3
+        min-h-12
         text-sm
         outline-none
         transition
-        focus:border-blue-500
-        focus:ring-2
-        focus:ring-blue-100
+        focus:border-emerald-600
+        focus:outline-none
         ${className}
       `}
     />

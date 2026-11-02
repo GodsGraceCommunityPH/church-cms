@@ -101,22 +101,20 @@ export default function CellGroupForm() {
       <h1>{isEdit ? "Edit Cell Group" : "Add Cell Group"}</h1>
 
       <form onSubmit={saveCellGroup}>
-        <div>
-          <label>Name</label>
-          <br />
+        <div style={{ marginBottom: 16 }}>
+          <label htmlFor="cell-group-name" style={{ display: "block", marginBottom: 8, fontSize: 14, fontWeight: 500, color: "#334155" }}>Name</label>
           <Input
+            id="cell-group-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Enter cell group name"
           />
         </div>
 
-        <br />
-
-        <div>
-          <label>Description</label>
-          <br />
+        <div style={{ marginBottom: 16 }}>
+          <label htmlFor="cell-group-description" style={{ display: "block", marginBottom: 8, fontSize: 14, fontWeight: 500, color: "#334155" }}>Description</label>
           <Textarea
+            id="cell-group-description"
             rows={4}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -124,11 +122,8 @@ export default function CellGroupForm() {
           />
         </div>
 
-        <br />
-
-        <div>
-          <label>Leader</label>
-          <br />
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: "block", marginBottom: 8, fontSize: 14, fontWeight: 500, color: "#334155" }}>Leader</label>
           <SearchableSelect
             value={leaderMemberId}
             onChange={setLeaderMemberId}
@@ -140,17 +135,13 @@ export default function CellGroupForm() {
           />
         </div>
 
-        <br />
-
-        <div>
-          <label>Status</label>
-          <br />
-          <Select value={status} onChange={(e) => setStatus(e.target.value)}>
+        <div style={{ marginBottom: 16 }}>
+          <label htmlFor="cell-group-status" style={{ display: "block", marginBottom: 8, fontSize: 14, fontWeight: 500, color: "#334155" }}>Status</label>
+          <Select id="cell-group-status" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option>Active</option>
             <option>Inactive</option>
           </Select>
         </div>
-        <br />
 
         <Button type="submit">
           <p>{isEdit ? "Update Cell Group" : "Save Cell Group"}</p>

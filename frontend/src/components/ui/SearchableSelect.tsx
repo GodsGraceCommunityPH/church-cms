@@ -55,9 +55,9 @@ export default function SearchableSelect({
         onClick={() => setOpen(!open)}
         style={{
           border: "1px solid #cbd5e1",
-          borderRadius: 8,
-          padding: "10px 14px",
-          minHeight: 44,
+          borderRadius: 12,
+          padding: "12px 16px",
+          minHeight: 48,
           boxSizing: "border-box",
           cursor: "pointer",
           background: "white",
@@ -88,8 +88,8 @@ export default function SearchableSelect({
             left: 0,
             right: 0,
             marginTop: 4,
-            border: "1px solid #ccc",
-            borderRadius: 6,
+            border: "1px solid #cbd5e1",
+            borderRadius: 12,
             background: "white",
             maxHeight: 250,
             overflowY: "auto",
@@ -100,7 +100,7 @@ export default function SearchableSelect({
           <div
             style={{
               padding: 8,
-              borderBottom: "1px solid #ddd",
+              borderBottom: "1px solid #cbd5e1",
             }}
           >
             <input
@@ -110,9 +110,9 @@ export default function SearchableSelect({
               onChange={(e) => setSearch(e.target.value)}
               style={{
                 width: "100%",
-                padding: "8px",
-                border: "1px solid #ccc",
-                borderRadius: 4,
+                padding: "12px 16px",
+                border: "1px solid #cbd5e1",
+                borderRadius: 12,
                 boxSizing: "border-box",
               }}
             />
@@ -128,7 +128,7 @@ export default function SearchableSelect({
                 setOpen(false);
               }}
               style={{
-                padding: "10px",
+                padding: "12px 16px",
                 cursor: "pointer",
               }}
             >
