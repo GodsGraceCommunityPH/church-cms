@@ -608,12 +608,12 @@ body {
 .dashboard-card-heading h2 { margin: 0; font-size: 19px; }
 .dashboard-card-heading p { margin: 6px 0 0; color: #64748b; font-size: 13px; }
 .dashboard-card-heading > a { color: #526a28; font-size: 13px; font-weight: 750; white-space: nowrap; }
-.dashboard-gender-content { display: flex; align-items: center; justify-content: center; gap: clamp(24px, 5vw, 50px); }
-.dashboard-donut { flex: 0 0 auto; display: grid; place-items: center; width: 168px; aspect-ratio: 1; border-radius: 50%; }
+.dashboard-gender-content { display: flex; align-items: center; justify-content: center; gap: clamp(16px, 3vw, 36px); min-width: 0; }
+.dashboard-donut { flex: 0 1 168px; display: grid; place-items: center; width: min(100%, 168px); min-width: 0; aspect-ratio: 1; border-radius: 50%; }
 .dashboard-donut > div { display: grid; place-items: center; width: 105px; aspect-ratio: 1; border-radius: 50%; background: white; box-shadow: inset 0 0 0 1px #edf0f3; }
 .dashboard-donut strong { font-size: 27px; line-height: 1; }
 .dashboard-donut span { margin-top: 4px; color: #64748b; font-size: 12px; }
-.dashboard-legend { display: grid; gap: 8px; min-width: min(100%, 210px); }
+.dashboard-legend { display: grid; gap: 8px; flex: 1 1 170px; min-width: 0; }
 .dashboard-legend a { display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: 9px; padding: 8px; border-radius: 8px; color: #172033; text-decoration: none; }
 .dashboard-legend a:hover { background: #f7f9f3; }
 .dashboard-legend-dot { width: 10px; height: 10px; border-radius: 50%; }
@@ -669,9 +669,27 @@ body {
 .list-clear-filters:hover { background: #f2f5eb; }
 .list-clear-filters:focus-visible { outline: 2px solid #667b38; outline-offset: 2px; }
 
-@media (max-width: 1050px) {
+@media (max-width: 1180px) {
   .dashboard-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dashboard-middle-grid, .dashboard-bottom-grid { grid-template-columns: 1fr; }
+}
+
+.topbar-content { min-width: 0; padding: 0 20px; }
+.notification-dropdown { max-width: calc(100vw - 24px); }
+.dashboard-middle-grid > *, .dashboard-bottom-grid > * { min-width: 0; }
+.dashboard-legend a > span:nth-child(2) { min-width: 0; flex-wrap: wrap; }
+.dashboard-bar-label { min-width: 0; }
+
+@media (max-width: 560px) {
+  .topbar-content { width: 100%; padding: 0; }
+  .notification-bell-root .notification-dropdown {
+    position: fixed !important;
+    top: 62px !important;
+    right: 12px !important;
+    left: 12px !important;
+    width: auto !important;
+    max-width: none;
+  }
 }
 
 @media (max-width: 560px) {
