@@ -15,6 +15,7 @@ type ProvisionCellLeaderResponse = {
   userId?: string;
   email?: string;
   error?: string;
+  tempPassword?: string;
 };
 
 const json = (data: unknown, status = 200) =>
@@ -23,7 +24,15 @@ const json = (data: unknown, status = 200) =>
     headers: { "Content-Type": "application/json" },
   });
 
-serve(async (req) => {
+function createAdminClient() {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  return createClient(supabaseUrl!, serviceRoleKey!, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
+export async function handler(req: Request): Promise<Response> {
   if (req.method !== "POST") {
     return json({ ok: false, error: "Method not allowed" }, 405);
   }
@@ -49,15 +58,7 @@ serve(async (req) => {
     return json({ ok: false, error: "Invalid email address" }, 400);
   }
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !serviceRoleKey) {
-    return json({ ok: false, error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" }, 500);
-  }
-
-  const admin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  const admin = createAdminClient();
 
   const { data: listData, error: listError } = await admin.auth.admin.listUsers({
     page: 1,
@@ -72,6 +73,58 @@ serve(async (req) => {
   );
   if (existing) {
     return json({ ok: true, created: false, reason: "existing", userId: existing.id, email }, 200);
+  }
+
+  const { data: members, error: memberError } = await admin
+    .from("members")
+    .select("id, cell_group_id")
+    .ilike("email", email);
+  if (memberError) {
+    return json({ ok: false, error: memberError.message }, 500);
+  }
+
+  const matches = (members ?? []) as Array<{
+    id: string;
+    cell_group_id: string | null;
+  }>;
+
+  if (matches.length === 0) {
+    return json(
+      { ok: false, error: "No member profile found for the provided email." },
+      404,
+    );
+  }
+  if (matches.length > 1) {
+    return json(
+      { ok: false, error: "Ambiguous member profile matches for the provided email." },
+      409,
+    );
+  }
+
+  const member = matches[0];
+  if (member.cell_group_id && member.cell_group_id !== cellGroupId) {
+    return json(
+      { ok: false, error: "Member is already assigned to a different cell group." },
+      409,
+    );
+  }
+
+  const { data: group, error: groupError } = await admin
+    .from("cell_groups")
+    .select("id, leader_id")
+    .eq("id", cellGroupId)
+    .maybeSingle();
+  if (groupError) {
+    return json({ ok: false, error: groupError.message }, 500);
+  }
+  if (!group) {
+    return json({ ok: false, error: "Cell group not found.", cellGroupId }, 404);
+  }
+  if (group.leader_id && group.leader_id !== member.id) {
+    return json(
+      { ok: false, error: "Cell group already has an assigned leader." },
+      409,
+    );
   }
 
   const tempPassword =
@@ -92,6 +145,30 @@ serve(async (req) => {
 
   const userId = createdData.user.id;
 
+  const { error: userUpdateError } = await admin
+    .from("users")
+    .update({ member_id: member.id })
+    .eq("id", userId);
+  if (userUpdateError) {
+    return json({ ok: false, error: userUpdateError.message, userId, email }, 500);
+  }
+
+  const { error: memberUpdateError } = await admin
+    .from("members")
+    .update({ cell_group_id: cellGroupId })
+    .eq("id", member.id);
+  if (memberUpdateError) {
+    return json({ ok: false, error: memberUpdateError.message, userId, email }, 500);
+  }
+
+  const { error: groupUpdateError } = await admin
+    .from("cell_groups")
+    .update({ leader_id: member.id })
+    .eq("id", cellGroupId);
+  if (groupUpdateError) {
+    return json({ ok: false, error: groupUpdateError.message, userId, email }, 500);
+  }
+
   const { data: role, error: roleError } = await admin
     .from("roles")
     .select("id")
@@ -104,38 +181,11 @@ serve(async (req) => {
       .insert({ user_id: userId, role_id: role.id });
     roleAssigned = !roleInsertError;
   }
-
-  let memberLinked = false;
-  const { data: member, error: memberError } = await admin
-    .from("members")
-    .select("id")
-    .ilike("email", email)
-    .limit(1)
-    .maybeSingle();
-  if (memberError) {
-    return json({ ok: false, error: memberError.message }, 500);
-  }
-  if (member) {
-    memberLinked = true;
-    const { error: userUpdateError } = await admin
-      .from("users")
-      .update({ member_id: member.id })
-      .eq("id", userId);
-    if (!userUpdateError) {
-      const { error: memberUpdateError } = await admin
-        .from("members")
-        .update({ cell_group_id: cellGroupId })
-        .eq("id", member.id);
-      if (!memberUpdateError) {
-        const { error: groupUpdateError } = await admin
-          .from("cell_groups")
-          .update({ leader_id: member.id })
-          .eq("id", cellGroupId);
-        if (groupUpdateError) {
-          return json({ ok: false, error: groupUpdateError.message, userId, email }, 500);
-        }
-      }
-    }
+  if (!roleAssigned) {
+    return json(
+      { ok: false, error: "Failed to assign cell leader role.", userId, email },
+      500,
+    );
   }
 
   const { data: assignments, error: verifyError } = await admin
@@ -146,19 +196,26 @@ serve(async (req) => {
     const roleCode = (assignment as { roles?: { code?: string } })?.roles?.code;
     return roleCode === "cell_leader";
   });
-  if (verifyError) {
-    return json({ ok: false, error: verifyError.message, userId, email }, 500);
+  if (verifyError || !hasCellLeader) {
+    return json(
+      { ok: false, error: verifyError?.message ?? "Verification failed.", userId, email },
+      500,
+    );
   }
 
-  const ok = !roleError && !memberError && !verifyError;
   return json({
-    ok,
+    ok: true,
     created: true,
     userId,
     email,
     cellGroupId,
-    roleAssigned,
-    memberLinked,
-    verified: hasCellLeader,
+    roleAssigned: true,
+    memberLinked: true,
+    verified: true,
+    tempPassword,
   });
+}
+
+serve(async (req) => {
+  return handler(req);
 });

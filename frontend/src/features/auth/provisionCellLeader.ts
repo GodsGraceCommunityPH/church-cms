@@ -14,6 +14,7 @@ export interface ProvisionedCellLeader {
   userId?: string;
   email?: string;
   error?: string;
+  tempPassword?: string;
 }
 
 export async function provisionCellLeader(
@@ -44,5 +45,6 @@ export async function provisionCellLeader(
     userId: result.userId,
     email: result.email,
     error: result.error,
+    tempPassword: result.tempPassword,
   };
 }
