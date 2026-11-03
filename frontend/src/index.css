@@ -685,11 +685,10 @@ body {
   .notification-bell-root .notification-dropdown {
     position: fixed !important;
     top: 62px !important;
-    right: auto !important;
-    left: 50% !important;
+    right: 12px !important;
+    left: auto !important;
     width: min(380px, calc(100vw - 24px)) !important;
     max-width: calc(100vw - 24px);
-    transform: translateX(-50%);
   }
 }
 
