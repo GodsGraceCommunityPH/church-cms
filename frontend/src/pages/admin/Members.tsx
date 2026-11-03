@@ -8,6 +8,7 @@ import { useMembers } from "../../features/members/useMembers";
 import Select from "../../components/ui/Select";
 import { getCellGroups } from "../../features/cellGroups/cellGroupService";
 import type { CellGroup } from "../../features/cellGroups/cellGroup";
+import { getUnviewedMemberIds } from "../../features/notifications/notificationService";
 
 function Members() {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ function Members() {
   const [search, setSearch] = useState("");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [cellGroups, setCellGroups] = useState<CellGroup[]>([]);
+  const [newMemberIds, setNewMemberIds] = useState<Set<string>>(new Set());
   const [successMessage, setSuccessMessage] = useState(
     () => location.state?.successMessage ?? "",
   );
@@ -54,6 +56,8 @@ function Members() {
     });
     return () => { active = false; };
   }, []);
+
+  useEffect(() => { void getUnviewedMemberIds().then((ids) => setNewMemberIds(new Set(ids))).catch(() => setNewMemberIds(new Set())); }, []);
 
   const genderFilter = searchParams.get("gender") ?? "all";
   const cellGroupFilter = searchParams.get("cellGroup") ?? "all";
@@ -170,6 +174,7 @@ function Members() {
         ) : (
           <MemberTable
             members={filteredMembers}
+            newMemberIds={newMemberIds}
             onOpen={(id) => navigate(`/admin/members/${id}`)}
             onEdit={(id) => navigate(`/admin/members/${id}/edit`)}
           />

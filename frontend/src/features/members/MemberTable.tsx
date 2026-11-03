@@ -5,12 +5,14 @@ interface MemberTableProps {
   members: Member[];
   onOpen: (id: string) => void;
   onEdit: (id: string) => void;
+  newMemberIds?: Set<string>;
 }
 
 export default function MemberTable({
   members,
   onOpen,
   onEdit,
+  newMemberIds = new Set(),
 }: MemberTableProps) {
   return (
     <div className="w-full min-w-0 overflow-x-hidden">
@@ -31,6 +33,7 @@ export default function MemberTable({
               member={member}
               onOpen={onOpen}
               onEdit={onEdit}
+              isNew={newMemberIds.has(member.id)}
             />
           ))}
         </tbody>

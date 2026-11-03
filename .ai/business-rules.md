@@ -69,6 +69,15 @@ than one match is preserved in a private staff review queue and is never
 automatically connected. Public confirmation reveals only the matched name,
 and blank optional submissions never erase existing profile values.
 
+Successful Cell Group invite registrations create a persisted notification for
+active users with `members.view` only when a new Member row is inserted.
+Confirming an existing profile updates that Member and never emits a new-member
+notification. New-member list markers are tracked per member viewer and clear
+only after that user opens the Member profile. Member profile updates,
+deactivation, and permitted permanent removal create their respective staff
+notifications; recipients can read and update only their own notification
+state.
+
 ---
 
 ## Profile Ownership

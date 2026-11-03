@@ -47,6 +47,7 @@ import Evangelism from "./pages/admin/Evangelism";
 import EvangelismForm from "./pages/admin/EvangelismForm";
 import EvangelismDetail from "./pages/admin/EvangelismDetail";
 import Resources from "./pages/admin/Resources";
+import Notifications from "./pages/admin/Notifications";
 import ResourceForm from "./pages/admin/ResourceForm";
 import ResourceDetail from "./pages/admin/ResourceDetail";
 import {
@@ -100,6 +101,7 @@ function App() {
         <Route element={<PermissionRoute permission="members.view" />}>
         <Route path="/admin/members" element={<Members />} />
         <Route path="/admin/members/:id" element={<MemberProfile />} />
+        <Route path="/admin/notifications" element={<Notifications />} />
         </Route>
         <Route element={<PermissionRoute permission="evangelism.view" />}>
           <Route path="/admin/evangelism" element={<Evangelism />} />

@@ -17,6 +17,7 @@ import {
   trainingStatusLabel,
   type MemberTrainingJourneyItem,
 } from "../../features/training/trainingService";
+import { markMemberViewed } from "../../features/notifications/notificationService";
 
 export default function MemberProfile() {
   const { id } = useParams();
@@ -46,6 +47,7 @@ export default function MemberProfile() {
       ]);
       setMember(nextMember);
       setTrainingJourney(nextJourney);
+      void markMemberViewed(nextMember.id).catch(() => undefined);
     } catch {
       setLoadError("Unable to load member details. Please try again.");
     } finally {

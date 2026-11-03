@@ -5,12 +5,14 @@ interface MemberRowProps {
   member: Member;
   onOpen: (id: string) => void;
   onEdit: (id: string) => void;
+  isNew?: boolean;
 }
 
 export default function MemberRow({
   member,
   onOpen,
   onEdit,
+  isNew = false,
 }: MemberRowProps) {
   const initials = `${member.firstName.charAt(0)}${member.lastName.charAt(0)}`.toUpperCase();
 
@@ -24,7 +26,7 @@ export default function MemberRow({
         <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
           <span aria-hidden="true" style={{ width: 42, height: 42, borderRadius: "50%", flex: "0 0 auto", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#e7eddc", color: "#40511f", fontWeight: 800 }}>{initials}</span>
           <span style={{ minWidth: 0 }}>
-            <strong style={{ display: "block", overflowWrap: "anywhere", color: "#0f172a" }}>{member.firstName} {member.lastName}{member.nickname ? ` (${member.nickname})` : ""}</strong>
+            <strong style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 7, overflowWrap: "anywhere", color: "#0f172a" }}>{member.firstName} {member.lastName}{member.nickname ? ` (${member.nickname})` : ""}{isNew && <span style={{ borderRadius: 999, background: "#dcfce7", color: "#166534", padding: "2px 7px", fontSize: 10, letterSpacing: ".04em", fontWeight: 800 }}>NEW</span>}</strong>
             <small style={{ display: "block", marginTop: 4, color: "#64748b" }}>{member.cellGroup || "No Cell Group"}</small>
           </span>
         </div>
