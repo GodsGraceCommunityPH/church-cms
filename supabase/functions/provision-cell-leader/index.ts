@@ -32,6 +32,17 @@ function createAdminClient() {
   });
 }
 
+async function cleanupCreatedUser(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+): Promise<void> {
+  try {
+    await admin.auth.admin.deleteUser(userId);
+  } catch {
+    // Best-effort rollback; the original provisioning error is authoritative.
+  }
+}
+
 export async function handler(req: Request): Promise<Response> {
   if (req.method !== "POST") {
     return json({ ok: false, error: "Method not allowed" }, 405);
@@ -150,6 +161,7 @@ export async function handler(req: Request): Promise<Response> {
     .update({ member_id: member.id })
     .eq("id", userId);
   if (userUpdateError) {
+    await cleanupCreatedUser(admin, userId);
     return json({ ok: false, error: userUpdateError.message, userId, email }, 500);
   }
 
@@ -158,6 +170,7 @@ export async function handler(req: Request): Promise<Response> {
     .update({ cell_group_id: cellGroupId })
     .eq("id", member.id);
   if (memberUpdateError) {
+    await cleanupCreatedUser(admin, userId);
     return json({ ok: false, error: memberUpdateError.message, userId, email }, 500);
   }
 
@@ -166,6 +179,7 @@ export async function handler(req: Request): Promise<Response> {
     .update({ leader_id: member.id })
     .eq("id", cellGroupId);
   if (groupUpdateError) {
+    await cleanupCreatedUser(admin, userId);
     return json({ ok: false, error: groupUpdateError.message, userId, email }, 500);
   }
 
@@ -182,6 +196,7 @@ export async function handler(req: Request): Promise<Response> {
     roleAssigned = !roleInsertError;
   }
   if (!roleAssigned) {
+    await cleanupCreatedUser(admin, userId);
     return json(
       { ok: false, error: "Failed to assign cell leader role.", userId, email },
       500,
@@ -197,6 +212,7 @@ export async function handler(req: Request): Promise<Response> {
     return roleCode === "cell_leader";
   });
   if (verifyError || !hasCellLeader) {
+    await cleanupCreatedUser(admin, userId);
     return json(
       { ok: false, error: verifyError?.message ?? "Verification failed.", userId, email },
       500,
