@@ -55,7 +55,7 @@ export default function JoinMemberForm({ onSubmit, submitting = false }: JoinMem
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const validationErrors = validateMemberDetails({ ...member, requireBirthday: true });
+    const validationErrors = validateMemberDetails(member);
     const firstInvalidField = Object.keys(validationErrors)[0];
     if (firstInvalidField) {
       setErrors(validationErrors);
@@ -120,7 +120,6 @@ export default function JoinMemberForm({ onSubmit, submitting = false }: JoinMem
           label="Birthday"
           name="birthday"
           type="date"
-          required
           value={member.birthday}
           onChange={handleChange}
           max={yesterdayDateInputValue()}
