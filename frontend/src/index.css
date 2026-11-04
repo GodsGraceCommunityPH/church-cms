@@ -497,6 +497,12 @@ body {
   overflow-y: auto;
 }
 
+.admin-sidebar-nav a > svg {
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+}
+
 .admin-sidebar-footer {
   display: flex;
   flex: 0 0 auto;

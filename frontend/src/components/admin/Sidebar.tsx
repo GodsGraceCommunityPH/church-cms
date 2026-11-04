@@ -50,7 +50,7 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
         md:translate-x-0 md:static md:flex
       `}
       style={{
-        width: collapsed ? "72px" : "256px",
+        width: collapsed ? "88px" : "256px",
         transition: "width 220ms ease, transform 300ms ease",
       }}
     >
