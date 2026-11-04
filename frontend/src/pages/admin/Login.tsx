@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Info, Lock, LogIn, Mail } from "lucide-react";
+import { Info, Lock, LogIn, UserRound } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import logo from "../../assets/ggccc-logo.png";
 import Button from "../../components/ui/Button";
@@ -10,7 +10,7 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const { session, loading: authLoading, signIn } = useAuth();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -27,9 +27,9 @@ export default function Login() {
     setSubmitting(true);
     setError("");
     try {
-      await signIn(email.trim(), password);
+      await signIn(username.trim(), password);
     } catch {
-      setError("Invalid email or password. Please try again.");
+        setError("Invalid username or password. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -108,10 +108,10 @@ export default function Login() {
                 className="mb-2 block text-sm font-medium text-slate-700"
                 style={{ display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: 500, color: "#334155" }}
               >
-                Email
+                Username
               </span>
               <div style={{ position: "relative" }}>
-                <Mail
+                <UserRound
                   size={18}
                   className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                   style={{
@@ -124,13 +124,13 @@ export default function Login() {
                   }}
                 />
                 <Input
-                  type="email"
-                  autoComplete="email"
+                  type="text"
+                  autoComplete="username"
                   required
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value)}
                   className="pl-10"
-                  placeholder="you@example.com"
+                  placeholder="your.username"
                   style={{
                     width: "100%",
                     height: "48px",

@@ -16,6 +16,7 @@ import {
   X,
   HeartHandshake,
   Library,
+  ShieldUser,
 } from "lucide-react";
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
@@ -31,6 +32,7 @@ type SidebarProps = {
 function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
   const { signOut, hasPermission } = useAuth();
   const [signingOut, setSigningOut] = useState(false);
+  const trainingOnly = hasPermission("training.view") && !hasPermission("members.view") && !hasPermission("cell_groups.view") && !hasPermission("finance.view");
   const linkClass =
     "flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-gray-100";
   const linkStyle = {
@@ -112,7 +114,7 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
 
         <nav className="admin-sidebar-nav flex-1 overflow-y-auto">
           <div className="flex flex-col gap-2">
-            <NavLink
+            {!trainingOnly && <NavLink
               className={linkClass}
               to="/admin/dashboard"
               onClick={onClose}
@@ -121,9 +123,9 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
             >
               <LayoutDashboard size={18} />
               {!collapsed && "Overview"}
-            </NavLink>
+            </NavLink>}
 
-            <NavLink
+            {hasPermission("training.view") && <NavLink
               className={({ isActive }) =>
                 `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`
               }
@@ -134,9 +136,9 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
             >
               <GraduationCap size={18} />
               {!collapsed && "Training"}
-            </NavLink>
+            </NavLink>}
 
-            <NavLink
+            {hasPermission("members.view") && <NavLink
               className={linkClass}
               to="/admin/members"
               onClick={onClose}
@@ -145,11 +147,13 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
             >
               <User size={18} />
               {!collapsed && "Members"}
-            </NavLink>
+            </NavLink>}
+            {hasPermission("members.view") && <NavLink className={({ isActive }) => `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`} to="/admin/member-registration-reviews" onClick={onClose} style={linkStyle} title={collapsed ? "Registration Reviews" : undefined}><User size={18} />{!collapsed && "Registration Reviews"}</NavLink>}
+            {hasPermission("admin.users") && <NavLink className={({ isActive }) => `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`} to="/admin/users" onClick={onClose} style={linkStyle} title={collapsed ? "User Administration" : undefined}><ShieldUser size={18} />{!collapsed && "User Administration"}</NavLink>}
             {hasPermission("evangelism.view") && <NavLink className={({isActive})=>`${linkClass} ${isActive?"bg-gray-100 font-semibold text-olive-800":""}`} to="/admin/evangelism" onClick={onClose} style={linkStyle} title={collapsed?"Evangelism":undefined}><HeartHandshake size={18}/>{!collapsed&&"Evangelism"}</NavLink>}
             {hasPermission("resources.view") && <NavLink className={({isActive})=>`${linkClass} ${isActive?"bg-gray-100 font-semibold text-olive-800":""}`} to="/admin/resources" onClick={onClose} style={linkStyle} title={collapsed?"Resources":undefined}><Library size={18}/>{!collapsed&&"Resources"}</NavLink>}
 
-            <NavLink
+            {hasPermission("cell_groups.view") && <NavLink
               className={linkClass}
               to="/admin/cell-groups"
               onClick={onClose}
@@ -158,9 +162,9 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
             >
               <Users size={18} />
               {!collapsed && "Cell Groups"}
-            </NavLink>
+            </NavLink>}
 
-            <NavLink
+            {hasPermission("ministries.view") && <NavLink
               className={({ isActive }) =>
                 `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`
               }
@@ -171,7 +175,7 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
             >
               <Church size={18} />
               {!collapsed && "Ministries"}
-            </NavLink>
+            </NavLink>}
 
             {hasPermission("equipment.view") && <NavLink
               className={({ isActive }) =>

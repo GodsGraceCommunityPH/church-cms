@@ -18,7 +18,8 @@ import {
   getMemberSaveError,
   getMember,
   updateMember,
-  findPotentialMemberDuplicates,
+  classifyPotentialMemberDuplicates,
+  type MemberDuplicateCandidate,
 } from "../../features/members/memberService";
 
 function MemberForm() {
@@ -34,7 +35,7 @@ function MemberForm() {
   const [formError, setFormError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<MemberValidationErrors>({});
   const [isSaving, setIsSaving] = useState(false);
-  const [duplicateMembers, setDuplicateMembers] = useState<Member[]>([]);
+  const [duplicateMembers, setDuplicateMembers] = useState<MemberDuplicateCandidate[]>([]);
   const [duplicateConfirmed, setDuplicateConfirmed] = useState(false);
 
   useEffect(() => {
@@ -87,6 +88,8 @@ function MemberForm() {
       ...prev,
       [name]: value,
     }));
+    setDuplicateConfirmed(false);
+    setDuplicateMembers([]);
     setFieldErrors((current) => ({ ...current, [name]: undefined }));
   };
 
@@ -128,9 +131,9 @@ function MemberForm() {
       remarks: member.remarks.trim(),
     };
 
-    if (!isEdit && !duplicateConfirmed) {
-      const matches = await findPotentialMemberDuplicates(payload);
-      if (matches.length > 0) {
+    if (!isEdit) {
+      const matches = await classifyPotentialMemberDuplicates(payload);
+      if (matches.length > 0 && !duplicateConfirmed) {
         setDuplicateMembers(matches);
         return;
       }
@@ -142,7 +145,19 @@ function MemberForm() {
       if (isEdit && id) {
         await updateMember(id, payload);
       } else {
-        await createMember(payload);
+        const result = await createMember(payload, duplicateConfirmed
+          ? duplicateMembers.map((candidate) => candidate.member.id)
+          : []);
+        if (!result.created) {
+          const matches = result.matches.length > 0
+            ? result.matches
+            : await classifyPotentialMemberDuplicates(payload);
+          setDuplicateMembers(matches);
+          setDuplicateConfirmed(false);
+          setFormError("A possible duplicate appeared while saving. Review the current matches before confirming creation.");
+          setIsSaving(false);
+          return;
+        }
       }
     } catch (error) {
       console.error("[Members] save failed", error);
@@ -199,16 +214,16 @@ function MemberForm() {
       <form onSubmit={handleSubmit} noValidate>
         {duplicateMembers.length > 0 && !duplicateConfirmed && (
           <div style={{ margin: "0 0 16px", padding: "16px", border: "1px solid #fbbf24", borderRadius: "8px", background: "#fffbeb" }}>
-            <strong>Possible duplicate found</strong>
-            <p style={{ margin: "6px 0 12px" }}>A Member with the same name or mobile number already exists.</p>
-            {duplicateMembers.map((existing) => (
+            <strong>Member review required</strong>
+            <p style={{ margin: "6px 0 12px" }}>Check each match before deciding. A shared phone number can belong to a household.</p>
+            {duplicateMembers.map(({ member: existing, kind, reasons }) => (
               <div key={existing.id} style={{ display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "center", marginTop: "8px" }}>
-                <span>{existing.firstName} {existing.lastName}{existing.mobile ? ` · ${existing.mobile}` : ""}</span>
+                <span><strong>{kind === "likely_same_person" ? "Likely same person" : "Possible shared contact"}:</strong> {existing.firstName} {existing.lastName}{existing.mobile ? ` · ${existing.mobile}` : ""}<small style={{ display: "block" }}>{reasons.join("; ")}</small></span>
                 <Link to={`/admin/members/${existing.id}`} className="underline">View Existing Member</Link>
               </div>
             ))}
             <div style={{ display: "flex", gap: "8px", marginTop: "14px" }}>
-              <PrimaryButton type="button" onClick={() => { setDuplicateConfirmed(true); setDuplicateMembers([]); }}>Add Anyway</PrimaryButton>
+              <PrimaryButton type="button" onClick={() => setDuplicateConfirmed(true)}>Confirm different person and add</PrimaryButton>
               <button type="button" onClick={() => setDuplicateMembers([])} className="rounded-lg border px-3 py-2">Cancel</button>
             </div>
           </div>

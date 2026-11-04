@@ -1,6 +1,11 @@
 import { supabase } from "../../lib/supabase";
 import type { Member } from "./member";
 import { mapMember } from "./memberMapper";
+import { classifyMemberDuplicate } from "./memberDuplicateDetection";
+import type { MemberDuplicateKind } from "./memberDuplicateDetection";
+
+export { normalizeMemberMobile, normalizeMemberName } from "./memberDuplicateDetection";
+export type { MemberDuplicateKind } from "./memberDuplicateDetection";
 
 const memberWithCellGroup = `
   *,
@@ -24,22 +29,15 @@ export interface MemberPayload {
   remarks: string;
 }
 
-/** Comparison-only normalization; stored member display values are unchanged. */
-export function normalizeMemberMobile(value: string | null | undefined): string {
-  const digits = (value ?? "").replace(/\D/g, "");
-  if (digits.startsWith("+63")) return digits.slice(1);
-  if (digits.startsWith("09") && digits.length === 11) return `63${digits.slice(1)}`;
-  if (digits.startsWith("639") && digits.length === 12) return digits;
-  return digits;
+export interface MemberDuplicateCandidate {
+  member: Member;
+  kind: MemberDuplicateKind;
+  reasons: string[];
 }
 
-export function normalizeMemberName(value: string | null | undefined): string {
-  return (value ?? "")
-    .trim()
-    .toLocaleLowerCase()
-    .replace(/[\u2010-\u2015-]+/g, " ")
-    .replace(/[^\p{L}\p{N}\s]/gu, "")
-    .replace(/\s+/g, " ");
+export interface CreateMemberResult {
+  created: boolean;
+  matches: MemberDuplicateCandidate[];
 }
 
 export async function findPotentialMemberDuplicates(payload: MemberPayload): Promise<Member[]> {
@@ -49,13 +47,20 @@ export async function findPotentialMemberDuplicates(payload: MemberPayload): Pro
     .order("last_name")
     .order("first_name");
   if (error) throw error;
-  const mobile = normalizeMemberMobile(payload.mobile);
-  const first = normalizeMemberName(payload.first_name);
-  const last = normalizeMemberName(payload.last_name);
-  return (data ?? []).map(mapMember).filter((member) => {
-    const mobileMatch = Boolean(mobile) && normalizeMemberMobile(member.mobile) === mobile;
-    const nameMatch = normalizeMemberName(member.firstName) === first && normalizeMemberName(member.lastName) === last;
-    return mobileMatch || nameMatch;
+  return (data ?? []).map(mapMember).filter((member) => classifyMemberDuplicate(payload, member) !== null);
+}
+
+export async function classifyPotentialMemberDuplicates(
+  payload: MemberPayload,
+): Promise<MemberDuplicateCandidate[]> {
+  const matches = await findPotentialMemberDuplicates(payload);
+  return matches.flatMap((member) => {
+    const kind = classifyMemberDuplicate(payload, member);
+    if (!kind) return [];
+    const reasons = kind === "likely_same_person"
+      ? ["Similar first name", "Same surname"]
+      : ["Same normalized mobile number"];
+    return [{ member, kind, reasons }];
   });
 }
 
@@ -115,12 +120,46 @@ export async function getMember(id: string): Promise<Member> {
   return mapMember(data);
 }
 
-export async function createMember(payload: MemberPayload): Promise<void> {
-  const { error } = await supabase.from("members").insert(payload);
+export async function createMember(
+  payload: MemberPayload,
+  reviewedMemberIds: string[] = [],
+): Promise<CreateMemberResult> {
+  const { data, error } = await supabase.rpc("create_member_with_duplicate_check", {
+    p_member: payload,
+    p_reviewed_member_ids: [...reviewedMemberIds].sort(),
+  });
 
   if (error) {
     throw error;
   }
+  const result = data as {
+    status?: string;
+    candidates?: Array<{ id: string; first_name: string; last_name: string; mobile: string | null; match_kind: MemberDuplicateKind }>;
+  } | null;
+  return {
+    created: result?.status === "created",
+    matches: (result?.candidates ?? []).map((candidate) => ({
+      member: {
+        id: candidate.id,
+        firstName: candidate.first_name,
+        lastName: candidate.last_name,
+        nickname: "",
+        gender: "",
+        birthday: "",
+        membershipStatus: "",
+        cellGroupId: "",
+        cellGroup: "",
+        mobile: candidate.mobile ?? "",
+        email: "",
+        address: "",
+        remarks: "",
+      },
+      kind: candidate.match_kind,
+      reasons: candidate.match_kind === "likely_same_person"
+        ? ["Similar first name", "Same surname"]
+        : ["Same normalized mobile number"],
+    })),
+  };
 }
 
 export async function updateMember(

@@ -48,6 +48,8 @@ import EvangelismForm from "./pages/admin/EvangelismForm";
 import EvangelismDetail from "./pages/admin/EvangelismDetail";
 import Resources from "./pages/admin/Resources";
 import Notifications from "./pages/admin/Notifications";
+import UserManagement from "./pages/admin/UserManagement";
+import MemberRegistrationReviews from "./pages/admin/MemberRegistrationReviews";
 import ResourceForm from "./pages/admin/ResourceForm";
 import ResourceDetail from "./pages/admin/ResourceDetail";
 import {
@@ -81,6 +83,9 @@ function App() {
         <Route path="/admin/dashboard" element={<Dashboard />} />
         <Route path="/admin/help" element={<HelpCenter />} />
         <Route path="/admin/help/:articleKey" element={<HelpArticle />} />
+        <Route element={<PermissionRoute permission="admin.users" />}>
+          <Route path="/admin/users" element={<UserManagement />} />
+        </Route>
         <Route element={<PermissionRoute permission="training.view" />}>
         <Route path="/admin/training" element={<Training />} />
         <Route path="/admin/training/pending" element={<PendingTraining />} />
@@ -101,6 +106,7 @@ function App() {
         <Route element={<PermissionRoute permission="members.view" />}>
         <Route path="/admin/members" element={<Members />} />
         <Route path="/admin/members/:id" element={<MemberProfile />} />
+        <Route path="/admin/member-registration-reviews" element={<MemberRegistrationReviews />} />
         <Route path="/admin/notifications" element={<Notifications />} />
         </Route>
         <Route element={<PermissionRoute permission="evangelism.view" />}>

@@ -10,6 +10,7 @@ import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../../lib/supabase";
 import { clearProtectedOfflineData } from "../resources/offlineStore";
 import { AuthContext, type AuthContextValue } from "./auth";
+import { signInWithUsername } from "../users/userManagementService";
 
 class PortalAccessError extends Error {
   readonly code: string;
@@ -146,9 +147,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [resolveSession]);
 
-  async function signIn(email: string, password: string) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+  async function signIn(username: string, password: string) {
+    await signInWithUsername(username, password);
   }
 
   async function signOut() {

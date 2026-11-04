@@ -60,14 +60,25 @@ Registration does **not** automatically make someone a church member.
 
 Church leaders determine whether a visitor becomes a member.
 
-An invite registration checks for exact normalized First Name + Last Name
-matches before creating a Member. Normalization trims outer whitespace,
-collapses repeated spaces, and compares case-insensitively; it is never fuzzy.
-One match requires the registrant to confirm the existing name before that
-same Member UUID is updated. A declined match creates a distinct person. More
-than one match is preserved in a private staff review queue and is never
-automatically connected. Public confirmation reveals only the matched name,
-and blank optional submissions never erase existing profile values.
+Every Member creation path checks normalized names and Philippine mobile
+numbers inside the database transaction. Philippine local `09…`, country-code
+`639…`, and `9…` mobile forms normalize to the same `639…` comparison value;
+displayed values are not rewritten. A first name with the same leading token
+and only additional trailing tokens, plus the same normalized surname, is a
+likely same-person match. A shared mobile number without that name match is a
+possible shared-household contact and never identifies or updates a person by
+itself.
+
+Public invite registrations never update or link an existing Member based on a
+name match or visitor confirmation. Any likely duplicate or shared-contact
+match is preserved with the submitted information in the private staff review
+queue. Only appropriately authorized staff may update or link an existing
+Member. Staff creation shows the match class and requires an explicit
+different-person confirmation before creating another row. The database
+serializes duplicate checks and inserts, and rechecks candidates at commit time
+so simultaneous requests cannot bypass the decision. Mobile numbers and names
+are not unique: households may share phones and different people may share
+names. Blank optional submissions never erase existing profile values.
 
 Successful Cell Group invite registrations create a persisted notification for
 active users with `members.view` only when a new Member row is inserted.
