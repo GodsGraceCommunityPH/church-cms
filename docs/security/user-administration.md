@@ -28,6 +28,43 @@ rejects or ambiguously completes the operation. If state cannot be reconciled,
 the function returns an explicit uncertain-outcome error for administrator
 review.
 
+### Activation leases, fencing, and reconciliation
+
+`account_activation_leases` is a per-user lease/state store. Each activation
+generates one operation ID, acquires the lease, renews it from a heartbeat while
+the Auth request is running, and releases it with `completed`, `failed`, or
+`uncertain`. Only `completed` / `failed` rows are removed automatically;
+`uncertain` rows are preserved for administrator reconciliation.
+
+`admin_user_set_active` requires a non-null operation ID and verifies the live,
+unexpired lease inside the same transaction that updates `users.is_active`. The
+lease row is locked with `FOR UPDATE`, so renewal, release, or a reconciliation
+claim cannot change ownership between the check and the update. The original
+three-argument overload from `20261104022255_user_administration.sql` is dropped;
+there is no unfenced path.
+
+Reconciliation is an explicit administrator action:
+
+1. `claim_account_activation_reconciliation` atomically claims an expired or
+   uncertain lease. It refuses a live operation and refuses a second
+   reconciliation while another claim window is active. The original
+   `operation_id` is preserved; `reconciliation_id` identifies the reconciler.
+2. The Edge Function reads the actual Supabase Auth ban state and the persisted
+   CMS `users.is_active` value. The documented recovery rule is that the CMS
+   value is authoritative and the Auth ban is aligned to `!is_active`.
+3. After any repair, both states are read again. The lease is not released until
+   they are consistent.
+4. `finalize_account_activation_reconciliation` re-checks the persisted CMS
+   value in the same transaction before deleting the lease. An unverified
+   outcome clears the reconciliation claim but preserves the `uncertain` row, so
+   repeated reconciliation remains safe and idempotent.
+
+**Limitation:** database fencing cannot cancel an Auth ban request that has
+already been sent to Supabase Auth. If that request lands after reconciliation's
+final read, Auth can diverge again. The CMS state remains authoritative and a
+later reconciliation repairs it. Account activation is not a cross-system
+atomic transaction between Auth and the database.
+
 Member linking changes only `users.member_id`. It does not write the Member row
 or its `cell_group_id`. Existing Auth accounts are assigned deterministic
 usernames from their private email prefix plus a short account identifier.

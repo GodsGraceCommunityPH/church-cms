@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { AccountActivationError, synchronizeAccountActivation } from "./accountActivation.ts";
+import { buildSetActiveRpcParams } from "./activationRpc.ts";
+import { reconcileAccountActivation } from "./reconcileActivation.ts";
 
 type Body = Record<string, unknown>;
 const origins = () => (Deno.env.get("CORS_ALLOWED_ORIGINS") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -22,37 +24,44 @@ async function transitionActive(admin: any, origin: string | null, callerId: str
         const { error } = await admin.auth.admin.updateUserById(targetId, { ban_duration: banned ? "876000h" : "none" });
         if (error) throw error;
       },
-      setDatabaseActive: async (targetId, nextActive) => {
-        const { data, error } = await admin.rpc("admin_user_set_active", { p_auth_user_id: targetId, p_caller_user_id: callerId, p_is_active: nextActive, p_operation_id: operationId });
+      setDatabaseActive: async (targetId, nextActive, operationId) => {
+        const params = buildSetActiveRpcParams({
+          authUserId: targetId,
+          callerUserId: callerId,
+          isActive: nextActive,
+          operationId,
+        });
+        const { data, error } = await admin.rpc("admin_user_set_active", params);
         if (error || data?.verified !== true) throw Object.assign(new Error(error?.message ?? "Unable to update account status."), { code: error?.code });
       },
-      acquireLease: async (targetId, operationId) => {
+      acquireLease: async (targetId, operationId, ttlSeconds) => {
         const { data, error } = await admin.rpc("acquire_account_activation_lease", {
           p_user_id: targetId,
           p_operation_id: operationId,
           p_requested_active: isActive,
-          p_ttl_seconds: 30,
+          p_ttl_seconds: ttlSeconds,
         });
         if (error) throw error;
         return data === true;
       },
-      renewLease: async (targetId, operationId) => {
+      renewLease: async (targetId, operationId, ttlSeconds) => {
         const { data, error } = await admin.rpc("renew_account_activation_lease", {
           p_user_id: targetId,
           p_operation_id: operationId,
-          p_ttl_seconds: 30,
+          p_ttl_seconds: ttlSeconds,
         });
         if (error) return false;
         return data === true;
       },
       releaseLease: async (targetId, operationId, status, leaseError) => {
-        const { error } = await admin.rpc("release_account_activation_lease", {
+        const { data, error } = await admin.rpc("release_account_activation_lease", {
           p_user_id: targetId,
           p_operation_id: operationId,
           p_status: status,
           p_error: leaseError ?? null,
         });
         if (error) throw error;
+        return data === true;
       },
       readAuthBanned: async (targetId) => {
         const { data, error } = await admin.auth.admin.getUserById(targetId);
@@ -152,79 +161,71 @@ export async function handler(req: Request): Promise<Response> {
 
   if (body.action === "set-active") {
     if (!uuid(body.userId) || typeof body.isActive !== "boolean") return fail(origin, "Invalid account status request.");
-    const statusError = await transitionActive(admin, origin, authData.user.id, body.userId, body.isActive);
+    const targetId = body.userId as string;
+    const statusError = await transitionActive(admin, origin, authData.user.id, targetId, body.isActive);
     if (statusError) return statusError;
     return json(origin, { ok: true });
   }
   if (body.action === "reconcile-activation") {
     if (!uuid(body.userId)) return fail(origin, "Invalid account reconciliation request.");
     const targetId = body.userId as string;
-    const { data: lease } = await admin.from("account_activation_leases").select("*").eq("user_id", targetId).maybeSingle();
+    const requestedActive = typeof body.isActive === "boolean" ? body.isActive : false;
 
-    let authBanned: boolean | null = null;
-    let authError: string | null = null;
-    try {
-      const { data, error } = await admin.auth.admin.getUserById(targetId);
-      if (error || !data?.user) throw new Error(error?.message ?? "Unable to read Auth state.");
-      const bannedUntil = (data.user as { banned_until?: string | null }).banned_until;
-      authBanned = Boolean(bannedUntil && new Date(bannedUntil).getTime() > Date.now());
-    } catch (error) {
-      authError = error instanceof Error ? error.message : "Unable to read Auth state.";
-    }
-
-    const { data: dbRow, error: dbError } = await admin.from("users").select("is_active").eq("id", targetId).maybeSingle();
-    const dbActive = dbError ? null : (dbRow ? dbRow.is_active === true : null);
-
-    const consistent = authBanned !== null && dbActive !== null && authBanned === !dbActive;
-
-    // Controlled reconciliation: apply the documented recovery rule only when the
-    // lease is uncertain/stale or absent. Rule: persisted CMS is_active is
-    // authoritative; Auth ban is aligned to !isActive. Never auto-overwrite when
-    // both states are known and already consistent, or when a state is unreadable.
-    let reconciled = false;
-    let reconcileError: string | null = null;
-    const leaseStatus = lease?.status ?? null;
-    const needsReconciliation = !lease || leaseStatus === "uncertain" || leaseStatus === "started" || leaseStatus === "auth_updated";
-
-    if (needsReconciliation && authBanned !== null && dbActive !== null && !consistent) {
-      try {
-        await admin.auth.admin.updateUserById(targetId, { ban_duration: dbActive ? "none" : "876000h" });
-        authBanned = !dbActive;
-        reconciled = true;
-      } catch (error) {
-        reconcileError = error instanceof Error ? error.message : "Unable to reconcile Auth state.";
-      }
-    }
-
-    if (needsReconciliation && authBanned !== null && dbActive !== null && consistent) {
-      // Release the lease as completed (idempotent; uncertain rows are preserved
-      // only when state could not be established).
-      try {
-        if (lease?.operation_id) {
-          await admin.rpc("release_account_activation_lease", {
-            p_user_id: targetId,
-            p_operation_id: lease.operation_id,
-            p_status: "completed",
-          });
-        }
-        reconciled = true;
-      } catch (error) {
-        reconcileError = error instanceof Error ? error.message : "Unable to release lease.";
-      }
-    }
-
-    return json(origin, {
-      ok: true,
-      userId: targetId,
-      lease: lease ?? null,
-      authBanned,
-      databaseActive: dbActive,
-      consistent,
-      reconciled,
-      reconcileError,
-      authError,
-      dbError: dbError?.message ?? null,
+    const result = await reconcileAccountActivation(targetId, {
+      claim: async (userId, reconciliationId) => {
+        const { data, error } = await admin.rpc("claim_account_activation_reconciliation", {
+          p_user_id: userId,
+          p_reconciliation_id: reconciliationId,
+          p_requested_active: requestedActive,
+          p_claim_ttl_seconds: 300,
+        });
+        if (error) throw new Error(error.message);
+        return {
+          claimed: data?.claimed === true,
+          reason: typeof data?.reason === "string" ? data.reason : null,
+          leaseState: typeof data?.lease_state === "string" ? data.lease_state : null,
+          synthetic: data?.synthetic === true,
+          lease: data?.lease ?? null,
+        };
+      },
+      readAuthBanned: async (userId) => {
+        const { data, error } = await admin.auth.admin.getUserById(userId);
+        if (error || !data?.user) throw new Error(error?.message ?? "Unable to read Auth state.");
+        const bannedUntil = (data.user as { banned_until?: string | null }).banned_until;
+        return Boolean(bannedUntil && new Date(bannedUntil).getTime() > Date.now());
+      },
+      readDatabaseActive: async (userId) => {
+        const { data, error } = await admin.from("users").select("is_active").eq("id", userId).maybeSingle();
+        if (error) throw new Error(error.message);
+        if (!data) throw new Error("User account was not found.");
+        return data.is_active === true;
+      },
+      setAuthBanned: async (userId, banned) => {
+        const { error } = await admin.auth.admin.updateUserById(userId, {
+          ban_duration: banned ? "876000h" : "none",
+        });
+        if (error) throw error;
+      },
+      finalize: async ({ userId, reconciliationId, verified, expectedActive, message }) => {
+        const { data, error } = await admin.rpc("finalize_account_activation_reconciliation", {
+          p_user_id: userId,
+          p_reconciliation_id: reconciliationId,
+          p_verified: verified,
+          p_expected_active: expectedActive,
+          p_message: message ?? null,
+        });
+        if (error) throw new Error(error.message);
+        return {
+          verified: data?.verified === true,
+          released: data?.released === true,
+          alreadyFinalized: data?.already_finalized === true,
+          reason: typeof data?.reason === "string" ? data.reason : null,
+        };
+      },
     });
+
+    const status = result.ok ? 200 : result.state === "unreadable" ? 503 : 409;
+    return json(origin, { ...result, ok: result.ok }, status);
   }
 
   return fail(origin, "Unsupported user-management action.");
