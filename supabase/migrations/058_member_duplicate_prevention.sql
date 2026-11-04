@@ -167,7 +167,7 @@ begin
       jsonb_build_object('first_name',clean_first,'last_name',clean_last,'nickname',nullif(btrim(coalesce(p_nickname,'')),''),
         'gender',p_gender,'birthday',p_birthday,'mobile',nullif(btrim(coalesce(p_mobile,'')),''),
         'email',nullif(btrim(coalesce(p_email,'')),''),'address',nullif(btrim(coalesce(p_address,'')),''),
-        'duplicate_candidates',candidate_json), greatest(candidate_count,2)
+        'duplicate_candidates',candidate_json), greatest(candidate_count,2))
     on conflict(request_id) do nothing;
     return jsonb_build_object('status','needs_review');
   end if;
