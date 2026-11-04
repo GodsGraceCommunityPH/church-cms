@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { AccountActivationError, synchronizeAccountActivation } from "./accountActivation.ts";
 import { buildSetActiveRpcParams } from "./activationRpc.ts";
 import { reconcileAccountActivation } from "./reconcileActivation.ts";
+import { loadUserAdministration } from "./listUsers.ts";
 
 type Body = Record<string, unknown>;
 const origins = () => (Deno.env.get("CORS_ALLOWED_ORIGINS") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -97,14 +98,9 @@ export async function handler(req: Request): Promise<Response> {
   const admin = createClient(url, secret, { auth: { autoRefreshToken: false, persistSession: false } });
 
   if (body.action === "list") {
-    const [userResult, roleResult, memberResult] = await Promise.all([
-      admin.from("users").select("id,username,display_name,member_id,is_active,user_roles(role_id,roles(code,name))").order("display_name"),
-      admin.from("roles").select("id,code,name").order("name"),
-      admin.from("members").select("id,first_name,last_name,email,cell_group_id").order("last_name"),
-    ]);
-    if (userResult.error || roleResult.error || memberResult.error) return fail(origin, "Unable to load user administration data.", 500);
-    const users = (userResult.data ?? []).map((u: any) => ({ id: u.id, username: u.username, display_name: u.display_name, member_id: u.member_id, is_active: u.is_active, roles: (u.user_roles ?? []).map((a: any) => a.roles?.code).filter(Boolean) }));
-    return json(origin, { ok: true, users, roles: roleResult.data ?? [], members: memberResult.data ?? [] });
+    const result = await loadUserAdministration(admin);
+    if (!result.ok) return fail(origin, result.error, 500);
+    return json(origin, { ok: true, users: result.users, roles: result.roles, members: result.members });
   }
 
   if (body.action === "create" || body.action === "update") {

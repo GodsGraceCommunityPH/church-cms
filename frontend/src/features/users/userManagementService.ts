@@ -6,7 +6,7 @@ export async function manageCmsUsers<T = Record<string, unknown>>(input: Record<
     const details = typeof error.context?.json === "function" ? await error.context.json().catch(() => null) : null;
     throw new Error(details?.error || error.message);
   }
-  if (input.action !== "list" && !data?.ok) throw new Error(data?.error || "User management request failed.");
+  if (!data?.ok) throw new Error(data?.error || "User management request failed.");
   if (data?.error) throw new Error(data.error);
   return data as T;
 }

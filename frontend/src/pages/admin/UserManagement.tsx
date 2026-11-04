@@ -22,18 +22,28 @@ export default function UserManagement() {
   const [roleCodes, setRoleCodes] = useState<string[]>([]);
   const [memberId, setMemberId] = useState("");
   const [loading, setLoading] = useState(false);
+  const [listLoading, setListLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [oneTimePassword, setOneTimePassword] = useState("");
 
   const load = useCallback(async () => {
-    const data = await manageCmsUsers<{ users: CmsUser[]; roles: Role[]; members: Member[] }>({ action: "list" });
-    setUsers(data.users ?? []);
-    setRoles(data.roles ?? []);
-    setMembers(data.members ?? []);
+    setListLoading(true);
+    setLoadError("");
+    try {
+      const data = await manageCmsUsers<{ users: CmsUser[]; roles: Role[]; members: Member[] }>({ action: "list" });
+      setUsers(data.users ?? []);
+      setRoles(data.roles ?? []);
+      setMembers(data.members ?? []);
+    } catch (reason) {
+      setLoadError(reason instanceof Error ? reason.message : "Unable to load user administration data.");
+    } finally {
+      setListLoading(false);
+    }
   }, []);
 
-  useEffect(() => { void load().catch((reason) => setError(reason.message)); }, [load]);
+  useEffect(() => { void load(); }, [load]);
 
   function resetForm() {
     setEditing(null); setName(""); setUsername(""); setPassword(""); setRoleCodes([]); setMemberId("");
@@ -76,6 +86,7 @@ export default function UserManagement() {
   return <div style={{ display: "grid", gap: 20 }}>
     <header><p style={{ color: "#64748b", margin: 0 }}>Administration</p><h1 style={{ margin: "6px 0", fontSize: 30, fontWeight: 700 }}>User Management</h1><p style={{ color: "#64748b", margin: 0 }}>Create and manage CMS accounts, roles, member links, and access.</p></header>
     {error && <p role="alert" style={{ ...panel, color: "#b91c1c", borderColor: "#fecaca" }}>{error}</p>}
+    {loadError && <p role="alert" style={{ ...panel, color: "#b91c1c", borderColor: "#fecaca" }}><strong>User data could not be loaded.</strong> {loadError}</p>}
     {success && <p role="status" style={{ ...panel, color: "#166534", borderColor: "#bbf7d0" }}>{success}{oneTimePassword && <><br /><strong>Temporary password (shown once):</strong> <code>{oneTimePassword}</code></>}</p>}
     <section style={panel}>
       <h2 style={{ marginTop: 0, fontSize: 20 }}>{editing ? "Edit user" : "Create user account"}</h2>
@@ -90,7 +101,7 @@ export default function UserManagement() {
     </section>
     <section style={panel}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}><h2 style={{ margin: 0, fontSize: 20 }}>CMS users ({users.length})</h2><Input aria-label="Search users" placeholder="Search name, email, or role" value={query} onChange={(event) => setQuery(event.target.value)} style={{ maxWidth: 340 }} /></div>
-      <div style={{ overflowX: "auto", marginTop: 14 }}><table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}><thead><tr>{["Name", "Username", "Roles", "Member", "Status", "Actions"].map((heading) => <th key={heading} style={{ padding: 10, borderBottom: "1px solid #e2e8f0" }}>{heading}</th>)}</tr></thead><tbody>{visibleUsers.map((user) => <tr key={user.id}><td style={{ padding: 10 }}>{user.display_name}</td><td style={{ padding: 10 }}>{user.username}</td><td style={{ padding: 10 }}>{user.roles.map((code) => roles.find((role) => role.code === code)?.name ?? code).join(", ") || "No roles"}</td><td style={{ padding: 10 }}>{members.find((member) => member.id === user.member_id) ? `${members.find((member) => member.id === user.member_id)?.first_name} ${members.find((member) => member.id === user.member_id)?.last_name}` : "—"}</td><td style={{ padding: 10 }}>{user.is_active ? "Active" : "Inactive"}</td><td style={{ padding: 10, display: "flex", gap: 8 }}><Button variant="secondary" onClick={() => editUser(user)}>Edit</Button><Button variant={user.is_active ? "danger" : "secondary"} disabled={loading} onClick={() => void toggleActive(user)}>{user.is_active ? "Deactivate" : "Reactivate"}</Button></td></tr>)}</tbody></table>{visibleUsers.length === 0 && <p>No users found.</p>}</div>
+      <div style={{ overflowX: "auto", marginTop: 14 }}><table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}><thead><tr>{["Name", "Username", "Roles", "Member", "Status", "Actions"].map((heading) => <th key={heading} style={{ padding: 10, borderBottom: "1px solid #e2e8f0" }}>{heading}</th>)}</tr></thead><tbody>{visibleUsers.map((user) => <tr key={user.id}><td style={{ padding: 10 }}>{user.display_name}</td><td style={{ padding: 10 }}>{user.username}</td><td style={{ padding: 10 }}>{user.roles.map((code) => roles.find((role) => role.code === code)?.name ?? code).join(", ") || "No roles"}</td><td style={{ padding: 10 }}>{members.find((member) => member.id === user.member_id) ? `${members.find((member) => member.id === user.member_id)?.first_name} ${members.find((member) => member.id === user.member_id)?.last_name}` : "—"}</td><td style={{ padding: 10 }}>{user.is_active ? "Active" : "Inactive"}</td><td style={{ padding: 10, display: "flex", gap: 8 }}><Button variant="secondary" onClick={() => editUser(user)}>Edit</Button><Button variant={user.is_active ? "danger" : "secondary"} disabled={loading} onClick={() => void toggleActive(user)}>{user.is_active ? "Deactivate" : "Reactivate"}</Button></td></tr>)}</tbody></table>{listLoading ? <p>Loading user administration data…</p> : !loadError && visibleUsers.length === 0 && <p>No users found.</p>}</div>
     </section>
   </div>;
 }
