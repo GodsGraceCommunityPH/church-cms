@@ -49,8 +49,8 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_now timestamptz := now();
   v_ttl integer := greatest(coalesce(p_ttl_seconds, 30), 5);
+  v_now timestamptz;
 begin
   if p_user_id is null or p_operation_id is null then
     raise exception 'Account activation lease requires a user and operation id' using errcode = '22023';
@@ -63,18 +63,23 @@ begin
     and status in ('completed', 'failed')
     and reconciliation_id is null;
 
+  -- Wall-clock time, not the transaction-start timestamp: an INSERT that waits
+  -- on a conflicting row must not create an already-expired lease window.
+  v_now := clock_timestamp();
+
   insert into public.account_activation_leases
     (user_id, operation_id, requested_active, started_at, expires_at, status, source)
   values
     (p_user_id, p_operation_id, p_requested_active, v_now, v_now + make_interval(secs => v_ttl), 'started', 'activation')
   on conflict (user_id) do nothing;
 
+  -- Re-check validity against wall-clock time after any wait for the insert.
   return exists (
     select 1 from public.account_activation_leases
     where user_id = p_user_id
       and operation_id = p_operation_id
       and status in ('started', 'auth_updated')
-      and expires_at > v_now
+      and expires_at > clock_timestamp()
       and reconciliation_id is null
   );
 end;
@@ -92,20 +97,33 @@ set search_path = ''
 as $$
 declare
   v_ttl integer := greatest(coalesce(p_ttl_seconds, 30), 5);
+  v_lease public.account_activation_leases%rowtype;
 begin
   if p_user_id is null or p_operation_id is null then
     raise exception 'Account activation lease renewal requires a user and operation id' using errcode = '22023';
   end if;
 
-  update public.account_activation_leases
-  set expires_at = now() + make_interval(secs => v_ttl)
+  -- Lock first, then decide. A renewal that waited on a concurrent transaction
+  -- must be judged against the wall-clock time after the lock is granted, not
+  -- against the transaction-start timestamp.
+  select * into v_lease
+  from public.account_activation_leases
   where user_id = p_user_id
-    and operation_id = p_operation_id
-    and status in ('started', 'auth_updated')
-    and expires_at > now()
-    and reconciliation_id is null;
+  for update;
 
-  return found;
+  if not found
+     or v_lease.operation_id is distinct from p_operation_id
+     or v_lease.status not in ('started', 'auth_updated')
+     or v_lease.reconciliation_id is not null
+     or v_lease.expires_at <= clock_timestamp() then
+    return false;
+  end if;
+
+  update public.account_activation_leases
+  set expires_at = clock_timestamp() + make_interval(secs => v_ttl)
+  where user_id = p_user_id;
+
+  return true;
 end;
 $$;
 
@@ -121,36 +139,46 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  v_lease public.account_activation_leases%rowtype;
 begin
   if p_status not in ('completed', 'failed', 'uncertain') then
     raise exception 'Invalid lease release status' using errcode = '22023';
   end if;
 
-  if p_status = 'uncertain' then
-    update public.account_activation_leases
-    set status = 'uncertain', last_error = p_error
-    where user_id = p_user_id
-      and operation_id = p_operation_id
-      and status in ('started', 'auth_updated')
-      and reconciliation_id is null;
-    return found;
+  -- Lock first so a release that waited on another transaction is judged
+  -- against its actual expiry, not the transaction-start timestamp.
+  select * into v_lease
+  from public.account_activation_leases
+  where user_id = p_user_id
+  for update;
+
+  if not found
+     or v_lease.operation_id is distinct from p_operation_id
+     or v_lease.status not in ('started', 'auth_updated')
+     or v_lease.reconciliation_id is not null then
+    return false;
+  end if;
+
+  -- 'uncertain' is always recoverable, including after expiry, because it
+  -- records the fact that the outcome could not be verified. Terminal states
+  -- are only accepted from a live lease.
+  if p_status <> 'uncertain' and v_lease.expires_at <= clock_timestamp() then
+    return false;
   end if;
 
   update public.account_activation_leases
   set status = p_status, last_error = p_error
-  where user_id = p_user_id
-    and operation_id = p_operation_id
-    and status in ('started', 'auth_updated')
-    and expires_at > now()
-    and reconciliation_id is null;
+  where user_id = p_user_id;
 
-  if not found then
-    return false;
+  if p_status = 'uncertain' then
+    return true;
   end if;
 
+  -- Remove terminal rows only after this transaction confirmed completion or
+  -- failure for the owning operation.
   delete from public.account_activation_leases
   where user_id = p_user_id
-    and operation_id = p_operation_id
     and status in ('completed', 'failed');
 
   return true;
@@ -162,12 +190,14 @@ create or replace function public.account_activation_lease_owner(
   p_user_id uuid, p_operation_id uuid
 )
 returns boolean
-language sql stable security definer set search_path = '' as $$
+language sql volatile security definer set search_path = '' as $$
+  -- Ownership is a wall-clock decision. clock_timestamp() is volatile, so this
+  -- helper must not be marked stable or its value could be reused across a wait.
   select exists (
     select 1 from public.account_activation_leases
     where user_id = p_user_id and operation_id = p_operation_id
       and status in ('started', 'auth_updated')
-      and expires_at > now()
+      and expires_at > clock_timestamp()
       and reconciliation_id is null
   );
 $$;
@@ -194,7 +224,7 @@ declare
   v_lease public.account_activation_leases%rowtype;
   v_attempt integer := 0;
   v_ttl integer := greatest(coalesce(p_claim_ttl_seconds, 300), 30);
-  v_claim_window interval := make_interval(secs => greatest(coalesce(p_claim_ttl_seconds, 300), 30));
+  v_now timestamptz;
 begin
   if p_user_id is null or p_reconciliation_id is null then
     raise exception 'Account activation reconciliation requires a user and reconciliation id' using errcode = '22023';
@@ -218,15 +248,19 @@ begin
       (user_id, operation_id, requested_active, started_at, expires_at, status, source,
        reconciliation_id, reconciliation_started_at)
     values
-      (p_user_id, p_reconciliation_id, coalesce(p_requested_active, false), now(),
-       now() + make_interval(secs => v_ttl), 'uncertain', 'reconciliation',
-       p_reconciliation_id, now())
+      (p_user_id, p_reconciliation_id, coalesce(p_requested_active, false), clock_timestamp(),
+       clock_timestamp() + make_interval(secs => v_ttl), 'uncertain', 'reconciliation',
+       p_reconciliation_id, clock_timestamp())
     on conflict (user_id) do nothing;
   end loop;
 
+  -- The row lock is held. Take wall-clock time now so every validity decision
+  -- below reflects the instant ownership was actually observed.
+  v_now := clock_timestamp();
+
   -- A live operation owns the account. Do not read, repair, or release anything.
   if v_lease.status in ('started', 'auth_updated')
-     and v_lease.expires_at > now()
+     and v_lease.expires_at > v_now
      and v_lease.reconciliation_id is null then
     return jsonb_build_object(
       'claimed', false,
@@ -237,12 +271,13 @@ begin
     );
   end if;
 
-  -- Another reconciliation still owns its claim window.
+  -- Another reconciliation still owns its claim window. expires_at stores the
+  -- claim expiry for reconciliation rows, so stale claims are reclaimable.
   if v_lease.status = 'uncertain'
      and v_lease.reconciliation_id is not null
      and v_lease.reconciliation_id <> p_reconciliation_id
      and v_lease.reconciliation_started_at is not null
-     and v_lease.reconciliation_started_at > now() - v_claim_window then
+     and v_lease.expires_at > v_now then
     return jsonb_build_object(
       'claimed', false,
       'reason', 'reconciliation_in_progress',
@@ -260,9 +295,9 @@ begin
       (user_id, operation_id, requested_active, started_at, expires_at, status, source,
        reconciliation_id, reconciliation_started_at)
     values
-      (p_user_id, p_reconciliation_id, coalesce(p_requested_active, false), now(),
-       now() + make_interval(secs => v_ttl), 'uncertain', 'reconciliation',
-       p_reconciliation_id, now())
+      (p_user_id, p_reconciliation_id, coalesce(p_requested_active, false), clock_timestamp(),
+       clock_timestamp() + make_interval(secs => v_ttl), 'uncertain', 'reconciliation',
+       p_reconciliation_id, clock_timestamp())
     on conflict (user_id) do nothing;
 
     select * into v_lease
@@ -280,11 +315,12 @@ begin
   end if;
 
   -- Claim an expired activation or an existing uncertain row.
+  v_now := clock_timestamp();
   update public.account_activation_leases
   set status = 'uncertain',
       reconciliation_id = p_reconciliation_id,
-      reconciliation_started_at = now(),
-      expires_at = now() + make_interval(secs => v_ttl),
+      reconciliation_started_at = v_now,
+      expires_at = v_now + make_interval(secs => v_ttl),
       last_error = coalesce(last_error, 'Reconciliation claimed an unresolved activation lease.')
   where user_id = p_user_id;
 
@@ -310,8 +346,9 @@ $$;
 --   p_verified = true   -> re-check the persisted CMS active state inside the same
 --                          transaction, then delete the resolved lease.
 --
--- Deleting an already-resolved row is reported as already_finalized so repeated
--- reconciliation requests are idempotent.
+-- A claim that has outlived its own expiry cannot finalize: another
+-- reconciliation may take ownership at that point. Deleting an already-resolved
+-- row is reported as already_finalized so repeated requests are idempotent.
 create or replace function public.finalize_account_activation_reconciliation(
   p_user_id uuid,
   p_reconciliation_id uuid,
@@ -361,6 +398,17 @@ begin
       'released', false,
       'already_finalized', false,
       'reason', 'lease_state_changed'
+    );
+  end if;
+
+  -- The claim window is wall-clock bounded. A delayed reconciler must not
+  -- finalize or clear a claim that has already expired.
+  if v_lease.expires_at <= clock_timestamp() then
+    return jsonb_build_object(
+      'verified', false,
+      'released', false,
+      'already_finalized', false,
+      'reason', 'claim_expired'
     );
   end if;
 
@@ -433,7 +481,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_lease_owned boolean;
+  v_lease public.account_activation_leases%rowtype;
 begin
   if p_operation_id is null then
     raise exception 'A fenced account activation operation id is required' using errcode = '22023';
@@ -451,17 +499,20 @@ begin
   -- Lock the lease row for the duration of this transaction. Acquisition,
   -- renewal, release, and reconciliation all update this row, so ownership
   -- cannot change between this validation and the users.is_active update.
-  -- Only an unexpired, live, original operation may mutate CMS status.
-  select true into v_lease_owned
+  --
+  -- Lock first, then decide. If this session waited on the advisory lock until
+  -- after the lease expired, the transaction-start timestamp would still look
+  -- live; clock_timestamp() is the actual wall-clock time after the wait.
+  select * into v_lease
   from public.account_activation_leases l
   where l.user_id = p_auth_user_id
-    and l.operation_id = p_operation_id
-    and l.status in ('started', 'auth_updated')
-    and l.expires_at > now()
-    and l.reconciliation_id is null
   for update;
 
-  if v_lease_owned is not true then
+  if not found
+     or v_lease.operation_id is distinct from p_operation_id
+     or v_lease.status not in ('started', 'auth_updated')
+     or v_lease.reconciliation_id is not null
+     or v_lease.expires_at <= clock_timestamp() then
     raise exception 'Account activation lease is missing, expired, uncertain, or owned by another operation'
       using errcode = '42501';
   end if;

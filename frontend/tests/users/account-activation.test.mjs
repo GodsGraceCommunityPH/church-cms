@@ -316,6 +316,36 @@ test("an expired or unreconciled lease cannot be silently replaced", async () =>
   assert.equal(databaseCalls, 0);
 });
 
+test("lease validity and claim windows use wall-clock time, never transaction start", async () => {
+  const migration = await read("../../../supabase/migrations/20261105000000_account_activation_leases.sql");
+
+  assert.doesNotMatch(
+    migration,
+    /expires_at\s*[<>]=?\s*now\(\)/i,
+    "an expiry comparison must not use the transaction-start now()",
+  );
+  assert.match(migration, /language sql volatile security definer/i);
+
+  const functionBody = (name) => {
+    const start = migration.indexOf(`create or replace function public.${name}`);
+    assert.notEqual(start, -1, `${name} is missing`);
+    const next = migration.indexOf("create or replace function", start + 1);
+    return migration.slice(start, next === -1 ? undefined : next);
+  };
+
+  for (const name of [
+    "acquire_account_activation_lease",
+    "renew_account_activation_lease",
+    "release_account_activation_lease",
+    "account_activation_lease_owner",
+    "claim_account_activation_reconciliation",
+    "finalize_account_activation_reconciliation",
+    "admin_user_set_active",
+  ]) {
+    assert.match(functionBody(name), /clock_timestamp\(\)/i, `${name} must use wall-clock time`);
+  }
+});
+
 test("migration removes the unfenced three-argument RPC and requires a fenced operation id", async () => {
   const migration = await read("../../../supabase/migrations/20261105000000_account_activation_leases.sql");
 

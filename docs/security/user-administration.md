@@ -39,9 +39,12 @@ the Auth request is running, and releases it with `completed`, `failed`, or
 `admin_user_set_active` requires a non-null operation ID and verifies the live,
 unexpired lease inside the same transaction that updates `users.is_active`. The
 lease row is locked with `FOR UPDATE`, so renewal, release, or a reconciliation
-claim cannot change ownership between the check and the update. The original
-three-argument overload from `20261104022255_user_administration.sql` is dropped;
-there is no unfenced path.
+claim cannot change ownership between the check and the update. Every expiry and
+claim-window decision uses `clock_timestamp()` (actual wall-clock time) after the
+row lock is acquired, never `now()` / transaction start. A transaction that
+waited on the advisory lock or a row lock until after expiry therefore cannot act
+on the lease. The original three-argument overload from
+`20261104022255_user_administration.sql` is dropped; there is no unfenced path.
 
 Reconciliation is an explicit administrator action:
 
@@ -55,9 +58,17 @@ Reconciliation is an explicit administrator action:
 3. After any repair, both states are read again. The lease is not released until
    they are consistent.
 4. `finalize_account_activation_reconciliation` re-checks the persisted CMS
-   value in the same transaction before deleting the lease. An unverified
-   outcome clears the reconciliation claim but preserves the `uncertain` row, so
-   repeated reconciliation remains safe and idempotent.
+   value in the same transaction before deleting the lease. A claim that has
+   outlived its own expiry cannot finalize; it stays recoverable by a later
+   reconciler. An unverified outcome clears the reconciliation claim but
+   preserves the `uncertain` row, so repeated reconciliation remains safe and
+   idempotent.
+
+`frontend/tests/users/account-activation-concurrency.test.mjs` is the
+two-session PostgreSQL regression test for lock-wait timing. It requires
+`ACTIVATION_CONCURRENCY_DATABASE_URL` pointing at an empty, disposable
+PostgreSQL database; it is skipped otherwise because PGlite cannot exercise
+concurrent sessions.
 
 **Limitation:** database fencing cannot cancel an Auth ban request that has
 already been sent to Supabase Auth. If that request lands after reconciliation's

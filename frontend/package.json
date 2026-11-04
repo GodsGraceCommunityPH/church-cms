@@ -10,6 +10,7 @@
     "test:member-duplicates": "node --experimental-strip-types --test tests/members/*.test.mjs",
     "test:users": "node --experimental-strip-types --test tests/users/*.test.mjs",
     "test:activation": "node --experimental-strip-types --test tests/users/account-activation.test.mjs tests/users/account-reconciliation.test.mjs",
+    "test:concurrency": "node --test tests/users/account-activation-concurrency.test.mjs",
     "preview": "vite preview",
     "push": "cd .. && npm run push"
   },
@@ -30,6 +31,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
     "oxlint": "^1.71.0",
+    "pg": "^8.23.1",
     "typescript": "~6.0.2",
     "vite": "^8.1.1"
   }
