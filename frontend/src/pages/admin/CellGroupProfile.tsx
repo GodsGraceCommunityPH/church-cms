@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 
@@ -21,7 +21,20 @@ import {
 import { generateInviteToken } from "../../features/cellGroups/cellGroupUtils";
 
 import Button from "../../components/ui/Button";
+import Select from "../../components/ui/Select";
 import { useAuth } from "../../features/auth/auth";
+
+type MemberSort = "name-asc" | "name-desc" | "age-desc" | "age-asc";
+
+function getAge(birthday: string | null | undefined) {
+  if (!birthday) return null;
+  const birthDate = new Date(`${birthday}T00:00:00`);
+  if (Number.isNaN(birthDate.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  if (today.getMonth() < birthDate.getMonth() || (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate())) age -= 1;
+  return age >= 0 ? age : null;
+}
 
 export default function CellGroupProfile() {
   const { id } = useParams();
@@ -37,12 +50,27 @@ export default function CellGroupProfile() {
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [members, setMembers] = useState<any[]>([]);
+  const [memberSort, setMemberSort] = useState<MemberSort>("name-asc");
 
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState<any>(null);
 
   const [cellGroups, setCellGroups] = useState<any[]>([]);
+  const sortedMembers = useMemo(() => [...members].sort((left, right) => {
+    const leftName = `${left.first_name ?? ""} ${left.last_name ?? ""}`.trim();
+    const rightName = `${right.first_name ?? ""} ${right.last_name ?? ""}`.trim();
+    if (memberSort === "name-asc" || memberSort === "name-desc") {
+      const direction = memberSort === "name-asc" ? 1 : -1;
+      return leftName.localeCompare(rightName, undefined, { sensitivity: "base" }) * direction;
+    }
+    const leftAge = getAge(left.birthday);
+    const rightAge = getAge(right.birthday);
+    if (leftAge === null) return rightAge === null ? leftName.localeCompare(rightName, undefined, { sensitivity: "base" }) : 1;
+    if (rightAge === null) return -1;
+    const ageDifference = memberSort === "age-desc" ? rightAge - leftAge : leftAge - rightAge;
+    return ageDifference || leftName.localeCompare(rightName, undefined, { sensitivity: "base" });
+  }), [members, memberSort]);
 
   useEffect(() => {
     loadGroup();
@@ -206,7 +234,17 @@ export default function CellGroupProfile() {
         {members.length === 0 ? (
           <p>No members assigned to this cell group.</p>
         ) : (
-          members.map((member) => (
+          <>
+          <label style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 8, color: "#64748b", fontSize: 14, fontWeight: 600 }}>
+            <span>Sort members</span>
+            <Select aria-label="Sort Cell Group members" value={memberSort} onChange={(event) => setMemberSort(event.target.value as MemberSort)} style={{ minWidth: 190 }}>
+              <option value="name-asc">Name: A–Z</option>
+              <option value="name-desc">Name: Z–A</option>
+              <option value="age-desc">Age: Oldest first</option>
+              <option value="age-asc">Age: Youngest first</option>
+            </Select>
+          </label>
+          {sortedMembers.map((member) => (
             <div
               key={member.id}
               style={{
@@ -276,7 +314,8 @@ export default function CellGroupProfile() {
                 </Button>
               </div>
             </div>
-          ))
+          ))}
+          </>
         )}
       </ProfileCard>
       <Modal
