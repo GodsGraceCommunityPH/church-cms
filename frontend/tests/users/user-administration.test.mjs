@@ -45,7 +45,7 @@ test("ambiguous member registrations have a permission-scoped review queue witho
   assert.match(app, /PermissionRoute permission="members\.view"[\s\S]*path="\/admin\/member-registration-reviews"/);
   assert.match(sidebar, /members\.view[\s\S]*\/admin\/member-registration-reviews/);
   assert.match(page, /member_registration_reviews/);
-  assert.match(page, /canManageCellGroup/);
+  assert.match(page, /is_assigned_cell_group/);
   assert.match(page, /\.eq\("status", "pending"\)/);
   assert.doesNotMatch(page, /\.from\("members"\)\.(insert|update|delete)/);
 });

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Button from "../../components/ui/Button";
-import { canManageCellGroup } from "../../features/cellGroups/cellGroupInviteService";
 import { useAuth } from "../../features/auth/auth";
 import { supabase } from "../../lib/supabase";
 
@@ -53,14 +52,22 @@ export default function MemberRegistrationReviews() {
     if (canManageAll) {
       setManageableGroups(new Set(nextReviews.map((item) => item.cell_group_id)));
     } else {
-      const access = await Promise.all(nextReviews.map(async (item) => {
-        try { return [item.cell_group_id, await canManageCellGroup(item.cell_group_id)] as const; }
-        catch { return [item.cell_group_id, false] as const; }
+      const access = await supabase.rpc("get_my_permissions");
+      const canManageAssignedGroup = (access.data ?? []).some((item: { code: string }) => item.code === "members.update");
+      if (access.error) {
+        setManageableGroups(new Set());
+        setLoading(false);
+        return;
+      }
+      const groupAccess = await Promise.all(nextReviews.map(async (item) => {
+        if (canManageAssignedGroup || hasPermission("admin.users")) return [item.cell_group_id, true] as const;
+        const result = await supabase.rpc("is_assigned_cell_group", { p_cell_group_id: item.cell_group_id });
+        return [item.cell_group_id, result.data === true && !result.error] as const;
       }));
-      setManageableGroups(new Set(access.filter(([, allowed]) => allowed).map(([groupId]) => groupId)));
+      setManageableGroups(new Set(groupAccess.filter(([, allowed]) => allowed).map(([groupId]) => groupId)));
     }
     setLoading(false);
-  }, [canManageAll]);
+  }, [canManageAll, hasPermission]);
 
   useEffect(() => { void load(); }, [load]);
 
