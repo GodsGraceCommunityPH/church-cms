@@ -64,6 +64,20 @@ test("user administration is routed and exposes username, roles, status, and Mem
   for (const text of ["Username or email", "Assigned roles", "Link Member record", "Deactivate", "Reactivate"]) assert.ok(page.includes(text));
 });
 
+test("user administration applies the 6–128 character password policy to creation and changes", async () => {
+  const page = await read("../../src/pages/admin/UserManagement.tsx");
+  const handler = await read("../../../supabase/functions/manage-cms-users/index.ts");
+  const policy = (password) => password.length >= 6 && password.length <= 128;
+  for (const password of ["abc123", "a".repeat(128)]) assert.equal(policy(password), true);
+  for (const password of ["abc12", "a".repeat(129)]) assert.equal(policy(password), false);
+  assert.match(page, /minLength=\{6\} maxLength=\{128\}/);
+  assert.match(page, /6–128 characters[\s\S]*special characters are optional/i);
+  assert.match(handler, /providedPassword\.length < 6 \|\| providedPassword\.length > 128/);
+  assert.match(handler, /Password must be 6–128 characters/);
+  assert.match(handler, /body\.action === "create" \|\| body\.action === "update"/);
+  assert.match(handler, /admin\.auth\.admin\.updateUserById\(userId, \{ password: providedPassword \}\)/);
+});
+
 test("ambiguous member registrations have a permission-scoped review queue without automatic Member edits", async () => {
   const app = await read("../../src/App.tsx");
   const page = await read("../../src/pages/admin/MemberRegistrationReviews.tsx");

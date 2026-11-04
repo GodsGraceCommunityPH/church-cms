@@ -118,7 +118,7 @@ export async function handler(req: Request): Promise<Response> {
     if (!Array.isArray(roleCodes) || roleCodes.length < 1 || roleCodes.length > 20 || roleCodes.some((r) => typeof r !== "string") || new Set(roleCodes).size !== roleCodes.length) return fail(origin, "Select at least one valid role.");
     if (!creating && !uuid(body.userId)) return fail(origin, "Invalid user.");
     const providedPassword = typeof body.password === "string" ? body.password : "";
-    if ((creating && providedPassword.length > 0 && (providedPassword.length < 12 || providedPassword.length > 128)) || (!creating && providedPassword && (providedPassword.length < 12 || providedPassword.length > 128))) return fail(origin, "Password must be 12–128 characters.");
+    if ((creating && providedPassword.length > 0 && (providedPassword.length < 6 || providedPassword.length > 128)) || (!creating && providedPassword && (providedPassword.length < 6 || providedPassword.length > 128))) return fail(origin, "Password must be 6–128 characters.");
     let userId = creating ? "" : body.userId as string;
     let existingActive = true;
     if (!creating) {
