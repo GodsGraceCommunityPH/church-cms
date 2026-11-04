@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import {
   AccountActivationError,
   synchronizeAccountActivation,
@@ -39,7 +39,7 @@ test("failed CMS activation transition restores Auth to persisted status", async
 
 test("profile edits preserve activation and dedicated status actions use synchronization", async () => {
   const handler = await read("../../../supabase/functions/manage-cms-users/index.ts");
-  const migration = await read("../../../supabase/migrations/20261104110000_security_review_fixes.sql");
+  const migration = await read("../../../supabase/migrations/20261104065645_security_review_fixes.sql");
   const page = await read("../../src/pages/admin/UserManagement.tsx");
   assert.match(handler, /p_is_active: creating \? true : existingActive/);
   assert.match(migration, /member_id=excluded\.member_id,updated_at=now\(\)/);
@@ -317,7 +317,7 @@ test("an expired or unreconciled lease cannot be silently replaced", async () =>
 });
 
 test("lease validity and claim windows use wall-clock time, never transaction start", async () => {
-  const migration = await read("../../../supabase/migrations/20261105000000_account_activation_leases.sql");
+  const migration = await read("../../../supabase/migrations/20261104065657_account_activation_leases.sql");
 
   assert.doesNotMatch(
     migration,
@@ -346,8 +346,29 @@ test("lease validity and claim windows use wall-clock time, never transaction st
   }
 });
 
+test("migration filenames match the versions recorded in production", async () => {
+  const files = await readdir(new URL("../../../supabase/migrations/", import.meta.url));
+
+  for (const name of [
+    "20261104065645_security_review_fixes.sql",
+    "20261104065657_account_activation_leases.sql",
+    "20261104065810_enable_account_activation_leases_rls.sql",
+  ]) {
+    assert.ok(files.includes(name), `${name} is missing`);
+  }
+
+  assert.ok(!files.includes("20261104110000_security_review_fixes.sql"));
+  assert.ok(!files.includes("20261105000000_account_activation_leases.sql"));
+
+  const rls = await read("../../../supabase/migrations/20261104065810_enable_account_activation_leases_rls.sql");
+  assert.match(
+    rls,
+    /alter table public\.account_activation_leases enable row level security;/i,
+  );
+});
+
 test("migration removes the unfenced three-argument RPC and requires a fenced operation id", async () => {
-  const migration = await read("../../../supabase/migrations/20261105000000_account_activation_leases.sql");
+  const migration = await read("../../../supabase/migrations/20261104065657_account_activation_leases.sql");
 
   assert.match(
     migration,

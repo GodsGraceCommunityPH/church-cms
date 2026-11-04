@@ -30,7 +30,7 @@ const skip = databaseUrl
 const pg = skip ? null : await import("pg");
 
 const migrationUrl = new URL(
-  "../../../supabase/migrations/20261105000000_account_activation_leases.sql",
+  "../../../supabase/migrations/20261104065657_account_activation_leases.sql",
   import.meta.url,
 );
 
@@ -397,5 +397,18 @@ test("PostgreSQL activation lease concurrency", { skip }, async (t) => {
       [targetId, operationId],
     );
     assert.equal(owner.rows[0].owned, true);
+  });
+
+  await t.test("the production RLS migration enables RLS on the lease table", async () => {
+    const rls = await readFile(
+      new URL("../../../supabase/migrations/20261104065810_enable_account_activation_leases_rls.sql", import.meta.url),
+      "utf8",
+    );
+    await admin.query(rls);
+
+    const { rows } = await admin.query(
+      "select relrowsecurity from pg_class where oid = 'public.account_activation_leases'::regclass",
+    );
+    assert.equal(rows[0].relrowsecurity, true);
   });
 });

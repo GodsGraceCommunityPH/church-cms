@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
 test("public duplicate matches are queued and cannot update Members", async () => {
-  const migration = await read("../../../supabase/migrations/20261104110000_security_review_fixes.sql");
+  const migration = await read("../../../supabase/migrations/20261104065645_security_review_fixes.sql");
   const publicFn = migration.split("create or replace function public.submit_cell_group_member_registration")[1].split("$$;")[0];
   assert.match(publicFn, /if candidate_count > 0 then[\s\S]*insert into public\.member_registration_reviews/);
   assert.match(publicFn, /return jsonb_build_object\('status','needs_review'\)/);
@@ -15,7 +15,7 @@ test("public duplicate matches are queued and cannot update Members", async () =
 });
 
 test("review status changes are identity-derived, pending-only, and column protected", async () => {
-  const migration = await read("../../../supabase/migrations/20261104110000_security_review_fixes.sql");
+  const migration = await read("../../../supabase/migrations/20261104065645_security_review_fixes.sql");
   const statusFn = migration.split("create or replace function public.set_member_registration_review_status")[1].split("$$;")[0];
   const page = await read("../../src/pages/admin/MemberRegistrationReviews.tsx");
   assert.match(migration, /revoke update on public\.member_registration_reviews from public, anon, authenticated/);

@@ -80,9 +80,12 @@ Member linking changes only `users.member_id`. It does not write the Member row
 or its `cell_group_id`. Existing Auth accounts are assigned deterministic
 usernames from their private email prefix plus a short account identifier.
 
-Production has applied `20261104022255_user_administration.sql` and has active
+Production has applied `20261104022255_user_administration.sql`,
+`20261104065645_security_review_fixes.sql`,
+`20261104065657_account_activation_leases.sql`, and
+`20261104065810_enable_account_activation_leases_rls.sql`, and has active
 `manage-cms-users` and `username-login` Edge Functions. Keep the migration
-version aligned with the production migration history; do not reapply it.
+filenames aligned with the production migration history; do not reapply them.
 `username-login` must keep JWT verification disabled because it serves the
 unauthenticated sign-in flow and validates the request in its handler.
 Both production functions return the exact allowed CORS origin for
