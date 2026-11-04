@@ -674,14 +674,14 @@ body {
   .dashboard-middle-grid, .dashboard-bottom-grid { grid-template-columns: 1fr; }
 }
 
-.topbar-content { min-width: 0; padding: 0 20px; }
+.topbar-content { width: 100%; min-width: 0; padding: 0 20px; }
 .notification-dropdown { max-width: calc(100vw - 24px); }
 .dashboard-middle-grid > *, .dashboard-bottom-grid > * { min-width: 0; }
 .dashboard-legend a > span:nth-child(2) { min-width: 0; flex-wrap: wrap; }
 .dashboard-bar-label { min-width: 0; }
 
 @media (max-width: 560px) {
-  .topbar-content { width: 100%; padding: 0; }
+  .topbar-content { padding: 0; }
   .notification-bell-root .notification-dropdown {
     position: fixed !important;
     top: 62px !important;
