@@ -7,7 +7,9 @@ import PersistentBackButton from "../components/PersistentBackButton";
 
 function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => window.localStorage.getItem("ggccc-admin-sidebar-collapsed") === "true",
+  );
 
   useEffect(() => {
     window.localStorage.setItem(

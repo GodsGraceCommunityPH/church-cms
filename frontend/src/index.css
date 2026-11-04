@@ -471,6 +471,7 @@ body {
 }
 
 .admin-sidebar-shell {
+  flex: 0 0 auto;
   position: fixed;
   top: 0;
   align-self: flex-start;
