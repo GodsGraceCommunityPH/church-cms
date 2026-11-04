@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test:member-duplicates": "node --experimental-strip-types --test tests/members/*.test.mjs",
     "test:users": "node --test tests/users/user-administration.test.mjs",
     "preview": "vite preview",
     "push": "cd .. && npm run push"

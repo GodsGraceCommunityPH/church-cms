@@ -54,7 +54,7 @@ export default function JoinCellGroup() {
     } else if (status === "needs_review") {
       setSuccess({
         title: "Registration Received",
-        message: "We found multiple existing profiles with this name. Your registration needs a quick review before we can connect it to an existing profile.",
+        message: "We found multiple possible matches or a shared household contact. Your registration is with church staff for review and has not been linked to another person.",
       });
     } else {
       setSuccess({ title: "Registration Submitted", message: "Thank you for registering! Your information has been received and will be reviewed by our church staff." });
