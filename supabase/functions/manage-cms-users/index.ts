@@ -11,7 +11,10 @@ const headers = (origin: string | null) => ({ "Access-Control-Allow-Origin": ori
 const json = (origin: string | null, body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: headers(origin) });
 const fail = (origin: string | null, message: string, status = 400) => json(origin, { ok: false, error: message }, status);
 const uuid = (value: unknown) => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-const validUsername = (value: unknown): value is string => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9_.-]{2,39}$/.test(value);
+const validUsername = (value: unknown): value is string => typeof value === "string" && (
+  /^[A-Za-z0-9][A-Za-z0-9_.-]{2,39}$/.test(value) ||
+  (value.length <= 254 && /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/.test(value))
+);
 
 async function transitionActive(admin: any, origin: string | null, callerId: string, userId: string, isActive: boolean): Promise<Response | null> {
   try {
@@ -109,7 +112,7 @@ export async function handler(req: Request): Promise<Response> {
     const name = typeof body.name === "string" ? body.name.trim() : "";
     const memberId = body.memberId === "" || body.memberId == null ? null : body.memberId;
     const roleCodes = body.roleCodes;
-    if (!validUsername(username)) return fail(origin, "Username must be 3–40 characters using letters, numbers, dot, underscore, or hyphen.");
+    if (!validUsername(username)) return fail(origin, "Enter a 3–40 character username or a valid email address up to 254 characters.");
     if (!name || name.length > 120) return fail(origin, "Name is required and must be at most 120 characters.");
     if (memberId !== null && !uuid(memberId)) return fail(origin, "Invalid Member profile.");
     if (!Array.isArray(roleCodes) || roleCodes.length < 1 || roleCodes.length > 20 || roleCodes.some((r) => typeof r !== "string") || new Set(roleCodes).size !== roleCodes.length) return fail(origin, "Select at least one valid role.");

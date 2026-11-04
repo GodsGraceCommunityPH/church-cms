@@ -108,7 +108,7 @@ export default function Login() {
                 className="mb-2 block text-sm font-medium text-slate-700"
                 style={{ display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: 500, color: "#334155" }}
               >
-                Username
+                Username or email
               </span>
               <div style={{ position: "relative" }}>
                 <UserRound
@@ -130,7 +130,7 @@ export default function Login() {
                   value={username}
                   onChange={(event) => setUsername(event.target.value)}
                   className="pl-10"
-                  placeholder="your.username"
+                  placeholder="your.username or you@example.com"
                   style={{
                     width: "100%",
                     height: "48px",

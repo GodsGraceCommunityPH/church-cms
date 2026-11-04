@@ -14,7 +14,8 @@ export async function handler(req: Request) {
   try { body = await req.json(); } catch { return respond(origin, { error: "Invalid credentials." }, 400); }
   const username = typeof body.username === "string" ? body.username.trim() : "";
   const password = typeof body.password === "string" ? body.password : "";
-  if (!/^[A-Za-z0-9][A-Za-z0-9_.-]{2,39}$/.test(username) || password.length < 1 || password.length > 128) return respond(origin, { error: "Invalid username or password." }, 401);
+  const validIdentifier = /^[A-Za-z0-9][A-Za-z0-9_.-]{2,39}$/.test(username) || (username.length <= 254 && /^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+$/.test(username));
+  if (!validIdentifier || password.length < 1 || password.length > 128) return respond(origin, { error: "Invalid username or password." }, 401);
   const url = Deno.env.get("SUPABASE_URL"), anon = Deno.env.get("SUPABASE_ANON_KEY"), secret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !anon || !secret) return respond(origin, { error: "Sign-in is temporarily unavailable." }, 500);
   const admin = createClient(url, secret, { auth: { autoRefreshToken: false, persistSession: false } });
