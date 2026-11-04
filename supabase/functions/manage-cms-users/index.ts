@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { AccountActivationError, synchronizeAccountActivation } from "./accountActivation.ts";
 
 type Body = Record<string, unknown>;
 const origins = () => (Deno.env.get("CORS_ALLOWED_ORIGINS") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -8,6 +9,30 @@ const json = (origin: string | null, body: unknown, status = 200) => new Respons
 const fail = (origin: string | null, message: string, status = 400) => json(origin, { ok: false, error: message }, status);
 const uuid = (value: unknown) => typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 const validUsername = (value: unknown): value is string => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9_.-]{2,39}$/.test(value);
+
+async function transitionActive(admin: any, origin: string | null, callerId: string, userId: string, isActive: boolean): Promise<Response | null> {
+  try {
+    await synchronizeAccountActivation(userId, isActive, {
+      readDatabaseActive: async (targetId) => {
+        const { data, error } = await admin.from("users").select("is_active").eq("id", targetId).maybeSingle();
+        if (error || !data) throw new Error("Unable to read the current account status.");
+        return data.is_active === true;
+      },
+      setAuthBanned: async (targetId, banned) => {
+        const { error } = await admin.auth.admin.updateUserById(targetId, { ban_duration: banned ? "876000h" : "none" });
+        if (error) throw error;
+      },
+      setDatabaseActive: async (targetId, nextActive) => {
+        const { data, error } = await admin.rpc("admin_user_set_active", { p_auth_user_id: targetId, p_caller_user_id: callerId, p_is_active: nextActive });
+        if (error || data?.verified !== true) throw Object.assign(new Error(error?.message ?? "Unable to update account status."), { code: error?.code });
+      },
+    });
+    return null;
+  } catch (reason) {
+    if (reason instanceof AccountActivationError) return fail(origin, reason.message, reason.uncertain ? 503 : 400);
+    return fail(origin, "Account status could not be updated.", 500);
+  }
+}
 
 export async function handler(req: Request): Promise<Response> {
   const origin = req.headers.get("Origin");
@@ -53,6 +78,12 @@ export async function handler(req: Request): Promise<Response> {
     const providedPassword = typeof body.password === "string" ? body.password : "";
     if ((creating && providedPassword.length > 0 && (providedPassword.length < 12 || providedPassword.length > 128)) || (!creating && providedPassword && (providedPassword.length < 12 || providedPassword.length > 128))) return fail(origin, "Password must be 12–128 characters.");
     let userId = creating ? "" : body.userId as string;
+    let existingActive = true;
+    if (!creating) {
+      const existing = await admin.from("users").select("is_active").eq("id", userId).maybeSingle();
+      if (existing.error || !existing.data) return fail(origin, "User account was not found.", 404);
+      existingActive = existing.data.is_active === true;
+    }
     let temporaryPassword = "";
     if (creating) {
       temporaryPassword = providedPassword || `${crypto.randomUUID()}aA1!`;
@@ -63,7 +94,7 @@ export async function handler(req: Request): Promise<Response> {
     }
     const { data: result, error } = await admin.rpc("admin_user_upsert", {
       p_auth_user_id: userId, p_caller_user_id: authData.user.id, p_username: username,
-      p_display_name: name, p_member_id: memberId, p_is_active: creating ? body.isActive !== false : body.isActive !== false,
+      p_display_name: name, p_member_id: memberId, p_is_active: creating ? true : existingActive,
       p_role_codes: roleCodes,
     });
     if (error || result?.verified !== true) {
@@ -87,10 +118,8 @@ export async function handler(req: Request): Promise<Response> {
 
   if (body.action === "set-active") {
     if (!uuid(body.userId) || typeof body.isActive !== "boolean") return fail(origin, "Invalid account status request.");
-    const { data, error } = await admin.rpc("admin_user_set_active", { p_auth_user_id: body.userId, p_caller_user_id: authData.user.id, p_is_active: body.isActive });
-    if (error || data?.verified !== true) return fail(origin, error?.message ?? "Unable to update account status.", error?.code === "42501" ? 403 : 400);
-    const { error: authUpdateError } = await admin.auth.admin.updateUserById(body.userId, { ban_duration: body.isActive ? "none" : "876000h" });
-    if (authUpdateError) return fail(origin, "Status saved, but session revocation failed. Retry the status change.", 500);
+    const statusError = await transitionActive(admin, origin, authData.user.id, body.userId, body.isActive);
+    if (statusError) return statusError;
     return json(origin, { ok: true });
   }
   return fail(origin, "Unsupported user-management action.");

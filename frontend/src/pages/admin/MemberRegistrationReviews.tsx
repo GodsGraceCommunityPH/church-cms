@@ -30,7 +30,7 @@ export default function MemberRegistrationReviews() {
   const [savingId, setSavingId] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const canManageAll = hasPermission("admin.users") || hasPermission("members.update");
+  const canManageAll = hasPermission("admin.users");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -54,20 +54,21 @@ export default function MemberRegistrationReviews() {
     } else {
       const access = await supabase.rpc("get_my_permissions");
       const canManageAssignedGroup = (access.data ?? []).some((item: { code: string }) => item.code === "members.update");
-      if (access.error) {
+      const cellLeader = await supabase.rpc("has_role", { p_role_code: "cell_leader" });
+      if (access.error || cellLeader.error) {
         setManageableGroups(new Set());
         setLoading(false);
         return;
       }
       const groupAccess = await Promise.all(nextReviews.map(async (item) => {
-        if (canManageAssignedGroup || hasPermission("admin.users")) return [item.cell_group_id, true] as const;
+        if (canManageAssignedGroup && !cellLeader.data) return [item.cell_group_id, true] as const;
         const result = await supabase.rpc("is_assigned_cell_group", { p_cell_group_id: item.cell_group_id });
         return [item.cell_group_id, result.data === true && !result.error] as const;
       }));
       setManageableGroups(new Set(groupAccess.filter(([, allowed]) => allowed).map(([groupId]) => groupId)));
     }
     setLoading(false);
-  }, [canManageAll, hasPermission]);
+  }, [canManageAll]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -76,14 +77,11 @@ export default function MemberRegistrationReviews() {
     setSavingId(review.id);
     setError("");
     setSuccess("");
-    const { data, error: updateError } = await supabase
-      .from("member_registration_reviews")
-      .update({ status, reviewed_by: user.id, reviewed_at: new Date().toISOString() })
-      .eq("id", review.id)
-      .eq("status", "pending")
-      .select("id")
-      .maybeSingle();
-    if (updateError || !data) {
+    const { data, error: updateError } = await supabase.rpc("set_member_registration_review_status", {
+      p_review_id: review.id,
+      p_status: status,
+    });
+    if (updateError || data?.verified !== true) {
       setError(updateError?.message ?? "This review was already updated. Refresh the queue and try again.");
     } else {
       setSuccess(status === "resolved" ? "Review marked resolved." : "Review dismissed.");

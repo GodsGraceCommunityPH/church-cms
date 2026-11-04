@@ -21,7 +21,6 @@ export default function UserManagement() {
   const [password, setPassword] = useState("");
   const [roleCodes, setRoleCodes] = useState<string[]>([]);
   const [memberId, setMemberId] = useState("");
-  const [active, setActive] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -37,11 +36,11 @@ export default function UserManagement() {
   useEffect(() => { void load().catch((reason) => setError(reason.message)); }, [load]);
 
   function resetForm() {
-    setEditing(null); setName(""); setUsername(""); setPassword(""); setRoleCodes([]); setMemberId(""); setActive(true);
+    setEditing(null); setName(""); setUsername(""); setPassword(""); setRoleCodes([]); setMemberId("");
   }
 
   function editUser(user: CmsUser) {
-    setEditing(user); setName(user.display_name); setUsername(user.username); setPassword(""); setRoleCodes(user.roles); setMemberId(user.member_id ?? ""); setActive(user.is_active);
+    setEditing(user); setName(user.display_name); setUsername(user.username); setPassword(""); setRoleCodes(user.roles); setMemberId(user.member_id ?? "");
     setSuccess(""); setError("");
   }
 
@@ -49,7 +48,7 @@ export default function UserManagement() {
     event.preventDefault(); setLoading(true); setError(""); setSuccess(""); setOneTimePassword("");
     try {
       if (editing) {
-        await manageCmsUsers({ action: "update", userId: editing.id, name, username, password: password || undefined, memberId, roleCodes, isActive: active });
+        await manageCmsUsers({ action: "update", userId: editing.id, name, username, password: password || undefined, memberId, roleCodes });
         setSuccess("User details and access were updated.");
       } else {
         const result = await manageCmsUsers<{ tempPassword?: string }>({ action: "create", name, username, password: password || undefined, memberId, roleCodes });
@@ -86,7 +85,6 @@ export default function UserManagement() {
         <label>{editing ? "New password (optional)" : "Password (leave blank to generate)"}<Input type="password" minLength={12} maxLength={128} autoComplete={editing ? "new-password" : "new-password"} value={password} onChange={(event) => setPassword(event.target.value)} /></label>
         <label>Link Member record (optional)<Select value={memberId} onChange={(event) => setMemberId(event.target.value)}><option value="">No Member link</option>{members.map((member) => <option key={member.id} value={member.id}>{member.first_name} {member.last_name}{member.email ? ` · ${member.email}` : ""}</option>)}</Select></label>
         <fieldset style={{ gridColumn: "1 / -1", border: "1px solid #e2e8f0", borderRadius: 12, padding: 14 }}><legend>Assigned roles</legend><div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>{roles.map((role) => <label key={role.code} style={{ display: "flex", alignItems: "center", gap: 7 }}><input type="checkbox" checked={roleCodes.includes(role.code)} disabled={role.code === "administrator" && !editing} onChange={() => toggleRole(role.code)} />{role.name}</label>)}</div><small>At least one role is required. The final active administrator cannot be removed or deactivated.</small></fieldset>
-        {editing && <label style={{ display: "flex", alignItems: "center", gap: 8 }}><input type="checkbox" checked={active} onChange={(event) => setActive(event.target.checked)} />CMS access active</label>}
         <div style={{ gridColumn: "1 / -1", display: "flex", gap: 10 }}><Button type="submit" disabled={loading || roleCodes.length === 0}>{loading ? "Saving..." : editing ? "Save changes" : "Create account"}</Button>{editing && <Button type="button" variant="secondary" onClick={resetForm}>Cancel</Button>}</div>
       </form>
     </section>

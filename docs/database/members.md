@@ -5,11 +5,13 @@
 Member inserts are guarded by a transaction-scoped database check. It compares
 normalized Philippine mobile numbers and normalized names, including first
 names where one is an extension of the other's leading token (for example,
-`Jesmer` and `Jesmer Christian`) with an equal surname. Likely same-person
-matches require an explicit decision. A shared mobile without a similar name
+`Jesmer` and `Jesmer Christian`) with an equal surname. Staff must review
+likely same-person matches before creating another record. A shared mobile without a similar name
 is treated as a possible household contact and is never automatically linked.
-Public invite submissions with uncertain or multiple matches go to the private
-registration review queue. Admin creation requires staff to review candidates
+All public invite submissions with a likely match or shared-contact match go
+to the private registration review queue; visitor confirmation never updates
+or links an existing Member. Only authorized staff can change an existing
+profile. Admin creation requires staff to review candidates
 and explicitly confirm a distinct person before another Member is inserted.
 The database serializes the check with the insert; no uniqueness constraint is
 placed on mobile or name because families share numbers and people may share
@@ -18,7 +20,8 @@ as entered.
 
 # Status
 
-🚧 Planned
+Implemented. Public review status changes use a permission-checked RPC and do
+not grant authenticated clients table UPDATE access.
 
 ---
 

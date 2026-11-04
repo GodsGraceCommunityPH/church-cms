@@ -21,6 +21,13 @@ through `user_roles`; removing an assignment never deletes a catalogue role.
 The database serializes administrator status transitions and prevents removing
 or deactivating the last active Administrator.
 
+Profile edits do not change account activation. The dedicated activation path
+changes the Supabase Auth ban first, performs the permission-checked database
+transition, and restores Auth to the database's persisted state if the database
+rejects or ambiguously completes the operation. If state cannot be reconciled,
+the function returns an explicit uncertain-outcome error for administrator
+review.
+
 Member linking changes only `users.member_id`. It does not write the Member row
 or its `cell_group_id`. Existing Auth accounts are assigned deterministic
 usernames from their private email prefix plus a short account identifier.

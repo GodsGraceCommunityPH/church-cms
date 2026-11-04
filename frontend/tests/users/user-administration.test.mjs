@@ -35,7 +35,7 @@ test("user administration is routed and exposes username, roles, status, and Mem
   const sidebar = await read("../../src/components/admin/Sidebar.tsx");
   assert.match(app, /path="\/admin\/users" element={<UserManagement \/>}/);
   assert.match(sidebar, /hasPermission\("admin\.users"\).*\/admin\/users/s);
-  for (const text of ["Username", "Assigned roles", "CMS access active", "Link Member record"]) assert.ok(page.includes(text));
+  for (const text of ["Username", "Assigned roles", "Link Member record", "Deactivate", "Reactivate"]) assert.ok(page.includes(text));
 });
 
 test("ambiguous member registrations have a permission-scoped review queue without automatic Member edits", async () => {
@@ -46,6 +46,6 @@ test("ambiguous member registrations have a permission-scoped review queue witho
   assert.match(sidebar, /members\.view[\s\S]*\/admin\/member-registration-reviews/);
   assert.match(page, /member_registration_reviews/);
   assert.match(page, /is_assigned_cell_group/);
-  assert.match(page, /\.eq\("status", "pending"\)/);
+  assert.match(page, /rpc\("set_member_registration_review_status"/);
   assert.doesNotMatch(page, /\.from\("members"\)\.(insert|update|delete)/);
 });

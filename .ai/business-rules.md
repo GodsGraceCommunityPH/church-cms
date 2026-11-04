@@ -69,15 +69,16 @@ likely same-person match. A shared mobile number without that name match is a
 possible shared-household contact and never identifies or updates a person by
 itself.
 
-Likely matches require an explicit confirmation before linking or creating a
-distinct person. Multiple likely matches and possible shared-contact matches
-from public invite registration are preserved in the private staff review
-queue. Staff creation shows the match class and requires an explicit
+Public invite registrations never update or link an existing Member based on a
+name match or visitor confirmation. Any likely duplicate or shared-contact
+match is preserved with the submitted information in the private staff review
+queue. Only appropriately authorized staff may update or link an existing
+Member. Staff creation shows the match class and requires an explicit
 different-person confirmation before creating another row. The database
-serializes the duplicate check and insert, and rechecks candidates at commit
-time so simultaneous requests cannot bypass the decision. Mobile numbers and
-names are not unique: households may share phones and different people may
-share names. Blank optional submissions never erase existing profile values.
+serializes duplicate checks and inserts, and rechecks candidates at commit time
+so simultaneous requests cannot bypass the decision. Mobile numbers and names
+are not unique: households may share phones and different people may share
+names. Blank optional submissions never erase existing profile values.
 
 Successful Cell Group invite registrations create a persisted notification for
 active users with `members.view` only when a new Member row is inserted.

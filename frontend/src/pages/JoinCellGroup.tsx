@@ -45,16 +45,14 @@ export default function JoinCellGroup() {
     void loadInvite();
   }, [loadInvite]);
 
-  const finishRegistration = (status: "created" | "updated" | "needs_review") => {
+  const finishRegistration = (status: "created" | "needs_review") => {
     setPendingRegistration(null);
     setMatchedName("");
     requestIdRef.current = crypto.randomUUID();
-    if (status === "updated") {
-      setSuccess({ title: "Registration Complete", message: "Your existing member profile has been updated successfully." });
-    } else if (status === "needs_review") {
+    if (status === "needs_review") {
       setSuccess({
         title: "Registration Received",
-        message: "We found multiple possible matches or a shared household contact. Your registration is with church staff for review and has not been linked to another person.",
+        message: "Your registration has been sent to church staff for review. It has not changed or been linked to an existing Member profile.",
       });
     } else {
       setSuccess({ title: "Registration Submitted", message: "Thank you for registering! Your information has been received and will be reviewed by our church staff." });
@@ -71,7 +69,7 @@ export default function JoinCellGroup() {
         setMatchedName(result.display_name ?? `${input.firstName} ${input.lastName}`.trim());
         return;
       }
-      finishRegistration(result.status);
+      finishRegistration(result.status === "created" ? "created" : "needs_review");
     } catch (error) {
       console.error("Member registration failed", error);
       const databaseError = error as { code?: string; message?: string };
