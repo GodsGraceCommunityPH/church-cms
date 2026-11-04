@@ -148,6 +148,7 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
               <User size={18} />
               {!collapsed && "Members"}
             </NavLink>}
+            {hasPermission("members.view") && <NavLink className={({ isActive }) => `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`} to="/admin/member-registration-reviews" onClick={onClose} style={linkStyle} title={collapsed ? "Registration Reviews" : undefined}><User size={18} />{!collapsed && "Registration Reviews"}</NavLink>}
             {hasPermission("admin.users") && <NavLink className={({ isActive }) => `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`} to="/admin/users" onClick={onClose} style={linkStyle} title={collapsed ? "User Administration" : undefined}><ShieldUser size={18} />{!collapsed && "User Administration"}</NavLink>}
             {hasPermission("evangelism.view") && <NavLink className={({isActive})=>`${linkClass} ${isActive?"bg-gray-100 font-semibold text-olive-800":""}`} to="/admin/evangelism" onClick={onClose} style={linkStyle} title={collapsed?"Evangelism":undefined}><HeartHandshake size={18}/>{!collapsed&&"Evangelism"}</NavLink>}
             {hasPermission("resources.view") && <NavLink className={({isActive})=>`${linkClass} ${isActive?"bg-gray-100 font-semibold text-olive-800":""}`} to="/admin/resources" onClick={onClose} style={linkStyle} title={collapsed?"Resources":undefined}><Library size={18}/>{!collapsed&&"Resources"}</NavLink>}

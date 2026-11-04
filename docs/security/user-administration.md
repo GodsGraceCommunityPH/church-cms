@@ -25,6 +25,10 @@ Member linking changes only `users.member_id`. It does not write the Member row
 or its `cell_group_id`. Existing Auth accounts are assigned deterministic
 usernames from their private email prefix plus a short account identifier.
 
-Production rollout requires applying `supabase/migrations/20261104015508_user_administration.sql`,
-deploying `manage-cms-users` and `username-login` (with JWT verification disabled
-for `username-login`), and setting the function secrets and allowed origins.
+Production has applied `20261104022255_user_administration.sql` and has active
+`manage-cms-users` and `username-login` Edge Functions. Keep the migration
+version aligned with the production migration history; do not reapply it.
+`username-login` must keep JWT verification disabled because it serves the
+unauthenticated sign-in flow and validates the request in its handler.
+Both production functions return the exact allowed CORS origin for
+`https://www.godsgracecommunity.com` and reject an unrelated origin.

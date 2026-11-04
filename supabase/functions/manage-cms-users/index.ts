@@ -68,6 +68,10 @@ export async function handler(req: Request): Promise<Response> {
     });
     if (error || result?.verified !== true) {
       if (creating) {
+        const transactionRolledBack = Boolean(error?.code && /^[0-9A-Z]{5}$/.test(error.code));
+        if (!transactionRolledBack) {
+          return fail(origin, "Account setup result is uncertain. Do not retry; an administrator must reconcile this account.", 503);
+        }
         const { error: cleanupError } = await admin.auth.admin.deleteUser(userId);
         if (cleanupError) console.error("User creation cleanup pending", { userId, message: cleanupError.message });
       }
