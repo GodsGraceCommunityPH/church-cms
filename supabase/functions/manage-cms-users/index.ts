@@ -23,7 +23,7 @@ async function transitionActive(admin: any, origin: string | null, callerId: str
         if (error) throw error;
       },
       setDatabaseActive: async (targetId, nextActive) => {
-        const { data, error } = await admin.rpc("admin_user_set_active", { p_auth_user_id: targetId, p_caller_user_id: callerId, p_is_active: nextActive });
+        const { data, error } = await admin.rpc("admin_user_set_active", { p_auth_user_id: targetId, p_caller_user_id: callerId, p_is_active: nextActive, p_operation_id: operationId });
         if (error || data?.verified !== true) throw Object.assign(new Error(error?.message ?? "Unable to update account status."), { code: error?.code });
       },
       acquireLease: async (targetId, operationId) => {
@@ -160,23 +160,70 @@ export async function handler(req: Request): Promise<Response> {
     if (!uuid(body.userId)) return fail(origin, "Invalid account reconciliation request.");
     const targetId = body.userId as string;
     const { data: lease } = await admin.from("account_activation_leases").select("*").eq("user_id", targetId).maybeSingle();
+
     let authBanned: boolean | null = null;
+    let authError: string | null = null;
     try {
-      const { data } = await admin.auth.admin.getUserById(targetId);
-      const bannedUntil = (data?.user as { banned_until?: string | null } | undefined)?.banned_until;
+      const { data, error } = await admin.auth.admin.getUserById(targetId);
+      if (error || !data?.user) throw new Error(error?.message ?? "Unable to read Auth state.");
+      const bannedUntil = (data.user as { banned_until?: string | null }).banned_until;
       authBanned = Boolean(bannedUntil && new Date(bannedUntil).getTime() > Date.now());
-    } catch {
-      authBanned = null;
+    } catch (error) {
+      authError = error instanceof Error ? error.message : "Unable to read Auth state.";
     }
-    const { data: dbRow } = await admin.from("users").select("is_active").eq("id", targetId).maybeSingle();
-    const dbActive = dbRow ? dbRow.is_active === true : null;
+
+    const { data: dbRow, error: dbError } = await admin.from("users").select("is_active").eq("id", targetId).maybeSingle();
+    const dbActive = dbError ? null : (dbRow ? dbRow.is_active === true : null);
+
+    const consistent = authBanned !== null && dbActive !== null && authBanned === !dbActive;
+
+    // Controlled reconciliation: apply the documented recovery rule only when the
+    // lease is uncertain/stale or absent. Rule: persisted CMS is_active is
+    // authoritative; Auth ban is aligned to !isActive. Never auto-overwrite when
+    // both states are known and already consistent, or when a state is unreadable.
+    let reconciled = false;
+    let reconcileError: string | null = null;
+    const leaseStatus = lease?.status ?? null;
+    const needsReconciliation = !lease || leaseStatus === "uncertain" || leaseStatus === "started" || leaseStatus === "auth_updated";
+
+    if (needsReconciliation && authBanned !== null && dbActive !== null && !consistent) {
+      try {
+        await admin.auth.admin.updateUserById(targetId, { ban_duration: dbActive ? "none" : "876000h" });
+        authBanned = !dbActive;
+        reconciled = true;
+      } catch (error) {
+        reconcileError = error instanceof Error ? error.message : "Unable to reconcile Auth state.";
+      }
+    }
+
+    if (needsReconciliation && authBanned !== null && dbActive !== null && consistent) {
+      // Release the lease as completed (idempotent; uncertain rows are preserved
+      // only when state could not be established).
+      try {
+        if (lease?.operation_id) {
+          await admin.rpc("release_account_activation_lease", {
+            p_user_id: targetId,
+            p_operation_id: lease.operation_id,
+            p_status: "completed",
+          });
+        }
+        reconciled = true;
+      } catch (error) {
+        reconcileError = error instanceof Error ? error.message : "Unable to release lease.";
+      }
+    }
+
     return json(origin, {
       ok: true,
       userId: targetId,
       lease: lease ?? null,
       authBanned,
       databaseActive: dbActive,
-      consistent: authBanned !== null && dbActive !== null && authBanned === !dbActive,
+      consistent,
+      reconciled,
+      reconcileError,
+      authError,
+      dbError: dbError?.message ?? null,
     });
   }
 
