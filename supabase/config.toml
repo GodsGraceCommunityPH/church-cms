@@ -1,0 +1,4 @@
+project_id = "ggccc-cms"
+
+[functions.username-login]
+verify_jwt = false

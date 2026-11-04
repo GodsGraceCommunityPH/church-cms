@@ -48,6 +48,7 @@ import EvangelismForm from "./pages/admin/EvangelismForm";
 import EvangelismDetail from "./pages/admin/EvangelismDetail";
 import Resources from "./pages/admin/Resources";
 import Notifications from "./pages/admin/Notifications";
+import UserManagement from "./pages/admin/UserManagement";
 import ResourceForm from "./pages/admin/ResourceForm";
 import ResourceDetail from "./pages/admin/ResourceDetail";
 import {
@@ -81,6 +82,9 @@ function App() {
         <Route path="/admin/dashboard" element={<Dashboard />} />
         <Route path="/admin/help" element={<HelpCenter />} />
         <Route path="/admin/help/:articleKey" element={<HelpArticle />} />
+        <Route element={<PermissionRoute permission="admin.users" />}>
+          <Route path="/admin/users" element={<UserManagement />} />
+        </Route>
         <Route element={<PermissionRoute permission="training.view" />}>
         <Route path="/admin/training" element={<Training />} />
         <Route path="/admin/training/pending" element={<PendingTraining />} />

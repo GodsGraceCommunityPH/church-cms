@@ -7,7 +7,7 @@ export interface AuthContextValue {
   permissions: Set<string>;
   loading: boolean;
   accessError: string;
-  signIn: (email: string, password: string) => Promise<void>;
+  signIn: (username: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   hasPermission: (permission: string) => boolean;
 }
