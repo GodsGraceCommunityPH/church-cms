@@ -25,6 +25,6 @@ Member linking changes only `users.member_id`. It does not write the Member row
 or its `cell_group_id`. Existing Auth accounts are assigned deterministic
 usernames from their private email prefix plus a short account identifier.
 
-Production rollout requires applying `supabase/migrations/057_user_administration.sql`,
+Production rollout requires applying `supabase/migrations/20261104015508_user_administration.sql`,
 deploying `manage-cms-users` and `username-login` (with JWT verification disabled
 for `username-login`), and setting the function secrets and allowed origins.

@@ -6,7 +6,7 @@ const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 
 test("username sign-in keeps private email resolution on the server", async () => {
   const login = await read("../../../supabase/functions/username-login/index.ts");
-  const migration = await read("../../../supabase/migrations/057_user_administration.sql");
+  const migration = await read("../../../supabase/migrations/20261104015508_user_administration.sql");
   const service = await read("../../src/features/users/userManagementService.ts");
   assert.match(login, /resolve_username_login/);
   assert.match(login, /access_token: result\.session\.access_token/);
@@ -17,7 +17,7 @@ test("username sign-in keeps private email resolution on the server", async () =
 });
 
 test("account operations check admin.users and preserve the final active administrator", async () => {
-  const migration = await read("../../../supabase/migrations/057_user_administration.sql");
+  const migration = await read("../../../supabase/migrations/20261104015508_user_administration.sql");
   const handler = await read("../../../supabase/functions/manage-cms-users/index.ts");
   assert.match(migration, /p\.code='admin\.users'/);
   assert.match(migration, /At least one active Administrator must remain/);
