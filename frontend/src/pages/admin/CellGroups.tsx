@@ -79,7 +79,7 @@ export default function CellGroups() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div
         className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between"
         style={{
@@ -87,15 +87,15 @@ export default function CellGroups() {
           alignItems: "center",
           justifyContent: "space-between",
           flexWrap: "wrap",
-          gap: "24px",
-          margin: "8px 0 32px",
+          gap: "16px",
+          margin: 0,
         }}
       >
         <div>
           <h1 className="text-3xl font-bold" style={{ fontSize: "30px", margin: 0 }}>
             Cell Groups
           </h1>
-          <p className="text-slate-600" style={{ margin: "8px 0 0" }}>
+          <p className="text-slate-600" style={{ margin: "4px 0 0" }}>
             Manage church cell groups.
           </p>
         </div>
@@ -110,7 +110,7 @@ export default function CellGroups() {
           background: "white",
           border: "1px solid #e2e8f0",
           borderRadius: "16px",
-          padding: "14px",
+          padding: "20px",
           margin: 0,
         }}
       >
@@ -141,7 +141,7 @@ export default function CellGroups() {
           </div>
         )}
 
-        <div className="mb-8" style={{ marginBottom: "32px" }}>
+        <div className="mb-5" style={{ marginBottom: "20px" }}>
           <Input
             placeholder="Search cell groups..."
             value={search}
@@ -206,7 +206,7 @@ export default function CellGroups() {
                 key={group.id}
                 role="button"
                 tabIndex={0}
-                className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-3 transition-colors hover:bg-slate-50"
+                className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 transition-colors hover:bg-slate-50"
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -214,7 +214,7 @@ export default function CellGroups() {
                   gap: "16px",
                   border: "1px solid #e2e8f0",
                   borderRadius: "12px",
-                  padding: "12px",
+                  padding: "16px",
                   cursor: "pointer",
                 }}
                 onClick={() => navigate(`/admin/cell-groups/${group.id}`)}
