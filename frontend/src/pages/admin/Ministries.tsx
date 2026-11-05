@@ -41,21 +41,21 @@ export default function Ministries() {
   }, [ministries, search]);
 
   return (
-    <div className="space-y-8">
-      <header className="flex flex-wrap items-center justify-between gap-6">
+    <div className="space-y-6">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold" style={{ margin: 0 }}>
             Ministries
           </h1>
-          <p className="mt-2 text-slate-600">
+          <p className="mt-1 text-slate-600">
             Manage ministry teams and member service assignments.
           </p>
         </div>
         <PrimaryButton to="/admin/ministries/new">Add Ministry</PrimaryButton>
       </header>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-4">
-        <div className="mb-6">
+      <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="mb-4">
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -94,7 +94,7 @@ export default function Ministries() {
               return (
                 <article
                   key={ministry.id}
-                  className="flex min-w-0 cursor-pointer gap-4 rounded-xl border border-slate-200 p-3 transition-colors hover:bg-slate-50"
+                  className="flex min-w-0 cursor-pointer gap-4 rounded-xl border border-slate-200 p-4 transition-colors hover:bg-slate-50"
                   onClick={() => navigate(`/admin/ministries/${ministry.id}`)}
                 >
                   {ministry.pictureUrl ? (
@@ -109,12 +109,12 @@ export default function Ministries() {
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
                       <h2 className="break-words text-lg font-semibold">
                         {ministry.name}
                       </h2>
                       <span
-                        className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                        className={`shrink-0 rounded-full px-2 py-1 text-xs font-semibold ${
                           ministry.status === "Active"
                             ? "bg-emerald-100 text-emerald-700"
                             : "bg-slate-200 text-slate-600"
