@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test:navigation": "node --test tests/navigation/*.test.mjs",
     "test:member-duplicates": "node --experimental-strip-types --test tests/members/*.test.mjs",
     "test:users": "node --experimental-strip-types --test tests/users/*.test.mjs",
     "test:activation": "node --experimental-strip-types --test tests/users/account-activation.test.mjs tests/users/account-reconciliation.test.mjs",
