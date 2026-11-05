@@ -13,13 +13,19 @@ import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   X,
   HeartHandshake,
   Library,
   ShieldUser,
+  Waypoints,
+  HandHeart,
+  Cog,
+  Layers,
 } from "lucide-react";
-import { useState } from "react";
-import { NavLink } from "react-router-dom";
+import type { LucideIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "../../features/auth/auth";
 
 type SidebarProps = {
@@ -29,9 +35,96 @@ type SidebarProps = {
   onToggleCollapse: () => void;
 };
 
+type NavItem = {
+  label: string;
+  to: string;
+  icon: LucideIcon;
+  permission?: string;
+};
+
+type NavGroup = {
+  key: string;
+  label: string;
+  icon: LucideIcon;
+  items: NavItem[];
+};
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    key: "discipleship",
+    label: "Discipleship",
+    icon: Waypoints,
+    items: [
+      { label: "Training", to: "/admin/training", icon: GraduationCap, permission: "training.view" },
+      { label: "Members", to: "/admin/members", icon: User, permission: "members.view" },
+      {
+        label: "Registration Reviews",
+        to: "/admin/member-registration-reviews",
+        icon: User,
+        permission: "members.view",
+      },
+      {
+        label: "Cell Groups",
+        to: "/admin/cell-groups",
+        icon: Users,
+        permission: "cell_groups.view",
+      },
+    ],
+  },
+  {
+    key: "ministry-outreach",
+    label: "Ministry & Outreach",
+    icon: HandHeart,
+    items: [
+      {
+        label: "Evangelism",
+        to: "/admin/evangelism",
+        icon: HeartHandshake,
+        permission: "evangelism.view",
+      },
+      { label: "Ministries", to: "/admin/ministries", icon: Church, permission: "ministries.view" },
+    ],
+  },
+  {
+    key: "church-operations",
+    label: "Church Operations",
+    icon: Cog,
+    items: [
+      { label: "Events", to: "/admin/events", icon: CalendarDays, permission: "events.view" },
+      { label: "Equipment", to: "/admin/equipment", icon: Package, permission: "equipment.view" },
+    ],
+  },
+  {
+    key: "content-resources",
+    label: "Content & Resources",
+    icon: Layers,
+    items: [
+      { label: "Resources", to: "/admin/resources", icon: Library, permission: "resources.view" },
+      {
+        label: "Worship Messages",
+        to: "/admin/worship-messages",
+        icon: Video,
+        permission: "website_content.view",
+      },
+      {
+        label: "Church Life",
+        to: "/admin/church-life",
+        icon: Images,
+        permission: "website_content.view",
+      },
+    ],
+  },
+];
+
+function matchesRoute(pathname: string, to: string) {
+  return pathname === to || pathname.startsWith(`${to}/`);
+}
+
 function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
   const { signOut, hasPermission } = useAuth();
+  const location = useLocation();
   const [signingOut, setSigningOut] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const trainingOnly = hasPermission("training.view") && !hasPermission("members.view") && !hasPermission("cell_groups.view") && !hasPermission("finance.view");
   const linkClass =
     "flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-gray-100";
@@ -41,6 +134,29 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
     gap: collapsed ? "0" : "12px",
     justifyContent: collapsed ? "center" : "flex-start",
     padding: "10px 12px",
+  };
+  const activeLinkClass = (isActive: boolean) =>
+    `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`;
+
+  const visibleGroups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => !item.permission || hasPermission(item.permission)),
+  })).filter((group) => group.items.length > 0);
+
+  const activeGroupKey =
+    visibleGroups.find((group) =>
+      group.items.some((item) => matchesRoute(location.pathname, item.to)),
+    )?.key ?? null;
+
+  useEffect(() => {
+    if (!activeGroupKey) return;
+    setOpenGroups((current) =>
+      current[activeGroupKey] ? current : { ...current, [activeGroupKey]: true },
+    );
+  }, [activeGroupKey, location.pathname]);
+
+  const toggleGroup = (key: string) => {
+    setOpenGroups((current) => ({ ...current, [key]: !current[key] }));
   };
 
   return (
@@ -114,129 +230,114 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
 
         <nav className="admin-sidebar-nav flex-1 overflow-y-auto">
           <div className="flex flex-col gap-2">
-            {!trainingOnly && <NavLink
-              className={linkClass}
-              to="/admin/dashboard"
-              onClick={onClose}
-              style={linkStyle}
-              title={collapsed ? "Overview" : undefined}
-            >
-              <LayoutDashboard size={18} />
-              {!collapsed && "Overview"}
-            </NavLink>}
+            {!trainingOnly && (
+              <NavLink
+                className={({ isActive }) => activeLinkClass(isActive)}
+                to="/admin/dashboard"
+                onClick={onClose}
+                style={linkStyle}
+                title={collapsed ? "Overview" : undefined}
+                aria-label={collapsed ? "Overview" : undefined}
+              >
+                <LayoutDashboard size={18} aria-hidden="true" />
+                {!collapsed && "Overview"}
+              </NavLink>
+            )}
 
-            {hasPermission("training.view") && <NavLink
-              className={({ isActive }) =>
-                `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`
-              }
-              to="/admin/training"
-              onClick={onClose}
-              style={linkStyle}
-              title={collapsed ? "Training" : undefined}
-            >
-              <GraduationCap size={18} />
-              {!collapsed && "Training"}
-            </NavLink>}
+            {visibleGroups.map((group) => {
+              const GroupIcon = group.icon;
+              const isExpanded = Boolean(openGroups[group.key]);
+              const isActiveGroup = group.key === activeGroupKey;
+              const contentId = `sidebar-group-${group.key}`;
 
-            {hasPermission("members.view") && <NavLink
-              className={linkClass}
-              to="/admin/members"
-              onClick={onClose}
-              style={linkStyle}
-              title={collapsed ? "Members" : undefined}
-            >
-              <User size={18} />
-              {!collapsed && "Members"}
-            </NavLink>}
-            {hasPermission("members.view") && <NavLink className={({ isActive }) => `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`} to="/admin/member-registration-reviews" onClick={onClose} style={linkStyle} title={collapsed ? "Registration Reviews" : undefined}><User size={18} />{!collapsed && "Registration Reviews"}</NavLink>}
-            {hasPermission("admin.users") && <NavLink className={({ isActive }) => `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`} to="/admin/users" onClick={onClose} style={linkStyle} title={collapsed ? "User Administration" : undefined}><ShieldUser size={18} />{!collapsed && "User Administration"}</NavLink>}
-            {hasPermission("evangelism.view") && <NavLink className={({isActive})=>`${linkClass} ${isActive?"bg-gray-100 font-semibold text-olive-800":""}`} to="/admin/evangelism" onClick={onClose} style={linkStyle} title={collapsed?"Evangelism":undefined}><HeartHandshake size={18}/>{!collapsed&&"Evangelism"}</NavLink>}
-            {hasPermission("resources.view") && <NavLink className={({isActive})=>`${linkClass} ${isActive?"bg-gray-100 font-semibold text-olive-800":""}`} to="/admin/resources" onClick={onClose} style={linkStyle} title={collapsed?"Resources":undefined}><Library size={18}/>{!collapsed&&"Resources"}</NavLink>}
+              return (
+                <div key={group.key} className="flex flex-col">
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group.key)}
+                    aria-expanded={isExpanded}
+                    aria-controls={contentId}
+                    aria-label={collapsed ? group.label : undefined}
+                    title={collapsed ? group.label : undefined}
+                    className={`${linkClass} w-full ${isActiveGroup ? "bg-gray-100 font-semibold text-olive-800" : "text-gray-700"}`}
+                    style={{ ...linkStyle, width: "100%" }}
+                  >
+                    <GroupIcon size={18} aria-hidden="true" />
+                    {!collapsed && (
+                      <>
+                        <span className="flex-1 text-left">{group.label}</span>
+                        <ChevronDown
+                          size={16}
+                          aria-hidden="true"
+                          className={`transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
+                        />
+                      </>
+                    )}
+                  </button>
 
-            {hasPermission("cell_groups.view") && <NavLink
-              className={linkClass}
-              to="/admin/cell-groups"
-              onClick={onClose}
-              style={linkStyle}
-              title={collapsed ? "Cell Groups" : undefined}
-            >
-              <Users size={18} />
-              {!collapsed && "Cell Groups"}
-            </NavLink>}
+                  <div
+                    id={contentId}
+                    className="flex flex-col gap-1"
+                    style={{
+                      display: isExpanded ? "flex" : "none",
+                      marginTop: "4px",
+                      marginLeft: collapsed ? 0 : "12px",
+                      paddingLeft: collapsed ? 0 : "4px",
+                      borderLeft: collapsed ? undefined : "1px solid #e5e7eb",
+                    }}
+                  >
+                    {group.items.map((item) => {
+                      const ItemIcon = item.icon;
+                      return (
+                        <NavLink
+                          key={item.to}
+                          className={({ isActive }) => activeLinkClass(isActive)}
+                          to={item.to}
+                          onClick={onClose}
+                          style={{
+                            ...linkStyle,
+                            ...(collapsed ? {} : { paddingLeft: "12px" }),
+                          }}
+                          title={collapsed ? item.label : undefined}
+                          aria-label={collapsed ? item.label : undefined}
+                        >
+                          <ItemIcon size={18} aria-hidden="true" />
+                          {!collapsed && item.label}
+                        </NavLink>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
 
-            {hasPermission("ministries.view") && <NavLink
-              className={({ isActive }) =>
-                `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`
-              }
-              to="/admin/ministries"
-              onClick={onClose}
-              style={linkStyle}
-              title={collapsed ? "Ministries" : undefined}
-            >
-              <Church size={18} />
-              {!collapsed && "Ministries"}
-            </NavLink>}
+            <div className="mt-2 flex flex-col gap-2 border-t border-gray-200 pt-2">
+              {hasPermission("admin.users") && (
+                <NavLink
+                  className={({ isActive }) => activeLinkClass(isActive)}
+                  to="/admin/users"
+                  onClick={onClose}
+                  style={linkStyle}
+                  title={collapsed ? "User Administration" : undefined}
+                  aria-label={collapsed ? "User Administration" : undefined}
+                >
+                  <ShieldUser size={18} aria-hidden="true" />
+                  {!collapsed && "User Administration"}
+                </NavLink>
+              )}
 
-            {hasPermission("equipment.view") && <NavLink
-              className={({ isActive }) =>
-                `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`
-              }
-              to="/admin/equipment"
-              onClick={onClose}
-              style={linkStyle}
-              title={collapsed ? "Equipment" : undefined}
-            >
-              <Package size={18} />
-              {!collapsed && "Equipment"}
-            </NavLink>}
-
-            {hasPermission("events.view") && <NavLink
-              className={({ isActive }) =>
-                `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`
-              }
-              to="/admin/events"
-              onClick={onClose}
-              style={linkStyle}
-              title={collapsed ? "Events" : undefined}
-            >
-              <CalendarDays size={18} />
-              {!collapsed && "Events"}
-            </NavLink>}
-
-            {hasPermission("website_content.view") && <NavLink
-              className={({ isActive }) =>
-                `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`
-              }
-              to="/admin/worship-messages"
-              onClick={onClose}
-              style={linkStyle}
-              title={collapsed ? "Worship Messages" : undefined}
-            >
-              <Video size={18} />
-              {!collapsed && "Worship Messages"}
-            </NavLink>}
-
-            {hasPermission("website_content.view") && <NavLink
-              className={({ isActive }) => `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`}
-              to="/admin/church-life" onClick={onClose} style={linkStyle} title={collapsed ? "Church Life" : undefined}
-            >
-              <Images size={18} />
-              {!collapsed && "Church Life"}
-            </NavLink>}
-
-            <NavLink
-              className={({ isActive }) =>
-                `${linkClass} ${isActive ? "bg-gray-100 font-semibold text-olive-800" : ""}`
-              }
-              to="/admin/help"
-              onClick={onClose}
-              style={linkStyle}
-              title={collapsed ? "How To's" : undefined}
-            >
-              <BookOpen size={18} />
-              {!collapsed && "How To's"}
-            </NavLink>
-
+              <NavLink
+                className={({ isActive }) => activeLinkClass(isActive)}
+                to="/admin/help"
+                onClick={onClose}
+                style={linkStyle}
+                title={collapsed ? "How To's" : undefined}
+                aria-label={collapsed ? "How To's" : undefined}
+              >
+                <BookOpen size={18} aria-hidden="true" />
+                {!collapsed && "How To's"}
+              </NavLink>
+            </div>
           </div>
         </nav>
 
