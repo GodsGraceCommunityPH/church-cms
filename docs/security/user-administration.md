@@ -1,6 +1,8 @@
 # User administration
 
-The staff portal authenticates with a unique username and password. Auth still
+The staff portal authenticates with a unique CMS login identifier and password.
+The identifier can be a 3–40 character username or a valid email address up to
+254 characters; both are matched without regard to letter casing. Auth still
 stores a private synthetic email address because Supabase password auth requires
 an email or phone. That address is generated server-side and is neither shown
 to administrators nor returned to the browser.
