@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   buildDashboardMemberCountCards,
+  hasCellLeaderRole,
   normalizeDashboardMemberCounts,
 } from "../../src/features/dashboard/dashboardMemberCounts.ts";
 
@@ -132,4 +133,31 @@ test("Cell Leaders with zero visible members still get a real zero", () => {
 
   assert.equal(cards[1].value, 0);
   assert.equal(cards[1].action, "View your Cell Group");
+});
+
+test("detects the Cell Leader role even when another role is assigned", () => {
+  assert.equal(hasCellLeaderRole([{ roles: { code: "cell_leader" } }]), true);
+  assert.equal(hasCellLeaderRole([{ roles: [{ code: "cell_leader" }] }]), true);
+  assert.equal(
+    hasCellLeaderRole([
+      { roles: { code: "administrator" } },
+      { roles: { code: "cell_leader" } },
+    ]),
+    true,
+  );
+});
+
+test("does not treat other roles or malformed role payloads as Cell Leaders", () => {
+  for (const payload of [
+    null,
+    undefined,
+    [],
+    {},
+    [{ roles: { code: "administrator" } }],
+    [{ roles: [{ code: "pastor" }] }],
+    [{ roles: null }],
+    ["cell_leader"],
+  ]) {
+    assert.equal(hasCellLeaderRole(payload), false, JSON.stringify(payload));
+  }
 });

@@ -70,6 +70,24 @@ export function normalizeDashboardMemberCounts(payload: unknown): DashboardMembe
 }
 
 /**
+ * Detects the Cell Leader role from a `user_roles` join payload. Used as a
+ * second signal so the Cell Leader presentation still applies when the count
+ * RPC is unavailable. Multi-role users keep the Cell Leader presentation.
+ */
+export function hasCellLeaderRole(payload: unknown): boolean {
+  if (!Array.isArray(payload)) return false;
+
+  return payload.some((assignment) => {
+    if (!assignment || typeof assignment !== "object") return false;
+    const roles = (assignment as Record<string, unknown>).roles;
+    if (Array.isArray(roles)) {
+      return roles.some((role) => Boolean(role && typeof role === "object" && (role as Record<string, unknown>).code === "cell_leader"));
+    }
+    return Boolean(roles && typeof roles === "object" && (roles as Record<string, unknown>).code === "cell_leader");
+  });
+}
+
+/**
  * Builds the member count summary cards for the signed-in user.
  *
  * - Users without `members.view` / `admin.users` receive no member count cards.

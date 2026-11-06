@@ -51,6 +51,7 @@ function Dashboard() {
     ...card,
     icon: card.icon === "cell-group-members" ? UserRoundCheck : Users,
   }));
+  const isCellLeader = data.isCellLeader;
   const cellGroupsCard = {
     key: "cell-groups",
     label: "Cell Groups",
@@ -115,10 +116,17 @@ function Dashboard() {
     action: "View Cell Groups",
     icon: UserRoundCheck,
   };
-  const allSummaryCards = [...memberCountCards, cellGroupsCard, inTrainingCard, completedTrainingCard];
-  const memberSummaryCards = [...memberCountCards, assignedCard, genderNotSetCard, noCellGroupCard];
-  const cellGroupSummaryCards = [...memberCountCards, cellGroupsCard, membersAssignedCard, unassignedCard];
-  const trainingSummaryCards = [inTrainingCard, completedTrainingCard];
+  const trainingCards = [inTrainingCard, completedTrainingCard];
+  const allSummaryCards = isCellLeader
+    ? [...memberCountCards, ...trainingCards]
+    : [...memberCountCards, cellGroupsCard, ...trainingCards];
+  const memberSummaryCards = isCellLeader
+    ? memberCountCards
+    : [...memberCountCards, assignedCard, genderNotSetCard, noCellGroupCard];
+  const cellGroupSummaryCards = isCellLeader
+    ? memberCountCards
+    : [...memberCountCards, cellGroupsCard, membersAssignedCard, unassignedCard];
+  const trainingSummaryCards = trainingCards;
   const summaryCards = dashboardView === "members"
     ? memberSummaryCards
     : dashboardView === "cell-groups"
@@ -126,8 +134,8 @@ function Dashboard() {
       : dashboardView === "training"
         ? trainingSummaryCards
         : allSummaryCards;
-  const showGender = dashboardView === "all" || dashboardView === "members";
-  const showCellGroups = dashboardView !== "training";
+  const showGender = !isCellLeader && (dashboardView === "all" || dashboardView === "members");
+  const showCellGroups = !isCellLeader && dashboardView !== "training";
   const showTraining = dashboardView === "all" || dashboardView === "training";
   const showNeedsAttention = dashboardView === "all" || dashboardView === "members";
 
