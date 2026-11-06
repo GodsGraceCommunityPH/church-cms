@@ -11,6 +11,7 @@ import {
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import Button from "../../components/ui/Button";
+import { buildDashboardMemberCountCards } from "../../features/dashboard/dashboardMemberCounts";
 import { useDashboard } from "../../features/dashboard/useDashboard";
 
 const genderColors = {
@@ -46,24 +47,78 @@ function Dashboard() {
     { label: "Members without gender", count: data.membersWithoutGender, link: "/admin/members?gender=unknown" },
     { label: "Members without Cell Group", count: data.membersWithoutCellGroup, link: "/admin/members?cellGroup=unassigned" },
   ].filter((item) => item.count > 0);
-  const allSummaryCards = [
-    { label: "Total Members", value: data.totalMembers, link: "/admin/members", action: "View all members", icon: Users },
-    { label: "Cell Groups", value: data.totalCellGroups, link: "/admin/cell-groups", action: "View all cell groups", icon: Shapes },
-    { label: "In Training", value: data.inTraining, link: "/admin/training", action: "View current students", icon: BookOpenCheck },
-    { label: "Completed Training", value: data.completedTraining, link: "/admin/training?status=completed", action: "View completed", icon: GraduationCap },
-  ];
-  const memberSummaryCards = [
-    allSummaryCards[0],
-    { label: "Assigned to Cell Groups", value: assignedMembers, link: "/admin/cell-groups", action: "View Cell Groups", icon: UserRoundCheck },
-    { label: "Gender Not Set", value: data.membersWithoutGender, link: "/admin/members?gender=unknown", action: "Review members", icon: UserX },
-    { label: "No Cell Group", value: data.membersWithoutCellGroup, link: "/admin/members?cellGroup=unassigned", action: "Review unassigned", icon: Users },
-  ];
-  const cellGroupSummaryCards = [
-    allSummaryCards[1],
-    { label: "Members Assigned", value: assignedMembers, link: "/admin/cell-groups", action: "View Cell Groups", icon: UserRoundCheck },
-    { label: "Members Unassigned", value: data.membersWithoutCellGroup, link: "/admin/members?cellGroup=unassigned", action: "Review unassigned", icon: UserX },
-  ];
-  const trainingSummaryCards = [allSummaryCards[2], allSummaryCards[3]];
+  const memberCountCards = buildDashboardMemberCountCards(data.memberCounts).map((card) => ({
+    ...card,
+    icon: card.icon === "cell-group-members" ? UserRoundCheck : Users,
+  }));
+  const cellGroupsCard = {
+    key: "cell-groups",
+    label: "Cell Groups",
+    value: data.totalCellGroups,
+    link: "/admin/cell-groups",
+    action: "View all cell groups",
+    icon: Shapes,
+  };
+  const inTrainingCard = {
+    key: "in-training",
+    label: "In Training",
+    value: data.inTraining,
+    link: "/admin/training",
+    action: "View current students",
+    icon: BookOpenCheck,
+  };
+  const completedTrainingCard = {
+    key: "completed-training",
+    label: "Completed Training",
+    value: data.completedTraining,
+    link: "/admin/training?status=completed",
+    action: "View completed",
+    icon: GraduationCap,
+  };
+  const assignedCard = {
+    key: "assigned-to-cell-groups",
+    label: "Assigned to Cell Groups",
+    value: assignedMembers,
+    link: "/admin/cell-groups",
+    action: "View Cell Groups",
+    icon: UserRoundCheck,
+  };
+  const genderNotSetCard = {
+    key: "gender-not-set",
+    label: "Gender Not Set",
+    value: data.membersWithoutGender,
+    link: "/admin/members?gender=unknown",
+    action: "Review members",
+    icon: UserX,
+  };
+  const noCellGroupCard = {
+    key: "no-cell-group",
+    label: "No Cell Group",
+    value: data.membersWithoutCellGroup,
+    link: "/admin/members?cellGroup=unassigned",
+    action: "Review unassigned",
+    icon: Users,
+  };
+  const unassignedCard = {
+    key: "members-unassigned",
+    label: "Members Unassigned",
+    value: data.membersWithoutCellGroup,
+    link: "/admin/members?cellGroup=unassigned",
+    action: "Review unassigned",
+    icon: UserX,
+  };
+  const membersAssignedCard = {
+    key: "members-assigned",
+    label: "Members Assigned",
+    value: assignedMembers,
+    link: "/admin/cell-groups",
+    action: "View Cell Groups",
+    icon: UserRoundCheck,
+  };
+  const allSummaryCards = [...memberCountCards, cellGroupsCard, inTrainingCard, completedTrainingCard];
+  const memberSummaryCards = [...memberCountCards, assignedCard, genderNotSetCard, noCellGroupCard];
+  const cellGroupSummaryCards = [...memberCountCards, cellGroupsCard, membersAssignedCard, unassignedCard];
+  const trainingSummaryCards = [inTrainingCard, completedTrainingCard];
   const summaryCards = dashboardView === "members"
     ? memberSummaryCards
     : dashboardView === "cell-groups"
@@ -95,13 +150,22 @@ function Dashboard() {
       </header>
 
       <section className={`dashboard-summary-grid dashboard-summary-grid-${summaryCards.length}`} aria-label="Summary">
-        {summaryCards.map(({ label, value, link, action, icon: Icon }) => (
-          <Link className="dashboard-summary-card" to={link} key={label} aria-label={`${label}: ${value}. ${action}`}>
-            <span className="dashboard-summary-icon"><Icon size={21} aria-hidden="true" /></span>
-            <span className="dashboard-summary-copy"><small>{label}</small><strong>{value.toLocaleString()}</strong></span>
-            <span className="dashboard-card-link">{action}<ArrowRight size={14} aria-hidden="true" /></span>
-          </Link>
-        ))}
+        {summaryCards.map((card) => {
+          const Icon = card.icon;
+          const valueText = card.value === null ? "—" : card.value.toLocaleString();
+          const ariaLabel = `${card.label}: ${card.value === null ? "unavailable" : valueText}. ${card.action}`;
+          const content = (
+            <>
+              <span className="dashboard-summary-icon"><Icon size={21} aria-hidden="true" /></span>
+              <span className="dashboard-summary-copy"><small>{card.label}</small><strong>{valueText}</strong></span>
+              <span className="dashboard-card-link">{card.action}{card.link && <ArrowRight size={14} aria-hidden="true" />}</span>
+            </>
+          );
+
+          return card.link
+            ? <Link className="dashboard-summary-card" to={card.link} key={card.key} aria-label={ariaLabel}>{content}</Link>
+            : <div className="dashboard-summary-card dashboard-summary-card-static" key={card.key} aria-label={ariaLabel}>{content}</div>;
+        })}
       </section>
 
       {(showGender || showCellGroups) && <div className={`dashboard-middle-grid ${showGender && showCellGroups ? "" : "dashboard-grid-single"}`}>

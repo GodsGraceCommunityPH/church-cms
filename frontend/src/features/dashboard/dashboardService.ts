@@ -3,6 +3,10 @@ import {
   getTrainingOverview,
   type TrainingProgramSummary,
 } from "../training/trainingService";
+import {
+  normalizeDashboardMemberCounts,
+  type DashboardMemberCounts,
+} from "./dashboardMemberCounts";
 
 export interface DashboardGenderMetric {
   key: "female" | "male" | "unknown";
@@ -20,6 +24,7 @@ export interface DashboardCellGroupMetric {
 
 export interface DashboardData {
   totalMembers: number;
+  memberCounts: DashboardMemberCounts;
   totalCellGroups: number;
   inTraining: number;
   completedTraining: number;
@@ -53,9 +58,10 @@ function normalizeGender(value: string | null) {
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
-  const [membersResult, cellGroupsResult, trainingPrograms] = await Promise.all([
+  const [membersResult, cellGroupsResult, memberCountsResult, trainingPrograms] = await Promise.all([
     supabase.from("members").select("id, gender, cell_group_id"),
     supabase.from("cell_groups").select("id, name").order("name"),
+    supabase.rpc("get_dashboard_member_counts"),
     getTrainingOverview(),
   ]);
 
@@ -64,6 +70,11 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   const members = (membersResult.data ?? []) as DashboardMemberRow[];
   const cellGroupRows = (cellGroupsResult.data ?? []) as DashboardCellGroupRow[];
+  // Church-wide totals come from the aggregate-only RPC because the member
+  // query above is intentionally limited by RLS for Cell Leaders.
+  const memberCounts = memberCountsResult.error
+    ? normalizeDashboardMemberCounts(null)
+    : normalizeDashboardMemberCounts(memberCountsResult.data);
   const totalMembers = members.length;
   const genderCounts = { female: 0, male: 0, unknown: 0 };
   const cellGroupCounts = new Map<string, number>();
@@ -98,6 +109,7 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   return {
     totalMembers,
+    memberCounts,
     totalCellGroups: cellGroupRows.length,
     inTraining: trainingPrograms.reduce(
       (total, program) => total + (program.inProgress ?? 0),
