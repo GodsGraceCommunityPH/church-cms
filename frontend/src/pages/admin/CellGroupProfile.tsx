@@ -23,6 +23,8 @@ import { generateInviteToken } from "../../features/cellGroups/cellGroupUtils";
 import Button from "../../components/ui/Button";
 import Select from "../../components/ui/Select";
 import { useAuth } from "../../features/auth/auth";
+import ExcelExportButton from "../../features/export/ExcelExportButton";
+import { buildCellGroupRosterExport } from "../../features/cellGroups/cellGroupExport";
 
 type MemberSort = "name-asc" | "name-desc" | "age-desc" | "age-asc";
 
@@ -244,6 +246,12 @@ export default function CellGroupProfile() {
               <option value="age-asc">Age: Youngest first</option>
             </Select>
           </label>
+          {hasPermission("members.export") && (
+            <ExcelExportButton
+              hint="Exports every member in this Cell Group."
+              onExport={async () => buildCellGroupRosterExport(group.name, members)}
+            />
+          )}
           {sortedMembers.map((member) => (
             <div
               key={member.id}

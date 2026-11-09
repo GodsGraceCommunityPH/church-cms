@@ -117,7 +117,13 @@ cellGroups/
 join/
 
 training/
+
+export/
 ```
+
+The `export/` feature owns the shared Excel workbook writer, permission-safe
+export controls, and reusable filename/date helpers. Module-specific export
+builders live inside their own feature folder.
 
 A feature may contain:
 

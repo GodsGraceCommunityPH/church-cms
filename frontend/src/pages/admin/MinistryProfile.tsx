@@ -18,6 +18,9 @@ import {
   getMinistry,
   removeMinistryMember,
 } from "../../features/ministries/ministryService";
+import ExcelExportButton from "../../features/export/ExcelExportButton";
+import { useAuth } from "../../features/auth/auth";
+import { buildMinistryRosterExport } from "../../features/ministries/ministryExport";
 
 interface AvailableMember {
   id: string;
@@ -30,6 +33,7 @@ export default function MinistryProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { hasPermission } = useAuth();
   const [ministry, setMinistry] = useState<Ministry | null>(null);
   const [availableMembers, setAvailableMembers] = useState<AvailableMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -255,6 +259,12 @@ export default function MinistryProfile() {
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Search ministry members..."
         />
+        {hasPermission("ministries.view") && (
+          <ExcelExportButton
+            hint={`Exports all ${filteredMembers.length} ${filteredMembers.length === 1 ? "member" : "members"} matching the current search.`}
+            onExport={async () => buildMinistryRosterExport(ministry.name, filteredMembers)}
+          />
+        )}
         <div className="mt-5 space-y-3">
           {filteredMembers.length === 0 ? (
             <p className="py-10 text-center text-slate-500">

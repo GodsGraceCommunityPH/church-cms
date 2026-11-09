@@ -99,6 +99,26 @@ Administrators retain full editing capabilities.
 
 ---
 
+## Exports
+
+Member exports require the `members.export` permission. It is granted to
+Administrators and Pastors only. Cell Leaders must not export church-wide or
+unassigned-member records. If Cell Leaders are later authorized to export, the
+export must be limited to their assigned Cell Group.
+
+Member exports contain the same Member fields already shown in the CMS and do
+not include remarks or other unnecessary sensitive data. Exports must contain
+every record matching the active search and filters, not only the rows loaded
+on the current page. Exported dates stay human-readable and contact numbers
+remain text so leading zeroes are preserved.
+
+Cell Group, Training, and Ministry exports follow their module's existing view
+permission. Cell Group rosters contain Member contact details and therefore
+also require `members.export`. All exports use the existing Row Level Security
+policies and never bypass them.
+
+---
+
 # Cell Groups
 
 Cell Groups represent discipleship relationships.

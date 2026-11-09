@@ -3,6 +3,7 @@ export interface CellGroup {
   name: string;
   slug: string;
   leaderId: string | null;
+  leaderName: string;
   description: string | null;
   status: string;
   createdAt: string;

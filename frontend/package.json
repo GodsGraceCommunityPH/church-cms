@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "test:navigation": "node --test tests/navigation/*.test.mjs",
     "test:dashboard": "node --experimental-strip-types --test tests/dashboard/*.test.mjs",
+    "test:export": "node --experimental-strip-types --test tests/export/*.test.mjs",
     "test:member-duplicates": "node --experimental-strip-types --test tests/members/*.test.mjs",
     "test:users": "node --experimental-strip-types --test tests/users/*.test.mjs",
     "test:activation": "node --experimental-strip-types --test tests/users/account-activation.test.mjs tests/users/account-reconciliation.test.mjs",
@@ -24,7 +25,8 @@
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.1",
-    "tailwindcss": "^4.3.2"
+    "tailwindcss": "^4.3.2",
+    "write-excel-file": "^4.1.1"
   },
   "devDependencies": {
     "@types/node": "^24.13.2",
@@ -34,6 +36,7 @@
     "@vitejs/plugin-react": "^6.0.3",
     "oxlint": "^1.71.0",
     "pg": "^8.23.1",
+    "read-excel-file": "^5.8.8",
     "typescript": "~6.0.2",
     "vite": "^8.1.1"
   }

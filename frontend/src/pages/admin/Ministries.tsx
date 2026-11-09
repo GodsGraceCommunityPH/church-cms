@@ -6,9 +6,13 @@ import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import type { Ministry } from "../../features/ministries/ministry";
 import { getMinistries } from "../../features/ministries/ministryService";
+import ExcelExportButton from "../../features/export/ExcelExportButton";
+import { useAuth } from "../../features/auth/auth";
+import { buildMinistryListExport } from "../../features/ministries/ministryExport";
 
 export default function Ministries() {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
   const [ministries, setMinistries] = useState<Ministry[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -61,6 +65,13 @@ export default function Ministries() {
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search ministries..."
           />
+          {hasPermission("ministries.view") && (
+            <ExcelExportButton
+              hint={`Exports all ${filtered.length} ${filtered.length === 1 ? "ministry" : "ministries"} matching the current search.`}
+              disabled={loading}
+              onExport={async () => buildMinistryListExport(filtered)}
+            />
+          )}
         </div>
 
         {loading ? (

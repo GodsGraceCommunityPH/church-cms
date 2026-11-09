@@ -7,6 +7,10 @@ export async function getCellGroups(): Promise<CellGroup[]> {
     .from("cell_groups")
     .select(`
       *,
+      leader_member:members!cell_groups_leader_member_id_fkey (
+        first_name,
+        last_name
+      ),
       members!members_cell_group_id_fkey (
         id,
         gender
