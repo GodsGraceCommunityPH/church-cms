@@ -3,6 +3,8 @@ import ServiceSchedule from "../components/ServiceSchedule";
 import PreviousWorship from "../components/PreviousWorship";
 import PrayerMeetings from "../components/PrayerMeetings";
 import CommunityGallery from "../components/CommunityGallery";
+import ProjectIlawSection from "../components/fundraising/ProjectIlawSection";
+import ShopPreviewSection from "../components/fundraising/ShopPreviewSection";
 import "./HomePage.css";
 
 function HomePage() {
@@ -12,6 +14,8 @@ function HomePage() {
       <ServiceSchedule />
       <PreviousWorship />
       <PrayerMeetings />
+      <ProjectIlawSection />
+      <ShopPreviewSection />
       <CommunityGallery />
     </main>
   );

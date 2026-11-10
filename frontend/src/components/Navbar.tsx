@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
-import { Menu, X, House, Info, Mail } from "lucide-react";
+import { Menu, X, House, Info, Mail, Lightbulb, ShoppingBag } from "lucide-react";
 import logo from "../assets/ggccc-logo.png";
 
 function Navbar() {
@@ -43,7 +43,7 @@ function Navbar() {
           </Link>
 
           {/* Desktop */}
-          <div className="hidden items-center gap-10 font-medium text-white md:flex">
+          <div className="hidden items-center gap-5 font-medium text-white md:flex xl:gap-8">
             <NavLink
               to="/"
               className={({ isActive }) =>
@@ -60,6 +60,22 @@ function Navbar() {
               }
             >
               About
+            </NavLink>
+
+            <Link
+              to="/#project-ilaw"
+              className="transition hover:text-[#DDE5C3]"
+            >
+              Project Ilaw
+            </Link>
+
+            <NavLink
+              to="/shop"
+              className={({ isActive }) =>
+                isActive ? "text-[#DDE5C3]" : "transition hover:text-[#DDE5C3]"
+              }
+            >
+              Shop
             </NavLink>
 
             <NavLink
@@ -166,6 +182,34 @@ function Navbar() {
             <div className="flex items-center gap-4">
               <Info size={20} />
               <span className="text-base font-medium">About</span>
+            </div>
+          </NavLink>
+
+          <Link
+            to="/#project-ilaw"
+            onClick={closeMenu}
+            className="flex w-[90%] items-center rounded-xl border-l-4 border-transparent px-5 py-4 text-white transition hover:border-[#556B2F] hover:text-[#DDE5C3]"
+          >
+            <div className="flex items-center gap-4">
+              <Lightbulb size={20} />
+              <span className="text-base font-medium">Project Ilaw</span>
+            </div>
+          </Link>
+
+          <NavLink
+            to="/shop"
+            onClick={closeMenu}
+            className={({ isActive }) =>
+              `flex w-[90%] items-center rounded-xl border-l-4 px-5 py-4 transition ${
+                isActive
+                  ? "border-[#556B2F] text-[#DDE5C3]"
+                  : "border-transparent text-white hover:border-[#556B2F] hover:text-[#DDE5C3]"
+              }`
+            }
+          >
+            <div className="flex items-center gap-4">
+              <ShoppingBag size={20} />
+              <span className="text-base font-medium">Shop</span>
             </div>
           </NavLink>
 
