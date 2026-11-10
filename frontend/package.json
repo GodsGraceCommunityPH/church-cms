@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test:navigation": "node --test tests/navigation/*.test.mjs",
+    "test:fundraising": "node --experimental-strip-types --test tests/fundraising/*.test.mjs",
     "test:dashboard": "node --experimental-strip-types --test tests/dashboard/*.test.mjs",
     "test:member-duplicates": "node --experimental-strip-types --test tests/members/*.test.mjs",
     "test:users": "node --experimental-strip-types --test tests/users/*.test.mjs",
