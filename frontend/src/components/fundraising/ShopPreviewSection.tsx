@@ -32,7 +32,7 @@ export default function ShopPreviewSection() {
             <MerchandiseCard item={item} key={item.id} />
           ))}
         </div>
-        <p className="shop-preview-note">{SHOP_STATUS.placeholderNotice}</p>
+        <p className="shop-preview-note">{SHOP_STATUS.catalogNotice}</p>
       </div>
     </section>
   );
