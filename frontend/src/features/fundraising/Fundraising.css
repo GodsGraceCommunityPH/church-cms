@@ -221,7 +221,7 @@
 .merch-grid {
   display: grid;
   gap: 24px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .merch-card {
@@ -238,39 +238,18 @@
 .merch-art {
   align-items: center;
   aspect-ratio: 4 / 3;
-  background: radial-gradient(circle at 30% 25%, #f6f9ee, #e5eed7 68%);
-  color: #5c7a32;
-  display: grid;
-  gap: 8px;
-  justify-items: center;
-  padding: 24px;
-  position: relative;
+  background: #f7f6f2;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  width: 100%;
 }
 
-.merch-art-icon {
-  opacity: 0.88;
-}
-
-.merch-badge {
-  background: rgba(36, 56, 19, 0.9);
-  border-radius: 999px;
-  color: #fff;
-  font-size: 0.66rem;
-  font-weight: 800;
-  left: 14px;
-  letter-spacing: 0.08em;
-  padding: 6px 10px;
-  position: absolute;
-  text-transform: uppercase;
-  top: 14px;
-}
-
-.merch-art-caption {
-  color: #5f7352;
-  font-size: 0.74rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+.merch-art img {
+  display: block;
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
 }
 
 .merch-body {
@@ -296,6 +275,16 @@
   margin: 0 0 8px;
 }
 
+.merch-price {
+  color: #243813;
+  font-family: "Source Serif 4", serif;
+  font-size: clamp(1.55rem, 2.5vw, 1.9rem);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  margin: 0 0 12px;
+}
+
 .merch-description {
   color: #52627a;
   font-size: 0.95rem;
@@ -303,32 +292,55 @@
   margin: 0;
 }
 
+.merch-spec {
+  display: grid;
+  gap: 7px;
+  margin-top: 16px;
+}
+
+.merch-spec-label {
+  color: #527724;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.merch-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.merch-chips li {
+  background: #f1f5e7;
+  border: 1px solid #d9e3c7;
+  border-radius: 999px;
+  color: #3f5a1e;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 5px 10px;
+}
+
 .merch-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-top: auto;
-  padding-top: 18px;
-}
-
-.merch-price,
-.merch-availability {
-  border-radius: 999px;
-  font-size: 0.73rem;
-  font-weight: 750;
-  padding: 7px 11px;
-}
-
-.merch-price {
-  background: #f1f5e7;
-  border: 1px solid #d9e3c7;
-  color: #3f5a1e;
+  padding-top: 20px;
 }
 
 .merch-availability {
   background: #fff7e6;
   border: 1px solid #f2d9a6;
+  border-radius: 999px;
   color: #8a5a12;
+  font-size: 0.73rem;
+  font-weight: 750;
+  padding: 7px 11px;
 }
 
 .shop-intro {
@@ -569,10 +581,6 @@
   .ilaw-visual {
     justify-self: stretch;
     padding: 36px 26px;
-  }
-
-  .merch-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .shop-order-steps {

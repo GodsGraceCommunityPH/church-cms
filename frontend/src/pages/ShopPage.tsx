@@ -34,9 +34,9 @@ export default function ShopPage() {
           <h2 id="shop-intro-title">Light for our church home</h2>
           <p>{PROJECT_ILAW.summary}</p>
           <p>
-            The shop is one way the church family can take part. Final product
-            details are still being prepared, so the items shown here are
-            placeholders for what is to come.
+            The shop is one way the church family can take part. The T-shirt and
+            eco bag are both ₱499. Ordering has not opened yet, so the catalog
+            and form below are previews.
           </p>
         </div>
         <aside className="shop-status-card" aria-labelledby="shop-status-title">
@@ -51,13 +51,12 @@ export default function ShopPage() {
 
       <section className="public-section" id="shop-catalog" aria-labelledby="shop-catalog-title">
         <div className="public-section-heading">
-          <h2 id="shop-catalog-title">Merchandise preview</h2>
+          <h2 id="shop-catalog-title">Merchandise</h2>
           <p>
-            A preview of the planned collection. Every card below is a
-            placeholder while the final designs are still in development.
+            Two ways to support Project Ilaw. Choose a T-shirt or an eco bag.
           </p>
         </div>
-        <p className="shop-notice" role="note">{SHOP_STATUS.placeholderNotice}</p>
+        <p className="shop-notice" role="note">{SHOP_STATUS.catalogNotice}</p>
         <div className="merch-grid">
           {SHOP_ITEMS.map((item) => (
             <MerchandiseCard item={item} key={item.id} />

@@ -1,13 +1,23 @@
-export type ShopItemArt = "tee" | "tote" | "stickers";
-
 export type OrderFieldControl = "text" | "tel" | "number" | "select" | "textarea";
+
+export interface ShopItemImage {
+  src: string;
+  alt: string;
+  width: number;
+  height: number;
+}
 
 export interface ShopItem {
   id: string;
   name: string;
   category: string;
-  art: ShopItemArt;
+  price: number;
+  image: ShopItemImage;
   description: string;
+  sizes: string[];
+  sizeLabel: string;
+  colors: string[];
+  colorLabel: string;
 }
 
 export interface OrderStep {
@@ -24,6 +34,12 @@ export interface OrderFormField {
   note?: string;
   wide?: boolean;
 }
+
+export function formatPeso(amount: number) {
+  return `₱${new Intl.NumberFormat("en-PH").format(amount)}`;
+}
+
+export const T_SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL"];
 
 export const PROJECT_ILAW = {
   eyebrow: "Fundraising · Project Ilaw",
@@ -43,7 +59,7 @@ export const PROJECT_ILAW = {
 export const SHOP_PREVIEW = {
   title: "Project Ilaw Shop",
   description:
-    "A first look at the merchandise we plan to offer in support of Project Ilaw.",
+    "Two Project Ilaw pieces, ₱499 each, made to help light our church home.",
   cta: "Shop Now",
 } as const;
 
@@ -51,9 +67,8 @@ export const SHOP_STATUS = {
   orderingOpen: false,
   notice:
     "Ordering is not yet open. The details below show how the process is planned to work.",
-  placeholderNotice:
-    "These are placeholder previews. Final designs, sizes, and prices are not yet confirmed.",
-  priceLabel: "Price to be announced",
+  catalogNotice:
+    "Both items are ₱499 each. Ordering is not yet open, so purchases cannot be completed yet.",
   availabilityLabel: "Ordering not yet open",
   previewOnlyNotice:
     "Preview only. This form is not connected and cannot submit or store any information.",
@@ -61,28 +76,40 @@ export const SHOP_STATUS = {
 
 export const SHOP_ITEMS: ShopItem[] = [
   {
-    id: "project-ilaw-tee",
-    name: "Project Ilaw Tee",
-    category: "Shirt",
-    art: "tee",
+    id: "project-ilaw-t-shirt",
+    name: "Project Ilaw T-shirt",
+    category: "T-shirt",
+    price: 499,
+    image: {
+      src: "/images/fundraising/project-ilaw-shirts.jpg",
+      alt: "Project Ilaw T-shirt mockup showing the front logo and the back design in black, white, maroon, green, and blue",
+      width: 1156,
+      height: 800,
+    },
     description:
-      "An everyday shirt carrying a Project Ilaw design to be revealed. Final artwork is still in development.",
+      "Everyday T-shirt with the Project Ilaw logo on the front and \u201cLet His Light Shine, Let His Glory Rise\u201d (Haggai 2:9) on the back.",
+    sizes: T_SHIRT_SIZES,
+    sizeLabel: "Sizes",
+    colors: ["Black", "White", "Maroon", "Green", "Blue"],
+    colorLabel: "Shirt colours",
   },
   {
-    id: "project-ilaw-tote",
-    name: "Project Ilaw Tote",
-    category: "Tote bag",
-    art: "tote",
+    id: "project-ilaw-eco-bag",
+    name: "Project Ilaw Eco Bag",
+    category: "Eco bag",
+    price: 499,
+    image: {
+      src: "/images/fundraising/project-ilaw-tote-bags.jpg",
+      alt: "Project Ilaw eco bag mockup showing the front logo and back design with maroon, green, and blue handles",
+      width: 2048,
+      height: 822,
+    },
     description:
-      "A reusable tote for books, groceries, and everyday carry. Final artwork and materials are not yet confirmed.",
-  },
-  {
-    id: "project-ilaw-stickers",
-    name: "Project Ilaw Sticker Set",
-    category: "Sticker set",
-    art: "stickers",
-    description:
-      "A small way to share the project and start conversations. Final artwork and pack contents are not yet confirmed.",
+      "Reusable eco bag with the Project Ilaw logo and the \u201cLet His Light Shine, Let His Glory Rise\u201d design. Available with maroon, green, or blue handles.",
+    sizes: ["One Size"],
+    sizeLabel: "Size",
+    colors: ["Maroon", "Green", "Blue"],
+    colorLabel: "Handle colours",
   },
 ];
 
@@ -139,8 +166,8 @@ export const ORDER_FORM_FIELDS: OrderFormField[] = [
     label: "Size",
     control: "select",
     placeholder: "Select a size",
-    options: ["Small", "Medium", "Large", "Extra Large", "One size"],
-    note: "Sample sizes only. Final size options are not yet confirmed.",
+    options: [...T_SHIRT_SIZES, "One Size"],
+    note: "T-shirt sizes: XS, S, M, L, XL, 2XL, 3XL. Eco bag: One Size only.",
   },
   {
     id: "quantity",
