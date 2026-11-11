@@ -392,7 +392,42 @@ and can never browse Members, registrations, or administrative information.
 
 ---
 
-# Audit Philosophy
+# Project Ilaw Orders
+
+Project Ilaw merchandise ordering is a fundraising workflow, not a payment
+gateway. Customers submit their own multi-item order through the public shop.
+The server owns product availability, unit prices, and totals; the client cannot
+choose a price.
+
+Payment is always arranged manually between the customer and the designated
+Project Ilaw contact on Facebook Messenger. The system never posts GCash, bank,
+card, QR, or payment-reference details, never accepts proof of payment, and never
+confirms a payment automatically.
+
+Payment status and fulfillment status are separate. New orders start as
+`awaiting_payment` and `not_started`. Only an authorized staff member may
+manually confirm payment. Fulfillment follows controlled transitions:
+`not_started` to `processing` or `ready_for_pickup`; `processing` to
+`ready_for_pickup`; `ready_for_pickup` to `completed`; and cancellation from any
+not-completed state.
+
+Order handling is append-only. Created orders, confirmed payments, fulfillment
+changes, amendments, and cancellations record who made the change, when, and the
+before/after values. Amending an order preserves the previous line items as
+history rather than deleting them.
+
+Accounting is consistent everywhere:
+
+- Expected sales exclude cancelled orders.
+- Confirmed collections include only payment-confirmed orders.
+- A payment-confirmed order that is later cancelled remains in confirmed
+  collections and is flagged separately; it is not treated as a refund.
+
+Access follows least privilege. Viewing, confirming payment, managing orders, and
+exporting data are separate permissions. Project Ilaw staff do not receive
+administrator, finance, or unrelated module access by default.
+
+---
 
 Where practical, historical information should be preserved.
 

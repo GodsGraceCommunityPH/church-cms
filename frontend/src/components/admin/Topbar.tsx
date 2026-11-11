@@ -22,7 +22,8 @@ function Topbar({ onMenuClick }: TopbarProps) {
 
         <h1 className="text-xl font-semibold">Admin Portal</h1>
         </div>
-        {hasPermission("members.view") && <NotificationBell />}
+        {(hasPermission("members.view") ||
+          hasPermission("project_ilaw.orders.view")) && <NotificationBell />}
       </div>
     </header>
   );

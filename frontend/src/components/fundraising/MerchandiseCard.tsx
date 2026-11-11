@@ -9,6 +9,9 @@ interface MerchandiseCardProps {
 }
 
 export default function MerchandiseCard({ item }: MerchandiseCardProps) {
+  const hasSizeChoice =
+    item.sizes.length > 1 || item.sizes[0] !== "One Size";
+
   return (
     <article className="merch-card">
       <div className="merch-art">
@@ -26,14 +29,16 @@ export default function MerchandiseCard({ item }: MerchandiseCardProps) {
         <h3>{item.name}</h3>
         <p className="merch-price">{formatPeso(item.price)}</p>
         <p className="merch-description">{item.description}</p>
-        <div className="merch-spec">
-          <span className="merch-spec-label">{item.sizeLabel}</span>
-          <ul className="merch-chips" aria-label={`${item.name} sizes`}>
-            {item.sizes.map((size) => (
-              <li key={size}>{size}</li>
-            ))}
-          </ul>
-        </div>
+        {hasSizeChoice && (
+          <div className="merch-spec">
+            <span className="merch-spec-label">{item.sizeLabel}</span>
+            <ul className="merch-chips" aria-label={`${item.name} sizes`}>
+              {item.sizes.map((size) => (
+                <li key={size}>{size}</li>
+              ))}
+            </ul>
+          </div>
+        )}
         <div className="merch-spec">
           <span className="merch-spec-label">{item.colorLabel}</span>
           <ul className="merch-chips" aria-label={`${item.name} colours`}>

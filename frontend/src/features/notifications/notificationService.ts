@@ -6,12 +6,13 @@ export interface Notification {
   title: string;
   message: string;
   related_member_id: string | null;
+  related_order_id: string | null;
   created_at: string;
   read_at: string | null;
 }
 
 export async function getNotifications(): Promise<Notification[]> {
-  const { data, error } = await supabase.from("notifications").select("id,event_type,title,message,related_member_id,created_at,read_at").order("created_at", { ascending: false }).limit(100);
+  const { data, error } = await supabase.from("notifications").select("id,event_type,title,message,related_member_id,related_order_id,created_at,read_at").order("created_at", { ascending: false }).limit(100);
   if (error) throw error;
   return data ?? [];
 }

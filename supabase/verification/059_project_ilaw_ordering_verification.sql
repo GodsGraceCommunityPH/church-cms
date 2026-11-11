@@ -1,0 +1,214 @@
+-- Project Ilaw Phase 2 verification.
+-- Read-only checks: every assertion runs inside a transaction that is rolled
+-- back, so applying this file to a database makes no lasting change.
+--
+-- Run against the target database after applying
+-- 20261110090000_project_ilaw_ordering.sql, for example:
+--   psql "$DATABASE_URL" -f supabase/verification/059_project_ilaw_ordering_verification.sql
+
+begin;
+
+do $$
+declare
+  expected_permissions text[] := array[
+    'project_ilaw.orders.view',
+    'project_ilaw.orders.confirm_payment',
+    'project_ilaw.orders.manage',
+    'project_ilaw.orders.export'
+  ];
+  missing_permissions text[];
+  staff_permissions text[];
+  admin_permission_count integer;
+  unexpected_role_count integer;
+  table_name text;
+begin
+  select array_agg(expected.code order by expected.code) into missing_permissions
+  from unnest(expected_permissions) as expected(code)
+  where not exists (
+    select 1 from public.permissions where permissions.code = expected.code
+  );
+
+  if missing_permissions is not null then
+    raise exception 'Missing Project Ilaw permissions: %', missing_permissions;
+  end if;
+
+  select array_agg(permission.code order by permission.code)
+  into staff_permissions
+  from public.roles role
+  join public.role_permissions role_permission
+    on role_permission.role_id = role.id
+  join public.permissions permission
+    on permission.id = role_permission.permission_id
+  where role.code = 'project_ilaw_orders_staff'
+    and permission.code like 'project_ilaw.orders.%';
+
+  if staff_permissions is distinct from array[
+    'project_ilaw.orders.confirm_payment',
+    'project_ilaw.orders.view'
+  ] then
+    raise exception 'project_ilaw_orders_staff must hold exactly view + confirm_payment, found %',
+      coalesce(staff_permissions::text, 'no role or permissions');
+  end if;
+
+  select count(*) into admin_permission_count
+  from public.roles role
+  join public.role_permissions role_permission
+    on role_permission.role_id = role.id
+  join public.permissions permission
+    on permission.id = role_permission.permission_id
+  where role.code = 'administrator'
+    and permission.code like 'project_ilaw.orders.%';
+
+  if admin_permission_count <> 4 then
+    raise exception 'Administrator must hold all four Project Ilaw permissions, found %',
+      admin_permission_count;
+  end if;
+
+  select count(*) into unexpected_role_count
+  from public.roles role
+  join public.role_permissions role_permission
+    on role_permission.role_id = role.id
+  join public.permissions permission
+    on permission.id = role_permission.permission_id
+  where permission.code like 'project_ilaw.orders.%'
+    and role.code not in ('administrator', 'project_ilaw_orders_staff');
+
+  if unexpected_role_count <> 0 then
+    raise exception '% unexpected role(s) hold Project Ilaw permissions',
+      unexpected_role_count;
+  end if;
+
+  foreach table_name in array array[
+    'project_ilaw_orders',
+    'project_ilaw_order_items',
+    'project_ilaw_order_events'
+  ] loop
+    if not exists (
+      select 1
+      from pg_class relation
+      join pg_namespace namespace on namespace.oid = relation.relnamespace
+      where namespace.nspname = 'public'
+        and relation.relname = table_name
+        and relation.relrowsecurity
+    ) then
+      raise exception 'RLS is not enabled on public.%', table_name;
+    end if;
+
+    if has_table_privilege('anon', format('public.%I', table_name), 'select') then
+      raise exception 'anon must not be able to read public.%', table_name;
+    end if;
+
+    if has_table_privilege('authenticated', format('public.%I', table_name), 'insert')
+       or has_table_privilege('authenticated', format('public.%I', table_name), 'update')
+       or has_table_privilege('authenticated', format('public.%I', table_name), 'delete') then
+      raise exception 'authenticated must not write public.% directly', table_name;
+    end if;
+
+    if not has_table_privilege('authenticated', format('public.%I', table_name), 'select') then
+      raise exception 'authenticated must be able to select public.% through RLS', table_name;
+    end if;
+  end loop;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'project_ilaw_orders'
+      and policyname = 'Project Ilaw viewers read orders'
+      and cmd = 'SELECT'
+  ) then
+    raise exception 'Missing RLS policy on project_ilaw_orders';
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'project_ilaw_order_items'
+      and policyname = 'Project Ilaw viewers read order items'
+      and cmd = 'SELECT'
+  ) then
+    raise exception 'Missing RLS policy on project_ilaw_order_items';
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'project_ilaw_order_events'
+      and policyname = 'Project Ilaw viewers read order activity'
+      and cmd = 'SELECT'
+  ) then
+    raise exception 'Missing RLS policy on project_ilaw_order_events';
+  end if;
+
+  if not has_function_privilege(
+    'anon',
+    'public.submit_project_ilaw_order(uuid,text,text,text,jsonb)',
+    'execute'
+  ) then
+    raise exception 'anon must be able to submit an order';
+  end if;
+
+  if has_function_privilege(
+    'anon',
+    'public.confirm_project_ilaw_payment(uuid,text)',
+    'execute'
+  ) or has_function_privilege(
+    'anon',
+    'public.update_project_ilaw_fulfillment(uuid,text,text)',
+    'execute'
+  ) or has_function_privilege(
+    'anon',
+    'public.amend_project_ilaw_order(uuid,text,text,text,jsonb,text)',
+    'execute'
+  ) or has_function_privilege(
+    'anon',
+    'public.project_ilaw_export_rows(date,date,text,text,text)',
+    'execute'
+  ) then
+    raise exception 'anon must not execute privileged Project Ilaw functions';
+  end if;
+
+  if not has_function_privilege(
+    'authenticated',
+    'public.confirm_project_ilaw_payment(uuid,text)',
+    'execute'
+  ) then
+    raise exception 'authenticated calls must route through confirm_project_ilaw_payment';
+  end if;
+
+  if not exists (
+    select 1 from pg_trigger
+    where tgname = 'project_ilaw_order_events_append_only'
+      and not tgisinternal
+  ) then
+    raise exception 'Missing append-only trigger on project_ilaw_order_events';
+  end if;
+
+  if not exists (
+    select 1 from pg_trigger
+    where tgname = 'project_ilaw_order_items_totals_check'
+      and not tgisinternal
+  ) then
+    raise exception 'Missing deferred line-item total verification trigger';
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'notifications_event_type_check'
+      and pg_get_constraintdef(oid) like '%project_ilaw_order_created%'
+  ) then
+    raise exception 'notifications.event_type does not allow project_ilaw_order_created';
+  end if;
+
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'notifications'
+      and column_name = 'related_order_id'
+  ) then
+    raise exception 'notifications.related_order_id is missing';
+  end if;
+
+  raise notice 'Project Ilaw Phase 2 verification passed.';
+end $$;
+
+rollback;

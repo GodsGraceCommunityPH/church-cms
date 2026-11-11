@@ -22,6 +22,7 @@ import {
   HandHeart,
   Cog,
   Layers,
+  ShoppingBag,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -92,6 +93,12 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "Events", to: "/admin/events", icon: CalendarDays, permission: "events.view" },
       { label: "Equipment", to: "/admin/equipment", icon: Package, permission: "equipment.view" },
+      {
+        label: "Project Ilaw Orders",
+        to: "/admin/project-ilaw-orders",
+        icon: ShoppingBag,
+        permission: "project_ilaw.orders.view",
+      },
     ],
   },
   {

@@ -1,17 +1,15 @@
 import {
   BadgeCheck,
   ClipboardList,
-  Clock,
   Lightbulb,
+  MessageCircle,
   ShoppingBag,
-  Upload,
   Wallet,
 } from "lucide-react";
 import PublicPage from "../components/PublicPage";
 import MerchandiseCard from "../components/fundraising/MerchandiseCard";
-import OrderFormPreview from "../components/fundraising/OrderFormPreview";
+import OrderForm from "../components/fundraising/OrderForm";
 import {
-  ORDER_FORM_NOTE,
   ORDER_STEPS,
   PROJECT_ILAW,
   SHOP_ITEMS,
@@ -19,7 +17,13 @@ import {
 } from "../features/fundraising/projectIlaw";
 import "../features/fundraising/Fundraising.css";
 
-const STEP_ICONS = [ShoppingBag, ClipboardList, Wallet, Upload, Clock];
+const STEP_ICONS = [
+  ShoppingBag,
+  ClipboardList,
+  MessageCircle,
+  Wallet,
+  BadgeCheck,
+];
 
 export default function ShopPage() {
   return (
@@ -34,29 +38,32 @@ export default function ShopPage() {
           <h2 id="shop-intro-title">Light for our church home</h2>
           <p>{PROJECT_ILAW.summary}</p>
           <p>
-            The shop is one way the church family can take part. The T-shirt and
-            eco bag are both ₱499. Ordering has not opened yet, so the catalog
-            and form below are previews.
+            The shop is one way the church family can take part. Both items are
+            ₱499 each. Place your order here, then contact Bryan Castro on
+            Facebook Messenger for payment instructions.
           </p>
         </div>
         <aside className="shop-status-card" aria-labelledby="shop-status-title">
           <BadgeCheck size={38} strokeWidth={1.6} aria-hidden="true" />
-          <strong id="shop-status-title">Ordering is not yet open</strong>
-          <p>
-            Watch this page for the official launch. When ordering opens, the
-            payment method and the order form will be posted here.
-          </p>
+          <strong id="shop-status-title">Ordering is open</strong>
+          <p>{SHOP_STATUS.notice}</p>
         </aside>
       </section>
 
-      <section className="public-section" id="shop-catalog" aria-labelledby="shop-catalog-title">
+      <section
+        className="public-section"
+        id="shop-catalog"
+        aria-labelledby="shop-catalog-title"
+      >
         <div className="public-section-heading">
           <h2 id="shop-catalog-title">Merchandise</h2>
           <p>
             Two ways to support Project Ilaw. Choose a T-shirt or an eco bag.
           </p>
         </div>
-        <p className="shop-notice" role="note">{SHOP_STATUS.catalogNotice}</p>
+        <p className="shop-notice" role="note">
+          {SHOP_STATUS.catalogNotice}
+        </p>
         <div className="merch-grid">
           {SHOP_ITEMS.map((item) => (
             <MerchandiseCard item={item} key={item.id} />
@@ -64,12 +71,16 @@ export default function ShopPage() {
         </div>
       </section>
 
-      <section className="public-section" id="how-to-order" aria-labelledby="how-to-order-title">
+      <section
+        className="public-section"
+        id="how-to-order"
+        aria-labelledby="how-to-order-title"
+      >
         <div className="public-section-heading">
           <h2 id="how-to-order-title">How to Order</h2>
           <p>
-            This is the planned process once ordering opens. No orders can be
-            placed yet.
+            Orders are saved here first. Payment is coordinated manually so no
+            payment details are posted publicly.
           </p>
         </div>
         <ol className="shop-order-steps">
@@ -91,22 +102,24 @@ export default function ShopPage() {
         </ol>
         <p className="shop-payment-note">
           <Lightbulb size={18} aria-hidden="true" />
-          Payment details will be announced once ordering opens. Do not send
-          payment yet.
+          Do not send payment before Bryan gives you instructions on Messenger.
+          The church does not publish GCash or bank account details on this page.
         </p>
       </section>
 
       <section
         className="public-section"
-        id="order-form-preview"
-        aria-labelledby="order-preview-title"
+        id="order-form"
+        aria-labelledby="order-form-title"
       >
         <div className="public-section-heading">
-          <h2 id="order-preview-title">Order form preview</h2>
-          <p id="order-form-preview-note">{ORDER_FORM_NOTE}</p>
+          <h2 id="order-form-title">Place your order</h2>
+          <p>
+            Add every item you need, then submit once. You will receive an order
+            reference to share with Bryan on Messenger.
+          </p>
         </div>
-        <p className="shop-notice" role="note">{SHOP_STATUS.previewOnlyNotice}</p>
-        <OrderFormPreview />
+        <OrderForm />
       </section>
     </PublicPage>
   );
