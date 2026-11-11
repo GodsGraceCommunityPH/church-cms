@@ -1,7 +1,9 @@
 import {
   FULFILLMENT_STATUS_LABELS,
   PAYMENT_STATUS_LABELS,
+  T_SHIRT_COLORS,
   T_SHIRT_SIZES,
+  type ProductionReportRow,
   type ProjectIlawExportRow,
   type ProjectIlawOrder,
   type ProjectIlawOrderFilters,
@@ -13,7 +15,8 @@ export interface ProjectIlawOrderSummary {
   activeUnits: number;
   cancelledUnits: number;
   awaitingPaymentOrders: number;
-  paymentConfirmedOrders: number;
+  paymentVerificationOrders: number;
+  paidOrders: number;
   expectedSales: number;
   confirmedCollections: number;
   cancelledPaidOrders: number;
@@ -22,6 +25,8 @@ export interface ProjectIlawOrderSummary {
   tshirtQuantity: number;
   ecoBagQuantity: number;
   sizeQuantities: Record<string, number>;
+  tshirtColorQuantities: Record<string, number>;
+  ecoBagColorQuantities: Record<string, number>;
   cancelledTshirtQuantity: number;
   cancelledEcoBagQuantity: number;
 }
@@ -83,7 +88,8 @@ export function buildOrderSummary(
     activeUnits: 0,
     cancelledUnits: 0,
     awaitingPaymentOrders: 0,
-    paymentConfirmedOrders: 0,
+    paymentVerificationOrders: 0,
+    paidOrders: 0,
     expectedSales: 0,
     confirmedCollections: 0,
     cancelledPaidOrders: 0,
@@ -92,13 +98,22 @@ export function buildOrderSummary(
     tshirtQuantity: 0,
     ecoBagQuantity: 0,
     sizeQuantities: Object.fromEntries(T_SHIRT_SIZES.map((size) => [size, 0])),
+    tshirtColorQuantities: Object.fromEntries(
+      T_SHIRT_COLORS.map((color) => [color, 0]),
+    ),
+    ecoBagColorQuantities: Object.fromEntries(
+      ["Maroon", "Green", "Blue"].map((color) => [color, 0]),
+    ),
     cancelledTshirtQuantity: 0,
     cancelledEcoBagQuantity: 0,
   };
 
   for (const order of orders) {
     const cancelled = order.fulfillmentStatus === "cancelled";
-    const orderUnits = order.items.reduce((total, item) => total + item.quantity, 0);
+    const orderUnits = order.items.reduce(
+      (total, item) => total + item.quantity,
+      0,
+    );
     summary.totalUnits += orderUnits;
 
     if (cancelled) {
@@ -112,15 +127,15 @@ export function buildOrderSummary(
       summary.completedUnits += orderUnits;
     }
 
-    if (
-      order.paymentStatus === "awaiting_payment" &&
-      order.fulfillmentStatus !== "cancelled"
-    ) {
+    if (!cancelled && order.paymentStatus === "awaiting_payment") {
       summary.awaitingPaymentOrders += 1;
     }
+    if (!cancelled && order.paymentStatus === "payment_verification") {
+      summary.paymentVerificationOrders += 1;
+    }
 
-    if (order.paymentStatus === "payment_confirmed") {
-      summary.paymentConfirmedOrders += 1;
+    if (order.paymentStatus === "paid") {
+      summary.paidOrders += 1;
       summary.confirmedCollections += order.totalAmount;
       if (cancelled) {
         summary.cancelledPaidOrders += 1;
@@ -143,13 +158,64 @@ export function buildOrderSummary(
         if (item.size in summary.sizeQuantities) {
           summary.sizeQuantities[item.size] += item.quantity;
         }
+        if (item.color in summary.tshirtColorQuantities) {
+          summary.tshirtColorQuantities[item.color] += item.quantity;
+        }
       } else {
         summary.ecoBagQuantity += item.quantity;
+        if (item.color in summary.ecoBagColorQuantities) {
+          summary.ecoBagColorQuantities[item.color] += item.quantity;
+        }
       }
     }
   }
 
   return summary;
+}
+
+/**
+ * Confirmed production quantities: only paid, non-cancelled orders count.
+ * When a cutoff is supplied, only orders created on or before that Manila date
+ * are included.
+ */
+export function buildProductionReport(
+  orders: ProjectIlawOrder[],
+  cutoff: string | null,
+): ProductionReportRow[] {
+  const buckets = new Map<string, ProductionReportRow>();
+
+  for (const order of orders) {
+    if (order.paymentStatus !== "paid") continue;
+    if (order.fulfillmentStatus === "cancelled") continue;
+    if (cutoff && manilaDate(order.createdAt) > cutoff) continue;
+
+    for (const item of order.items) {
+      const key = [
+        item.productId,
+        item.size,
+        item.color,
+      ].join("|");
+      const existing = buckets.get(key);
+      if (existing) {
+        existing.quantity += item.quantity;
+      } else {
+        buckets.set(key, {
+          productId: item.productId,
+          productName: item.productName,
+          productType: item.productType,
+          size: item.size,
+          color: item.color,
+          quantity: item.quantity,
+        });
+      }
+    }
+  }
+
+  return [...buckets.values()].sort((a, b) =>
+    [a.productName, a.size, a.color]
+      .join("|")
+      .localeCompare([b.productName, b.size, b.color].join("|")),
+  );
 }
 
 function csvValue(value: unknown) {
@@ -167,10 +233,13 @@ const CSV_HEADERS = [
   "Mobile Number",
   "Product",
   "Size",
+  "Color",
   "Quantity",
   "Unit Price",
   "Line Total",
   "Payment Status",
+  "Payment Reference",
+  "Payment Submitted At",
   "Fulfillment Status",
   "Payment Confirmed At",
   "Payment Confirmed By",
@@ -188,15 +257,38 @@ export function projectIlawExportRowsToCsv(rows: ProjectIlawExportRow[]) {
         row.mobile,
         row.productName,
         row.size,
+        row.color,
         row.quantity,
         row.unitPrice,
         row.lineTotal,
         PAYMENT_STATUS_LABELS[row.paymentStatus] ?? row.paymentStatus,
+        row.paymentReference,
+        formatOrderDateTime(row.paymentSubmittedAt),
         FULFILLMENT_STATUS_LABELS[row.fulfillmentStatus] ??
           row.fulfillmentStatus,
         formatOrderDateTime(row.paymentConfirmedAt),
         row.paymentConfirmedBy ?? "",
       ]
+        .map(csvValue)
+        .join(","),
+    );
+  }
+
+  return `${lines.join("\r\n")}\r\n`;
+}
+
+export function productionReportRowsToCsv(rows: ProductionReportRow[]) {
+  const headers = [
+    "Product",
+    "Size",
+    "Color",
+    "Confirmed Quantity",
+  ];
+  const lines = [headers.map(csvValue).join(",")];
+
+  for (const row of rows) {
+    lines.push(
+      [row.productName, row.size, row.color, row.quantity]
         .map(csvValue)
         .join(","),
     );
@@ -223,4 +315,9 @@ export function downloadCsv(filename: string, csv: string) {
 export function csvFilename() {
   const date = manilaDate(new Date().toISOString());
   return `project-ilaw-orders-${date}.csv`;
+}
+
+export function productionCsvFilename() {
+  const date = manilaDate(new Date().toISOString());
+  return `project-ilaw-production-${date}.csv`;
 }

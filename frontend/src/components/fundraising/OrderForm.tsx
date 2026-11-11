@@ -3,7 +3,6 @@ import Modal from "../Modal";
 import OrderLineItemsEditor from "./OrderLineItemsEditor";
 import { createProjectIlawOrder } from "../../features/fundraising/orderService";
 import {
-  PROJECT_ILAW_MESSENGER_URL,
   calculateDraftTotals,
   createDraftItem,
   createRequestId,
@@ -142,6 +141,7 @@ export default function OrderForm() {
               <thead>
                 <tr>
                   <th scope="col">Product</th>
+                  <th scope="col">Colour</th>
                   <th scope="col">Size</th>
                   <th scope="col">Qty</th>
                   <th scope="col">Unit price</th>
@@ -157,6 +157,7 @@ export default function OrderForm() {
                   return (
                     <tr key={item.key}>
                       <td>{product?.name ?? "—"}</td>
+                      <td>{item.color || "—"}</td>
                       <td>
                         {product
                           ? product.id === "project-ilaw-eco-bag"
@@ -208,8 +209,8 @@ export default function OrderForm() {
 
         <div className="order-form-submit">
           <p>
-            Your order is saved with a reference number. Payment is arranged
-            separately with Bryan Castro on Facebook Messenger.
+            Your order is saved with a reference number. Keep it so you can
+            return to the payment section and submit your transaction details.
           </p>
           <button type="submit" className="ilaw-primary" disabled={submitting}>
             {submitting ? "Saving order..." : "Submit order"}
@@ -226,28 +227,30 @@ export default function OrderForm() {
           <div className="order-confirmation">
             <p>Thank you for supporting Project Ilaw!</p>
             <p>
-              Please contact Bryan Castro on Facebook Messenger for payment
-              instructions.
+              Your order has been saved. To pay, open the payment section and
+              enter this reference with the mobile number you used.
             </p>
             <div className="order-confirmation-reference">
               <span>Order reference</span>
               <strong>{confirmation.reference}</strong>
+              <span>Order total</span>
+              <strong>{formatPeso(confirmation.totalAmount)}</strong>
             </div>
             <div className="order-confirmation-actions">
-              {PROJECT_ILAW_MESSENGER_URL ? (
-                <a
-                  className="ilaw-primary"
-                  href={PROJECT_ILAW_MESSENGER_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Message Bryan on Messenger
-                </a>
-              ) : (
-                <button type="button" className="ilaw-primary" disabled>
-                  Message Bryan on Messenger
-                </button>
-              )}
+              <button
+                type="button"
+                className="ilaw-primary"
+                onClick={() => {
+                  closeConfirmation();
+                  window.setTimeout(() => {
+                    document
+                      .getElementById("pay-order")
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }, 0);
+                }}
+              >
+                Go to payment
+              </button>
               <button
                 type="button"
                 className="ilaw-secondary"
@@ -256,12 +259,10 @@ export default function OrderForm() {
                 Close
               </button>
             </div>
-            {!PROJECT_ILAW_MESSENGER_URL && (
-              <p className="order-confirmation-hint">
-                The Messenger link is not configured yet. Please contact Bryan
-                through the church office and keep your order reference.
-              </p>
-            )}
+            <p className="order-confirmation-hint">
+              Payment instructions appear once the church has configured the
+              official GCash or bank account details.
+            </p>
           </div>
         )}
       </Modal>

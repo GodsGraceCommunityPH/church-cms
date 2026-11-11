@@ -52,13 +52,14 @@ test("only the documented permissions and least-privilege role are created", asy
   );
 });
 
-test("order, line-item, and activity tables are RLS-protected and read-only to permitted staff", async () => {
+test("order, line-item, activity, and settings tables are RLS-protected and read-only", async () => {
   const source = await migrationSource();
 
   for (const table of [
     "project_ilaw_orders",
     "project_ilaw_order_items",
     "project_ilaw_order_events",
+    "project_ilaw_settings",
   ]) {
     assert.match(
       source,
@@ -68,21 +69,22 @@ test("order, line-item, and activity tables are RLS-protected and read-only to p
 
   assert.match(
     source,
-    /revoke all on public\.project_ilaw_orders, public\.project_ilaw_order_items, public\.project_ilaw_order_events from public, anon, authenticated/,
+    /revoke all on public\.project_ilaw_orders, public\.project_ilaw_order_items, public\.project_ilaw_order_events, public\.project_ilaw_settings from public, anon, authenticated/,
   );
   assert.match(
     source,
-    /grant select on public\.project_ilaw_orders, public\.project_ilaw_order_items, public\.project_ilaw_order_events to authenticated/,
+    /grant select on public\.project_ilaw_orders, public\.project_ilaw_order_items, public\.project_ilaw_order_events, public\.project_ilaw_settings to authenticated/,
   );
   assert.doesNotMatch(
     source,
-    /grant (insert|update|delete|all) on public\.project_ilaw_(orders|order_items|order_events).*to (anon|authenticated)/i,
+    /grant (insert|update|delete|all) on public\.project_ilaw_(orders|order_items|order_events|settings).*to (anon|authenticated)/i,
   );
 
   for (const policy of [
     "Project Ilaw viewers read orders",
     "Project Ilaw viewers read order items",
     "Project Ilaw viewers read order activity",
+    "Project Ilaw viewers read settings",
   ]) {
     const start = source.indexOf(`create policy "${policy}"`);
     assert.notEqual(start, -1, `missing policy ${policy}`);
@@ -113,17 +115,53 @@ test("anonymous customers may only submit through a validating security-definer 
   assert.match(submit, /client_request_id = p_request_id/);
   assert.doesNotMatch(submit, /has_permission/);
 
-  // Server-side catalogue validation rejects spoofed names and prices.
+  // Server-side catalogue validation rejects spoofed names, sizes, and colours.
   const validation = functionBody(
     source,
     "create or replace function public.project_ilaw_validated_items(",
   );
   assert.match(validation, /product_id = 'project-ilaw-t-shirt'/);
   assert.match(validation, /size not in \('XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'\)/);
+  assert.match(validation, /color not in \('Black', 'White', 'Maroon', 'Green', 'Blue'\)/);
   assert.match(validation, /product_id = 'project-ilaw-eco-bag'/);
   assert.match(validation, /size <> 'One Size'/);
+  assert.match(validation, /color not in \('Maroon', 'Green', 'Blue'\)/);
   assert.match(validation, /quantity_number <> trunc\(quantity_number\)/);
   assert.match(validation, /total_amount := total_amount \+ \(quantity \* 499\)/);
+});
+
+test("payment statuses, fulfilment statuses, and colours match the contract", async () => {
+  const source = await migrationSource();
+
+  assert.match(
+    source,
+    /payment_status in \('awaiting_payment', 'payment_verification', 'paid'\)/,
+  );
+  assert.match(
+    source,
+    /fulfillment_status in \('not_started', 'in_production', 'ready_for_pickup', 'completed', 'cancelled'\)/,
+  );
+  assert.match(source, /color text not null/);
+  assert.match(source, /'payment_verification'/);
+  assert.match(source, /'paid'/);
+  assert.match(source, /'in_production'/);
+  assert.match(source, /payment_status text not null default 'awaiting_payment'/);
+  assert.match(source, /fulfillment_status text not null default 'not_started'/);
+});
+
+test("payment account details and production cutoff start unset and disabled", async () => {
+  const source = await migrationSource();
+
+  assert.match(source, /create table if not exists public\.project_ilaw_settings/);
+  assert.match(source, /payments_enabled boolean not null default false/);
+  assert.match(source, /production_cutoff date/);
+  assert.match(source, /insert into public\.project_ilaw_settings \(id\)/);
+
+  // Nothing invents an account or a cutoff date.
+  assert.doesNotMatch(source, /gcash_account_number text not null/i);
+  assert.doesNotMatch(source, /production_cutoff date not null/i);
+  assert.doesNotMatch(source, /values \([^)]*'09\d{9}'/);
+  assert.doesNotMatch(source, /insert into public\.project_ilaw_settings[^;]*production_cutoff[^;]*\d{4}-\d{2}-\d{2}/i);
 });
 
 test("payment confirmation is manual, permission-checked, and never automatic", async () => {
@@ -134,7 +172,7 @@ test("payment confirmation is manual, permission-checked, and never automatic", 
   );
 
   assert.match(confirm, /public\.has_permission\('project_ilaw\.orders\.confirm_payment'\)/);
-  assert.match(confirm, /payment_status = 'payment_confirmed'/);
+  assert.match(confirm, /payment_status = 'paid'/);
   assert.match(confirm, /payment_confirmed_at = now\(\)/);
   assert.match(confirm, /payment_confirmed_by = actor/);
   assert.match(confirm, /'payment_confirmed'/);
@@ -147,8 +185,89 @@ test("payment confirmation is manual, permission-checked, and never automatic", 
     "create or replace function public.submit_project_ilaw_order(",
   );
   assert.doesNotMatch(submit, /payment_confirmed/);
-  assert.match(source, /payment_status text not null default 'awaiting_payment'/);
-  assert.match(source, /fulfillment_status text not null default 'not_started'/);
+  assert.doesNotMatch(submit, /payment_status = 'paid'/);
+});
+
+test("customer payment lookup requires the reference and mobile number", async () => {
+  const source = await migrationSource();
+  const context = functionBody(
+    source,
+    "create or replace function public.get_project_ilaw_payment_context(",
+  );
+
+  assert.match(context, /regexp_replace\(target\.mobile, '\[\^0-9\]', '', 'g'\) <> digits/);
+  assert.match(context, /raise exception 'Order not found'/);
+  assert.match(context, /'payment_token', target\.payment_token/);
+  assert.match(
+    source,
+    /grant execute on function public\.get_project_ilaw_payment_context\(text, text\) to anon, authenticated/,
+  );
+
+  // Instructions are only returned when payments are enabled.
+  assert.match(context, /when settings\.payments_enabled then/);
+  assert.match(context, /jsonb_build_object\('enabled', false\)/);
+});
+
+test("payment evidence submission is token-scoped and cannot confirm payment", async () => {
+  const source = await migrationSource();
+  const submit = functionBody(
+    source,
+    "create or replace function public.submit_project_ilaw_payment(",
+  );
+
+  assert.match(submit, /target\.payment_token <> p_payment_token/);
+  assert.match(
+    submit,
+    /'orders\/' \|\| target\.id::text \|\| '\/' \|\| target\.payment_token::text \|\| '\/%'/,
+  );
+  assert.match(submit, /payment_status = 'payment_verification'/);
+  assert.match(submit, /payment_evidence_path = clean_evidence_path/);
+  assert.doesNotMatch(submit, /set payment_status = 'paid'/);
+  assert.doesNotMatch(submit, /has_permission/);
+
+  const uploadCheck = functionBody(
+    source,
+    "create or replace function public.project_ilaw_can_upload_payment_evidence(",
+  );
+  assert.match(uploadCheck, /array_length\(parts, 1\) is distinct from 4/);
+  assert.match(uploadCheck, /parts\[1\] <> 'orders'/);
+  assert.match(uploadCheck, /target\.payment_token::text <> parts\[3\]/);
+  assert.match(uploadCheck, /target\.payment_status = 'paid'/);
+  assert.match(uploadCheck, /target\.fulfillment_status = 'cancelled'/);
+});
+
+test("payment evidence lives in a private bucket with scoped storage policies", async () => {
+  const source = await migrationSource();
+
+  assert.match(source, /'project-ilaw-payment-evidence'/);
+  assert.match(
+    source,
+    /insert into storage\.buckets[\s\S]*?'project-ilaw-payment-evidence',[\s\S]*?false,/,
+  );
+  assert.match(
+    source,
+    /create policy "Project Ilaw payment evidence upload" on storage\.objects[\s\S]*?for insert to anon, authenticated/,
+  );
+  assert.match(
+    source,
+    /create policy "Project Ilaw staff read payment evidence" on storage\.objects[\s\S]*?public\.has_permission\('project_ilaw\.orders\.view'\)/,
+  );
+  assert.match(source, /project_ilaw_can_upload_payment_evidence\(name\)/);
+});
+
+test("rejecting a payment returns the order to awaiting payment without deleting history", async () => {
+  const source = await migrationSource();
+  const reject = functionBody(
+    source,
+    "create or replace function public.reject_project_ilaw_payment(",
+  );
+
+  assert.match(reject, /public\.has_permission\('project_ilaw\.orders\.confirm_payment'\)/);
+  assert.match(reject, /payment_status <> 'payment_verification'/);
+  assert.match(reject, /payment_status = 'awaiting_payment'/);
+  assert.match(reject, /payment_rejected_at = now\(\)/);
+  assert.match(reject, /'payment_rejected'/);
+  assert.doesNotMatch(reject, /delete from/);
 });
 
 test("fulfilment changes and amendments require project_ilaw.orders.manage", async () => {
@@ -169,9 +288,9 @@ test("fulfilment changes and amendments require project_ilaw.orders.manage", asy
 
   assert.match(
     fulfillment,
-    /previous_status = 'not_started' and clean_status in \('processing', 'ready_for_pickup'\)/,
+    /previous_status = 'not_started' and clean_status in \('in_production', 'ready_for_pickup'\)/,
   );
-  assert.match(fulfillment, /previous_status = 'processing' and clean_status = 'ready_for_pickup'/);
+  assert.match(fulfillment, /previous_status = 'in_production' and clean_status = 'ready_for_pickup'/);
   assert.match(fulfillment, /previous_status = 'ready_for_pickup' and clean_status = 'completed'/);
   assert.match(fulfillment, /cannot be cancelled from its current status/);
   assert.doesNotMatch(fulfillment, /payment_status =/);
@@ -180,6 +299,35 @@ test("fulfilment changes and amendments require project_ilaw.orders.manage", asy
   assert.match(amend, /'order_amended'/);
   assert.match(amend, /previous_snapshot/);
   assert.doesNotMatch(amend, /delete from public\.project_ilaw_order_items/);
+});
+
+test("production reports count only paid, non-cancelled orders by product, size, and colour", async () => {
+  const source = await migrationSource();
+  const report = functionBody(
+    source,
+    "create or replace function public.project_ilaw_production_report(",
+  );
+
+  assert.match(report, /public\.has_permission\('project_ilaw\.orders\.view'\)/);
+  assert.match(report, /orders\.payment_status = 'paid'/);
+  assert.match(report, /orders\.fulfillment_status <> 'cancelled'/);
+  assert.match(report, /group by items\.product_id, items\.product_name, items\.product_type, items\.size, items\.color/);
+  assert.match(report, /coalesce\(p_cutoff, settings\.production_cutoff\)/);
+  assert.match(report, /'cutoff', effective_cutoff/);
+  assert.match(report, /'total_quantity', total_quantity/);
+});
+
+test("settings can only be changed with project_ilaw.orders.manage", async () => {
+  const source = await migrationSource();
+  const update = functionBody(
+    source,
+    "create or replace function public.update_project_ilaw_settings(",
+  );
+
+  assert.match(update, /public\.has_permission\('project_ilaw\.orders\.manage'\)/);
+  assert.match(update, /actor uuid := auth\.uid\(\)/);
+  assert.match(update, /before enabling payments/);
+  assert.match(update, /updated_by = actor/);
 });
 
 test("activity history is append-only and requires view permission to read", async () => {
@@ -206,20 +354,27 @@ test("CSV export is permission-checked on the server and scoped to filters", asy
   assert.match(exportFn, /orders\.payment_status = p_payment_status/);
   assert.match(exportFn, /orders\.fulfillment_status = p_fulfillment_status/);
   assert.match(exportFn, /items\.superseded_at is null/);
+  assert.match(exportFn, /items\.color/);
   assert.match(exportFn, /p_from/);
   assert.match(exportFn, /p_to/);
 });
 
-test("order notifications are scoped to holders of project_ilaw.orders.view", async () => {
+test("order notifications are scoped to the correct permission holders", async () => {
   const source = await migrationSource();
   const submit = functionBody(
     source,
     "create or replace function public.submit_project_ilaw_order(",
   );
+  const payment = functionBody(
+    source,
+    "create or replace function public.submit_project_ilaw_payment(",
+  );
 
   assert.match(submit, /permissions\.code = 'project_ilaw\.orders\.view'/);
   assert.match(submit, /'project_ilaw_order_created'/);
   assert.match(submit, /related_order_id/);
+  assert.match(payment, /permissions\.code = 'project_ilaw\.orders\.confirm_payment'/);
+  assert.match(payment, /'project_ilaw_payment_submitted'/);
   assert.match(
     source,
     /public\.has_permission\('members\.view'\)\s*or public\.has_permission\('project_ilaw\.orders\.view'\)/s,
@@ -229,17 +384,30 @@ test("order notifications are scoped to holders of project_ilaw.orders.view", as
 test("the order dashboard and detail page expose no direct table writes", async () => {
   const list = await read("../../src/pages/admin/ProjectIlawOrders.tsx");
   const detail = await read("../../src/pages/admin/ProjectIlawOrderDetail.tsx");
+  const settings = await read(
+    "../../src/components/fundraising/ProjectIlawSettingsPanel.tsx",
+  );
+  const production = await read(
+    "../../src/components/fundraising/ProductionReportPanel.tsx",
+  );
 
-  for (const page of [list, detail]) {
+  for (const page of [list, detail, settings, production]) {
     assert.doesNotMatch(page, /\.from\("project_ilaw_orders"\)\s*\.(insert|update|delete)/);
     assert.doesNotMatch(page, /\.from\("project_ilaw_order_items"\)\s*\.(insert|update|delete)/);
     assert.doesNotMatch(page, /\.from\("project_ilaw_order_events"\)\s*\.(insert|update|delete)/);
+    assert.doesNotMatch(page, /\.from\("project_ilaw_settings"\)\s*\.(insert|update|delete)/);
     assert.doesNotMatch(page, /service_role|SERVICE_ROLE/);
   }
 
   assert.match(detail, /hasPermission\(\s*"project_ilaw\.orders\.confirm_payment"/);
   assert.match(detail, /hasPermission\(\s*"project_ilaw\.orders\.manage"/);
   assert.match(list, /hasPermission\(\s*"project_ilaw\.orders\.export"/);
+  assert.match(settings, /hasPermission\(\s*"project_ilaw\.orders\.manage"/);
+  assert.match(production, /hasPermission\(\s*"project_ilaw\.orders\.export"/);
+
+  // Evidence is opened through a short-lived signed URL, never a public URL.
+  assert.match(detail, /getPaymentEvidenceUrl/);
+  assert.doesNotMatch(detail, /getPublicUrl/);
 });
 
 const required = [
@@ -268,7 +436,7 @@ const integration = (name, run) =>
     : test(name, run);
 
 integration(
-  "anonymous submission, RLS, and permission enforcement against a disposable Supabase project",
+  "anonymous submission, payment evidence, RLS, and permission enforcement against a disposable Supabase project",
   async () => {
     const { createClient } = await import("@supabase/supabase-js");
     const url = process.env.PILAW_TEST_SUPABASE_URL;
@@ -306,6 +474,22 @@ integration(
     });
     assert.ok(bad.error, "an invalid size must be rejected");
 
+    const badColour = await anon.rpc("submit_project_ilaw_order", {
+      p_request_id: crypto.randomUUID(),
+      p_customer_name: "Integration Test",
+      p_mobile: "09171234567",
+      p_notes: null,
+      p_items: [
+        {
+          productId: "project-ilaw-eco-bag",
+          size: "One Size",
+          color: "Black",
+          quantity: 1,
+        },
+      ],
+    });
+    assert.ok(badColour.error, "an invalid eco bag handle colour must be rejected");
+
     const requestId = crypto.randomUUID();
     const submitted = await anon.rpc("submit_project_ilaw_order", {
       p_request_id: requestId,
@@ -313,8 +497,18 @@ integration(
       p_mobile: "09171234567",
       p_notes: "created by the automated security test",
       p_items: [
-        { productId: "project-ilaw-t-shirt", size: "M", quantity: 2 },
-        { productId: "project-ilaw-eco-bag", size: "One Size", quantity: 1 },
+        {
+          productId: "project-ilaw-t-shirt",
+          size: "M",
+          color: "Black",
+          quantity: 2,
+        },
+        {
+          productId: "project-ilaw-eco-bag",
+          size: "One Size",
+          color: "Green",
+          quantity: 1,
+        },
       ],
     });
     assert.ifError(submitted.error);
@@ -328,7 +522,14 @@ integration(
       p_customer_name: "Integration Test",
       p_mobile: "09171234567",
       p_notes: null,
-      p_items: [{ productId: "project-ilaw-t-shirt", size: "M", quantity: 1 }],
+      p_items: [
+        {
+          productId: "project-ilaw-t-shirt",
+          size: "M",
+          color: "Black",
+          quantity: 1,
+        },
+      ],
     });
     assert.ifError(retry.error);
     assert.equal(retry.data.duplicate, true);
@@ -336,6 +537,21 @@ integration(
     assert.equal(retry.data.total_amount, 1497);
 
     const orderId = submitted.data.order_id;
+
+    // Reference alone is not enough; the mobile number must match too.
+    const wrongMobile = await anon.rpc("get_project_ilaw_payment_context", {
+      p_reference: submitted.data.reference,
+      p_mobile: "09999999999",
+    });
+    assert.ok(wrongMobile.error, "reference alone must not reveal the order");
+
+    const context = await anon.rpc("get_project_ilaw_payment_context", {
+      p_reference: submitted.data.reference,
+      p_mobile: "09171234567",
+    });
+    assert.ifError(context.error);
+    assert.equal(context.data.payment_token, submitted.data.payment_token);
+    assert.equal(context.data.instructions.enabled, false);
 
     const anonymousRead = await anon
       .from("project_ilaw_orders")
@@ -376,38 +592,115 @@ integration(
     });
     assert.ok(viewerConfirm.error, "view-only access cannot confirm payment");
 
+    const viewerReject = await viewer.rpc("reject_project_ilaw_payment", {
+      p_order_id: orderId,
+      p_reason: null,
+    });
+    assert.ok(viewerReject.error, "view-only access cannot reject payment");
+
+    const viewerSettings = await viewer.rpc("update_project_ilaw_settings", {
+      p_payments_enabled: false,
+      p_gcash_account_name: null,
+      p_gcash_account_number: null,
+      p_bank_name: null,
+      p_bank_account_name: null,
+      p_bank_account_number: null,
+      p_payment_instructions: null,
+      p_production_cutoff: null,
+    });
+    assert.ok(viewerSettings.error, "view-only access cannot change settings");
+
+    // Payment evidence upload is restricted to the order's token-scoped path.
+    const evidencePath = `orders/${orderId}/${submitted.data.payment_token}/evidence.png`;
+    const wrongPathUpload = await anon.storage
+      .from("project-ilaw-payment-evidence")
+      .upload(`orders/${orderId}/${crypto.randomUUID()}/evidence.png`, new Blob(["x"]), {
+        contentType: "image/png",
+      });
+    assert.ok(wrongPathUpload.error, "evidence upload needs the order token");
+
+    const payment = await anon.rpc("submit_project_ilaw_payment", {
+      p_reference: submitted.data.reference,
+      p_mobile: "09171234567",
+      p_payment_token: submitted.data.payment_token,
+      p_payment_reference: "GC-INTEGRATION-001",
+      p_evidence_path: evidencePath,
+    });
+    assert.ifError(payment.error);
+    assert.equal(payment.data.payment_status, "payment_verification");
+
+    const viewerEvidence = await viewer.storage
+      .from("project-ilaw-payment-evidence")
+      .createSignedUrl(evidencePath, 60);
+    // The fixture uploads no real object, so a missing object is acceptable;
+    // the call must not fail for lack of permission.
+    assert.ok(
+      !viewerEvidence.error || /not found/i.test(viewerEvidence.error.message),
+      "viewers may request evidence URLs",
+    );
+
+    const outsiderEvidence = await outsider.storage
+      .from("project-ilaw-payment-evidence")
+      .createSignedUrl(evidencePath, 60);
+    assert.ok(outsiderEvidence.error, "outsiders cannot read evidence");
+
+    const reject = await confirmer.rpc("reject_project_ilaw_payment", {
+      p_order_id: orderId,
+      p_reason: "integration rejection",
+    });
+    assert.ifError(reject.error);
+    assert.equal(reject.data.payment_status, "awaiting_payment");
+
     const confirm = await confirmer.rpc("confirm_project_ilaw_payment", {
       p_order_id: orderId,
       p_note: "integration verification",
     });
     assert.ifError(confirm.error);
-    assert.equal(confirm.data.payment_status, "payment_confirmed");
+    assert.equal(confirm.data.payment_status, "paid");
 
     const viewerFulfillment = await viewer.rpc(
       "update_project_ilaw_fulfillment",
-      { p_order_id: orderId, p_status: "processing", p_note: null },
+      { p_order_id: orderId, p_status: "in_production", p_note: null },
     );
     assert.ok(viewerFulfillment.error, "view-only access cannot change fulfillment");
 
     const managerFulfillment = await manager.rpc(
       "update_project_ilaw_fulfillment",
-      { p_order_id: orderId, p_status: "processing", p_note: null },
+      { p_order_id: orderId, p_status: "in_production", p_note: null },
     );
     assert.ifError(managerFulfillment.error);
-    assert.equal(managerFulfillment.data.fulfillment_status, "processing");
+    assert.equal(managerFulfillment.data.fulfillment_status, "in_production");
 
     const invalidTransition = await manager.rpc(
       "update_project_ilaw_fulfillment",
       { p_order_id: orderId, p_status: "completed", p_note: null },
     );
-    assert.ok(invalidTransition.error, "processing cannot jump to completed");
+    assert.ok(invalidTransition.error, "in_production cannot jump to completed");
 
     const activity = await viewer.rpc("get_project_ilaw_order_activity", {
       p_order_id: orderId,
     });
     assert.ifError(activity.error);
     assert.ok(
+      activity.data.some((event) => event.event_type === "payment_submitted"),
+    );
+    assert.ok(
+      activity.data.some((event) => event.event_type === "payment_rejected"),
+    );
+    assert.ok(
       activity.data.some((event) => event.event_type === "payment_confirmed"),
+    );
+
+    const production = await viewer.rpc("project_ilaw_production_report", {});
+    assert.ifError(production.error);
+    assert.ok(
+      production.data.rows.some(
+        (row) =>
+          row.product_id === "project-ilaw-t-shirt" &&
+          row.size === "M" &&
+          row.color === "Black" &&
+          row.quantity >= 2,
+      ),
     );
 
     const outsiderExport = await outsider.rpc("project_ilaw_export_rows", {});
@@ -417,7 +710,7 @@ integration(
     assert.ok(viewerExport.error, "view permission alone cannot export");
 
     const managerExport = await manager.rpc("project_ilaw_export_rows", {
-      p_payment_status: "payment_confirmed",
+      p_payment_status: "paid",
     });
     assert.ifError(managerExport.error);
     assert.ok(

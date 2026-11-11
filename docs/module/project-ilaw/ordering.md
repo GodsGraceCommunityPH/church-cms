@@ -7,30 +7,50 @@ permission/role assignment have **not** been applied to production by this
 change. See [Pre-deploy steps](#pre-deploy-steps).
 
 Phase 1 (the public fundraising page and catalog) is unchanged. Phase 2 adds
-multi-item ordering, manual payment confirmation, fulfilment tracking, an
+multi-item ordering with colours, a website payment workflow with manual
+verification, made-to-order production reporting, fulfilment tracking, an
 append-only activity history, permission-scoped CMS management, and CSV export.
 
 ---
 
-## Public ordering flow
+## Products
 
-1. A customer opens `/shop` and chooses the Project Ilaw T-shirt (XS–3XL) or
-   the Project Ilaw Eco Bag (one size).
+| Product | Price | Sizes | Colours |
+| --- | --- | --- | --- |
+| Project Ilaw T-shirt | ₱499 | XS, S, M, L, XL, 2XL, 3XL | Black, White, Maroon, Green, Blue |
+| Project Ilaw Eco Bag | ₱499 | One Size | Maroon, Green, Blue (handle colours) |
+
+Both products are made to order. There is no stock check and no stock approval
+step; orders determine production quantities.
+
+---
+
+## Public ordering and payment flow
+
+1. A customer opens `/shop`, reads the Project Ilaw introduction, and chooses
+   products, sizes, colours, and quantities.
 2. The customer can add, edit, or remove multiple line items. Quantities must be
    positive whole numbers from 1 to 99.
 3. The customer enters a required name and mobile number plus optional notes.
 4. `submit_project_ilaw_order` saves the order header and every line item in one
-   transaction. The reference uses `PI-YYYYMMDD-NNNNNN` in Asia/Manila time.
+   transaction. The reference uses `PI-YYYYMMDD-NNNNNN` in Asia/Manila time and
+   is unique.
 5. Only after a successful save does the confirmation dialog appear:
    - “Orders Received!”
    - “Thank you for supporting Project Ilaw!”
-   - A prompt to contact Bryan Castro on Facebook Messenger for payment
-     instructions.
-   - The order reference.
-   - “Message Bryan on Messenger”, which is only a link when configured.
-6. The customer pays Bryan directly. Nothing on the website collects or shows
-   GCash, bank, card, QR, receipt, or payment-reference details, and there is no
-   payment gateway.
+   - The order reference and the server-calculated total.
+   - A “Go to payment” button that scrolls to the payment section.
+6. In the payment section the customer enters the order reference **and** the
+   mobile number used at submission. `get_project_ilaw_payment_context` returns
+   the order summary, its payment status, and the official payment instructions
+   when payments are configured.
+7. Once the official GCash or bank details are published, the customer pays the
+   exact order total and keeps the receipt.
+8. The customer submits the transaction reference and a screenshot or PDF of the
+   payment. The order moves to `payment_verification`.
+9. The Project Ilaw team verifies the actual transaction in the receiving
+   account and manually confirms the payment. A screenshot never confirms a
+   payment automatically.
 
 The Eco Bag is one size, so neither the product card nor the line-item editor
 asks for a size. The server still stores `One Size` for reporting integrity.
@@ -42,27 +62,47 @@ If the customer double-clicks or retries, the same request id returns the
 original reference and totals. A new request id is generated only after a
 successful save.
 
+### Payment account configuration
+
+Payment account details are configuration, not code. They live in the
+`project_ilaw_settings` singleton and start empty with payments disabled. No
+GCash or bank details are shown to customers until authorized staff save the
+official account information in the Admin Portal and enable payments. The
+migration never invents an account or a cutoff date.
+
+### Payment evidence
+
+Payment evidence is stored in the private `project-ilaw-payment-evidence`
+bucket. Anonymous uploads are limited to
+`orders/<order_id>/<payment_token>/<filename>` and are rejected once an order is
+paid or cancelled. Reading evidence requires `project_ilaw.orders.view`, and the
+admin UI opens it through a short-lived signed URL. An order reference alone
+never authorizes access to order data or evidence.
+
 ---
 
 ## Data model
 
 | Table | Purpose |
 | --- | --- |
-| `project_ilaw_orders` | Order header: reference, customer, server totals, payment and fulfilment status, cancellation metadata. |
-| `project_ilaw_order_items` | Immutable-per-revision line items with `revision`, `superseded_at`, snapshotted product name/type/size/price. |
+| `project_ilaw_orders` | Order header: reference, customer, server totals, payment and fulfilment status, payment token/evidence, cancellation metadata. |
+| `project_ilaw_order_items` | Immutable-per-revision line items with `revision`, `superseded_at`, snapshotted product name/type/size/colour/price. |
 | `project_ilaw_order_events` | Append-only audit trail. |
+| `project_ilaw_settings` | Singleton configuration for payment details and the production cutoff. |
 
 Server-side rules enforced by the migration:
 
 - Prices are always ₱499 and totals are computed from the trusted catalog
   function, never from client input.
+- Colours are validated per product: the T-shirt allows five colours, the Eco
+  Bag allows three handle colours.
 - A deferred constraint trigger verifies the header total quantity and amount
   against the active (non-superseded) line items.
 - Amending an order supersedes the previous revision instead of deleting it.
   History retains the prior snapshot.
 - `project_ilaw_order_events` rejects `UPDATE` and `DELETE`, including from the
   service role.
-- `client_request_id` and `reference` are unique.
+- `client_request_id`, `reference`, and `payment_token` are unique.
 
 ---
 
@@ -74,19 +114,24 @@ changes fulfilment, and changing fulfilment never changes payment.
 | Payment status | Meaning |
 | --- | --- |
 | `awaiting_payment` | Default for every new order. |
-| `payment_confirmed` | A staff member manually confirmed payment. Carries who, when, and an optional note. |
+| `payment_verification` | The customer submitted a transaction reference and evidence; awaiting manual review. |
+| `paid` | A staff member verified the transaction and manually confirmed payment. Carries who, when, and an optional note. |
 
 | Fulfilment status | Allowed next statuses |
 | --- | --- |
-| `not_started` | `processing`, `ready_for_pickup`, `cancelled` |
-| `processing` | `ready_for_pickup`, `cancelled` |
+| `not_started` | `in_production`, `ready_for_pickup`, `cancelled` |
+| `in_production` | `ready_for_pickup`, `cancelled` |
 | `ready_for_pickup` | `completed`, `cancelled` |
 | `completed` | none |
 | `cancelled` | none |
 
 Completed orders cannot be amended or cancelled. Cancelling records who, when,
-and an optional reason. A payment-confirmed order that is later cancelled is
-**not** treated as a refund automatically.
+and an optional reason. A paid order that is later cancelled is **not** treated
+as a refund automatically.
+
+Rejecting a payment submission returns the order to `awaiting_payment` with a
+rejection timestamp and optional reason, so the customer can submit again. The
+rejection is preserved in the activity history.
 
 ---
 
@@ -94,10 +139,10 @@ and an optional reason. A payment-confirmed order that is later cancelled is
 
 | Permission | Allows |
 | --- | --- |
-| `project_ilaw.orders.view` | View the orders page, order detail, line items, and activity history. |
-| `project_ilaw.orders.confirm_payment` | Manually confirm payment. |
-| `project_ilaw.orders.manage` | Amend orders, change fulfilment, and cancel. |
-| `project_ilaw.orders.export` | Download the permission-scoped CSV. |
+| `project_ilaw.orders.view` | View orders, line items, payment evidence, production reports, settings, and activity history. |
+| `project_ilaw.orders.confirm_payment` | Manually confirm or reject a payment. |
+| `project_ilaw.orders.manage` | Amend orders, change fulfilment, cancel orders, and maintain Project Ilaw settings. |
+| `project_ilaw.orders.export` | Download the permission-scoped order and production CSVs. |
 
 Frontend routes and controls check these permissions, and every server RPC checks
 them again. No role receives Project Ilaw permissions by default except:
@@ -106,7 +151,7 @@ them again. No role receives Project Ilaw permissions by default except:
 - `project_ilaw_orders_staff` — a new least-privilege role with **only**
   `project_ilaw.orders.view` and `project_ilaw.orders.confirm_payment`.
 
-### Assigning Bryan Castro
+### Assigning an order-staff account
 
 The migration creates the role but deliberately does **not** create an Auth
 account and does not guess a user id. Before assigning it:
@@ -119,7 +164,7 @@ account and does not guess a user id. Before assigning it:
    select u.id, au.email, u.display_name, u.is_active
    from public.users u
    join auth.users au on au.id = u.id
-   where lower(au.email) = lower('<verified-bryan-email>');
+   where lower(au.email) = lower('<verified-email>');
    ```
 
 3. Confirm exactly one active row is returned.
@@ -131,7 +176,7 @@ account and does not guess a user id. Before assigning it:
    from auth.users au
    join public.users u on u.id = au.id
    join public.roles r on r.code = 'project_ilaw_orders_staff'
-   where lower(au.email) = lower('<verified-bryan-email>')
+   where lower(au.email) = lower('<verified-email>')
    on conflict (user_id, role_id) do nothing;
    ```
 
@@ -146,7 +191,7 @@ account and does not guess a user id. Before assigning it:
    join public.roles r on r.id = ur.role_id
    join public.role_permissions rp on rp.role_id = r.id
    join public.permissions p on p.id = rp.permission_id
-   where lower(au.email) = lower('<verified-bryan-email>')
+   where lower(au.email) = lower('<verified-email>')
    order by r.code, p.code;
    ```
 
@@ -159,50 +204,63 @@ administrator, and report the blocker.
 
 Routes:
 
-- `/admin/project-ilaw-orders` — summary cards, product and size breakdowns,
-  filters, orders table, CSV export.
-- `/admin/project-ilaw-orders/:id` — line items, customer details, payment
-  confirmation, fulfilment actions, cancellation, amendment form, and activity
-  history.
+- `/admin/project-ilaw-orders` — summary cards, product/size/colour breakdowns,
+  search, filters, orders table, production report, settings, CSV exports.
+- `/admin/project-ilaw-orders/:id` — line items with colour, customer details,
+  payment evidence review, manual confirmation/rejection, fulfilment actions,
+  cancellation, amendment form, and activity history.
 
 The list page shows:
 
-- Total orders, total units (active and cancelled), orders awaiting payment,
-  payments confirmed, expected sales, and confirmed collections.
-- T-shirt quantities per size, Eco Bag quantity, and cancelled quantities.
-- Date, product, payment-status, and fulfilment-status filters.
+- Total orders, total units (active and cancelled), awaiting payment, payment
+  verification, paid orders, expected sales, and confirmed collections.
+- T-shirt quantities per size and colour, Eco Bag quantity and handle colours,
+  and cancelled quantities.
+- A search field (reference, name, mobile, payment reference) plus date, product,
+  payment-status, and fulfilment-status filters.
+- A production report panel aggregating confirmed quantities by product, size,
+  and colour, honouring the configured cutoff.
+- A settings panel for official payment details and the production cutoff,
+  visible to order viewers and editable only with `project_ilaw.orders.manage`.
 
-Product and size breakdowns exclude cancelled orders. The table keeps cancelled
-orders visible so their history remains auditable.
+Product, size, and colour breakdowns exclude cancelled orders. The table keeps
+cancelled orders visible so their history remains auditable.
 
 ---
 
-## Accounting rules
+## Accounting and production rules
 
-These rules are shared by the summary cards, filters, and CSV:
+These rules are shared by the summary cards, filters, reports, and CSV:
 
 - **Expected sales** = sum of totals for orders whose fulfilment status is not
   `cancelled`.
 - **Confirmed collections** = sum of totals for orders whose payment status is
-  `payment_confirmed`, including orders later cancelled.
-- **Awaiting payment** counts only non-cancelled orders.
+  `paid`, including orders later cancelled.
+- **Awaiting payment** and **payment verification** count only non-cancelled
+  orders.
 - A cancelled order that was already paid remains in confirmed collections and is
   flagged separately. It is not treated as a refund.
-- CSV exports one row per active line item and includes reference, date, customer,
-  mobile, product, size, quantity, unit price, line total, both statuses, and
-  payment confirmer/timestamp.
+- **Confirmed production** counts only `paid`, non-cancelled orders, aggregated
+  by product, size, colour, and quantity.
+- The production cutoff stays unset until church leadership decides the date.
+  While unset, every paid, non-cancelled order is included. Once set, only orders
+  created on or before that Manila date are included.
+- The order CSV exports one row per active line item and includes reference,
+  date, customer, mobile, product, size, colour, quantity, unit price, line total,
+  both statuses, payment reference, and payment confirmer/timestamp.
 
-The export RPC (`project_ilaw_export_rows`) re-checks
-`project_ilaw.orders.export` on the server and applies the same filters.
+The export and production RPCs re-check the relevant permission on the server
+and apply the same filters.
 
 ---
 
 ## Notifications
 
 Creating an order inserts a `project_ilaw_order_created` notification for every
-active CMS user who holds `project_ilaw.orders.view`. The notification links to
-the order detail page. No email, SMS, Messenger bot, or external integration is
-invented or required.
+active CMS user who holds `project_ilaw.orders.view`. Submitting payment inserts
+a `project_ilaw_payment_submitted` notification for every active user who holds
+`project_ilaw.orders.confirm_payment`. Notifications link to the order detail
+page. No email, SMS, chat bot, or external integration is invented or required.
 
 Existing member notifications continue to work. Notification RLS now accepts
 either `members.view` or `project_ilaw.orders.view`, but a recipient can still
@@ -210,27 +268,15 @@ only read and mark their own notifications.
 
 ---
 
-## Messenger configuration
-
-Set the real link in the frontend environment:
-
-```env
-VITE_PROJECT_ILAW_MESSENGER_URL=https://m.me/<bryan-username>
-```
-
-Accepted hosts are `m.me`, `messenger.com`, `www.messenger.com`,
-`facebook.com`, and `www.facebook.com`. Invalid or missing values produce a
-disabled “Message Bryan on Messenger” button with a short explanation; the order
-and its reference are still shown, and no link is fabricated.
-
-See `frontend/.env.example`.
-
----
-
 ## Security model
 
-- Anonymous customers can execute only
-  `submit_project_ilaw_order(uuid, text, text, text, jsonb)`.
+- Anonymous customers can execute only:
+  - `submit_project_ilaw_order(uuid, text, text, text, jsonb)`
+  - `get_project_ilaw_payment_context(text, text)` — requires the reference and
+    the mobile number used at submission.
+  - `submit_project_ilaw_payment(text, text, uuid, text, text)` — requires the
+    order reference, mobile number, and the order's secret payment token.
+  - `get_project_ilaw_payment_instructions()`
 - Anonymous and authenticated users have no `INSERT`, `UPDATE`, or `DELETE`
   privilege on any Project Ilaw table.
 - `authenticated` has `SELECT` only, filtered by RLS policies that call
@@ -240,6 +286,8 @@ See `frontend/.env.example`.
 - The service role is never exposed to the frontend.
 - Activity history is append-only at the database level.
 - Order totals cannot be forged by the client.
+- Payment evidence is private and token-scoped for uploads; staff reads require
+  `project_ilaw.orders.view`.
 
 ---
 
@@ -247,18 +295,18 @@ See `frontend/.env.example`.
 
 ```powershell
 cd frontend
-npm run test:fundraising
+npm run test:project-ilaw
 npm run test:navigation
 npm run test:security
 ```
 
-- `tests/fundraising/project-ilaw-shop.test.mjs` — catalog, one-size Eco Bag,
-  validation, totals, statuses, Messenger URL validation, confirmation modal.
+- `tests/fundraising/project-ilaw-shop.test.mjs` — catalog, colours, one-size
+  Eco Bag, validation, totals, statuses, payment steps, confirmation modal.
 - `tests/fundraising/project-ilaw-accounting.test.mjs` — accounting rules,
-  filters, CSV escaping.
+  production aggregation, filters, CSV escaping.
 - `tests/security/project-ilaw-order-contract.test.mjs` — migration contract,
-  RLS, permission checks, append-only activity, plus an optional live integration
-  test.
+  RLS, payment evidence storage, permission checks, append-only activity, plus an
+  optional live integration test.
 - `tests/navigation/sidebar-groups.test.mjs` — CMS navigation.
 
 The live integration test is skipped unless a disposable Supabase fixture is
@@ -292,11 +340,14 @@ integration test intentionally leaves its test order in the disposable database.
 2. Run
    `supabase/verification/059_project_ilaw_ordering_verification.sql` and confirm
    it reports `Project Ilaw Phase 2 verification passed.`
-3. Verify the exact Bryan Castro account and assign
+3. Verify the exact order-staff account and assign
    `project_ilaw_orders_staff` using the SQL above. Do not create an account.
-4. Set `VITE_PROJECT_ILAW_MESSENGER_URL` in the frontend deployment environment.
-5. Redeploy the frontend and smoke-test `/shop`, the confirmation dialog, the
-   CMS orders page, payment confirmation, fulfilment changes, and CSV export.
+4. In the Admin Portal, enter the official GCash or bank account details and
+   enable payments only after the church confirms the receiving account. Leave
+   the production cutoff unset until leadership decides the date.
+5. Redeploy the frontend and smoke-test `/shop`, order submission, payment
+   lookup, evidence upload, manual payment confirmation/rejection, fulfilment
+   changes, production report, and CSV export.
 6. Confirm the production deployment succeeded before declaring the work
    complete.
 
@@ -305,7 +356,7 @@ integration test intentionally leaves its test order in the disposable database.
 ## Known limitations / blockers
 
 - The migration and role assignment have not been applied to production.
-- Bryan Castro’s exact CMS account cannot be verified from this repository alone.
-- The Messenger URL has not been supplied, so the button stays disabled until the
-  environment variable is set.
-- Notifications are in-app only; no email or Messenger automation is configured.
+- Official GCash and bank account details have not been supplied, so payments
+  remain disabled and no account details are shown on the shop.
+- The production cutoff has not been decided, so it remains unset.
+- Notifications are in-app only; no email or chat automation is configured.

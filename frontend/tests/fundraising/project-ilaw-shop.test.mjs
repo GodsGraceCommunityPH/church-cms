@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 import {
+  ECO_BAG_COLORS,
   FULFILLMENT_STATUS_LABELS,
   FULFILLMENT_TRANSITIONS,
   ORDER_STEPS,
@@ -10,13 +11,14 @@ import {
   PROJECT_ILAW,
   SHOP_ITEMS,
   SHOP_STATUS,
+  T_SHIRT_COLORS,
   T_SHIRT_SIZES,
   canCancelOrder,
   calculateDraftTotals,
   createDraftItem,
+  defaultColorForProduct,
   defaultSizeForProduct,
   formatPeso,
-  normalizeMessengerUrl,
   validateOrderDraft,
 } from "../../src/features/fundraising/projectIlaw.ts";
 
@@ -53,7 +55,7 @@ test("the catalog offers only the T-shirt and eco bag at ₱499 each", () => {
   }
 });
 
-test("the T-shirt lists XS through 3XL and shows the mockup colours", () => {
+test("the T-shirt lists XS through 3XL and the five documented colours", () => {
   const shirt = SHOP_ITEMS.find((item) => item.id === "project-ilaw-t-shirt");
 
   assert.ok(shirt);
@@ -61,6 +63,8 @@ test("the T-shirt lists XS through 3XL and shows the mockup colours", () => {
   assert.deepEqual(shirt.sizes, T_SHIRT_SIZES);
   assert.equal(shirt.sizeLabel, "Sizes");
   assert.deepEqual(shirt.colors, ["Black", "White", "Maroon", "Green", "Blue"]);
+  assert.deepEqual(shirt.colors, T_SHIRT_COLORS);
+  assert.equal(shirt.colorLabel, "Shirt colours");
   assert.match(shirt.description, /front/i);
   assert.match(shirt.description, /Let His Light Shine, Let His Glory Rise/);
   assert.match(shirt.description, /Haggai 2:9/);
@@ -73,6 +77,7 @@ test("the eco bag is one size with maroon, green, and blue handles", async () =>
   assert.deepEqual(bag.sizes, ["One Size"]);
   assert.equal(bag.sizeLabel, "Size");
   assert.deepEqual(bag.colors, ["Maroon", "Green", "Blue"]);
+  assert.deepEqual(bag.colors, ECO_BAG_COLORS);
   assert.equal(bag.colorLabel, "Handle colours");
   assert.match(bag.description, /Let His Light Shine, Let His Glory Rise/);
 
@@ -128,32 +133,34 @@ test("the catalog renders the supplied mockup images without distortion", async 
   assert.match(css, /\.merch-art img \{[^}]*object-fit: contain/s);
 });
 
-test("ordering is open and payment is arranged manually on Messenger", () => {
+test("ordering is open and payment happens through the website", () => {
   assert.equal(SHOP_STATUS.orderingOpen, true);
-  assert.match(SHOP_STATUS.notice, /Messenger/i);
-  assert.match(SHOP_STATUS.notice, /Bryan Castro/);
+  assert.match(SHOP_STATUS.notice, /payment instructions/i);
+  assert.doesNotMatch(SHOP_STATUS.notice, /messenger/i);
   assert.match(SHOP_STATUS.catalogNotice, /₱499/);
+  assert.match(SHOP_STATUS.catalogNotice, /colour/i);
   assert.match(SHOP_STATUS.availabilityLabel, /available/i);
 });
 
-test("the ordering process keeps the required manual-payment steps in order", () => {
+test("the ordering process keeps the website payment steps in order", () => {
   assert.deepEqual(
     ORDER_STEPS.map((step) => step.title),
     [
       "Choose your items",
       "Submit your order",
-      "Message Bryan on Messenger",
-      "Pay as instructed",
-      "Wait for payment confirmation",
+      "Pay through the website",
+      "Submit your payment details",
+      "Wait for verification",
     ],
   );
 
   const content = JSON.stringify(ORDER_STEPS);
-  assert.doesNotMatch(content, /GCash|bank account|account number/i);
-  assert.doesNotMatch(content, /upload|proof of payment|receipt/i);
+  assert.doesNotMatch(content, /messenger|bryan/i);
+  assert.match(content, /transaction reference/i);
+  assert.match(content, /never marked paid automatically/i);
 });
 
-test("draft validation enforces required fields, whole quantities, and sizes", () => {
+test("draft validation enforces required fields, quantities, sizes, and colours", () => {
   const base = {
     customerName: "",
     mobile: "",
@@ -176,11 +183,29 @@ test("draft validation enforces required fields, whole quantities, and sizes", (
   assert.equal(noSize.ok, false);
   assert.ok(noSize.errors.some((error) => /T-shirt size/i.test(error)));
 
+  const noColour = validateOrderDraft({
+    ...base,
+    customerName: "Grace Member",
+    mobile: "09171234567",
+    items: [{ ...shirt, size: "M" }],
+  });
+  assert.equal(noColour.ok, false);
+  assert.ok(noColour.errors.some((error) => /shirt colour/i.test(error)));
+
+  const badBagColour = validateOrderDraft({
+    ...base,
+    customerName: "Grace Member",
+    mobile: "09171234567",
+    items: [{ ...createDraftItem("project-ilaw-eco-bag"), color: "Black" }],
+  });
+  assert.equal(badBagColour.ok, false);
+  assert.ok(badBagColour.errors.some((error) => /handle colour/i.test(error)));
+
   const fractional = validateOrderDraft({
     ...base,
     customerName: "Grace Member",
     mobile: "09171234567",
-    items: [{ ...shirt, size: "M", quantity: "1.5" }],
+    items: [{ ...shirt, size: "M", color: "Black", quantity: "1.5" }],
   });
   assert.equal(fractional.ok, false);
 
@@ -190,8 +215,8 @@ test("draft validation enforces required fields, whole quantities, and sizes", (
     mobile: "0917 123 4567",
     notes: "  Please prepare two  ",
     items: [
-      { ...shirt, size: "M", quantity: "2" },
-      { ...createDraftItem("project-ilaw-eco-bag"), quantity: 1 },
+      { ...shirt, size: "M", color: "Black", quantity: "2" },
+      { ...createDraftItem("project-ilaw-eco-bag"), color: "Green", quantity: 1 },
     ],
   });
   assert.equal(valid.ok, true);
@@ -200,14 +225,26 @@ test("draft validation enforces required fields, whole quantities, and sizes", (
   assert.equal(valid.totalQuantity, 3);
   assert.equal(valid.totalAmount, 1497);
   assert.deepEqual(valid.items, [
-    { productId: "project-ilaw-t-shirt", size: "M", quantity: 2 },
-    { productId: "project-ilaw-eco-bag", size: "One Size", quantity: 1 },
+    {
+      productId: "project-ilaw-t-shirt",
+      size: "M",
+      color: "Black",
+      quantity: 2,
+    },
+    {
+      productId: "project-ilaw-eco-bag",
+      size: "One Size",
+      color: "Green",
+      quantity: 1,
+    },
   ]);
 });
 
-test("the eco bag is always normalized to One Size and never needs a size choice", () => {
+test("the eco bag is always normalized to One Size and needs a handle colour", () => {
   assert.equal(defaultSizeForProduct("project-ilaw-eco-bag"), "One Size");
   assert.equal(defaultSizeForProduct("project-ilaw-t-shirt"), "");
+  assert.equal(defaultColorForProduct("project-ilaw-eco-bag"), "");
+  assert.equal(defaultColorForProduct("project-ilaw-t-shirt"), "");
 
   const bag = createDraftItem("project-ilaw-eco-bag");
   assert.equal(bag.size, "One Size");
@@ -216,7 +253,7 @@ test("the eco bag is always normalized to One Size and never needs a size choice
     customerName: "Grace Member",
     mobile: "09171234567",
     notes: "",
-    items: [{ ...bag, size: "" }],
+    items: [{ ...bag, size: "", color: "Blue" }],
   });
   assert.equal(validation.ok, true);
   assert.equal(validation.items[0].size, "One Size");
@@ -224,9 +261,27 @@ test("the eco bag is always normalized to One Size and never needs a size choice
 
 test("draft totals only count valid quantities at ₱499 each", () => {
   const items = [
-    { key: "a", productId: "project-ilaw-t-shirt", size: "S", quantity: 2 },
-    { key: "b", productId: "project-ilaw-eco-bag", size: "One Size", quantity: 3 },
-    { key: "c", productId: "project-ilaw-t-shirt", size: "M", quantity: "0" },
+    {
+      key: "a",
+      productId: "project-ilaw-t-shirt",
+      size: "S",
+      color: "Black",
+      quantity: 2,
+    },
+    {
+      key: "b",
+      productId: "project-ilaw-eco-bag",
+      size: "One Size",
+      color: "Maroon",
+      quantity: 3,
+    },
+    {
+      key: "c",
+      productId: "project-ilaw-t-shirt",
+      size: "M",
+      color: "White",
+      quantity: "0",
+    },
   ];
   assert.deepEqual(calculateDraftTotals(items), {
     totalQuantity: 5,
@@ -237,71 +292,56 @@ test("draft totals only count valid quantities at ₱499 each", () => {
 test("status labels and transitions match the documented order workflow", () => {
   assert.deepEqual(PAYMENT_STATUS_LABELS, {
     awaiting_payment: "Awaiting Payment",
-    payment_confirmed: "Payment Confirmed",
+    payment_verification: "Payment Verification",
+    paid: "Paid",
   });
   assert.deepEqual(FULFILLMENT_STATUS_LABELS, {
     not_started: "Not Started",
-    processing: "Processing",
+    in_production: "In Production",
     ready_for_pickup: "Ready for Pickup",
     completed: "Completed",
     cancelled: "Cancelled",
   });
 
   assert.deepEqual(FULFILLMENT_TRANSITIONS.not_started, [
-    "processing",
+    "in_production",
     "ready_for_pickup",
   ]);
-  assert.deepEqual(FULFILLMENT_TRANSITIONS.processing, ["ready_for_pickup"]);
+  assert.deepEqual(FULFILLMENT_TRANSITIONS.in_production, ["ready_for_pickup"]);
   assert.deepEqual(FULFILLMENT_TRANSITIONS.ready_for_pickup, ["completed"]);
   assert.deepEqual(FULFILLMENT_TRANSITIONS.completed, []);
   assert.deepEqual(FULFILLMENT_TRANSITIONS.cancelled, []);
 
   assert.equal(canCancelOrder("not_started"), true);
-  assert.equal(canCancelOrder("processing"), true);
+  assert.equal(canCancelOrder("in_production"), true);
   assert.equal(canCancelOrder("ready_for_pickup"), true);
   assert.equal(canCancelOrder("completed"), false);
   assert.equal(canCancelOrder("cancelled"), false);
 });
 
-test("the Messenger link only accepts documented Facebook hosts", () => {
-  assert.equal(normalizeMessengerUrl("https://m.me/bryan"), "https://m.me/bryan");
-  assert.equal(
-    normalizeMessengerUrl("https://www.facebook.com/bryan"),
-    "https://www.facebook.com/bryan",
-  );
-  assert.equal(normalizeMessengerUrl("javascript:alert(1)"), null);
-  assert.equal(normalizeMessengerUrl("http://m.me/bryan"), null);
-  assert.equal(normalizeMessengerUrl("https://example.com/bryan"), null);
-  assert.equal(normalizeMessengerUrl(""), null);
-  assert.equal(normalizeMessengerUrl(null), null);
-});
-
-test("the confirmation dialog only appears after a successful save", async () => {
+test("the confirmation dialog only appears after a successful save and routes to payment", async () => {
   const form = await read("../../src/components/fundraising/OrderForm.tsx");
 
   assert.match(form, /setConfirmation\(created\)/);
   assert.match(form, /title="Orders Received!"/);
   assert.match(form, /Thank you for supporting Project Ilaw!/);
-  assert.match(
-    form,
-    /contact Bryan Castro on Facebook Messenger/i,
-  );
-  assert.match(form, /Message Bryan on Messenger/);
   assert.match(form, /confirmation\.reference/);
-  assert.match(form, /PROJECT_ILAW_MESSENGER_URL/);
+  assert.match(form, /confirmation\.totalAmount/);
+  assert.match(form, /Go to payment/);
+  assert.match(form, /"pay-order"/);
   assert.match(form, /requestIdRef/);
   assert.match(form, /submitting/);
-
-  // The modal is rendered from successful state, not from the click alone.
-  assert.doesNotMatch(form, /GCash|account number|upload/i);
+  assert.doesNotMatch(form, /messenger/i);
+  assert.doesNotMatch(form, /bryan/i);
 });
 
-test("the public order form captures the required customer and item data", async () => {
+test("the public order form captures colours and the payment section is present", async () => {
   const form = await read("../../src/components/fundraising/OrderForm.tsx");
   const editor = await read(
     "../../src/components/fundraising/OrderLineItemsEditor.tsx",
   );
   const page = await read("../../src/pages/ShopPage.tsx");
+  const panel = await read("../../src/components/fundraising/PaymentPanel.tsx");
 
   assert.match(form, /Customer name/);
   assert.match(form, /Mobile number/);
@@ -314,10 +354,21 @@ test("the public order form captures the required customer and item data", async
   assert.match(editor, /max=\{99\}/);
   assert.match(editor, /Unit price/);
   assert.match(editor, /Line total/);
+  assert.match(editor, /product\.colorLabel/);
+  assert.match(editor, /defaultColorForProduct/);
 
   assert.match(page, /Place your order/);
   assert.match(page, /id="order-form"/);
-  assert.doesNotMatch(page, /Ordering is not yet open/);
+  assert.match(page, /<PaymentPanel/);
+  assert.match(page, /id="payment"/);
+  assert.doesNotMatch(page, /messenger/i);
+
+  assert.match(panel, /id="pay-order"/);
+  assert.match(panel, /getProjectIlawPaymentContext/);
+  assert.match(panel, /uploadProjectIlawPaymentEvidence/);
+  assert.match(panel, /submitProjectIlawPayment/);
+  assert.match(panel, /Payment awaiting verification/);
+  assert.match(panel, /never marked paid automatically|never confirms payment automatically/i);
 });
 
 test("the shop route is public and uses the existing public layout", async () => {
@@ -367,6 +418,14 @@ test("public navigation links to Project Ilaw and Shop on desktop and mobile", a
   assert.equal(shopLinks.length, 2, "desktop and mobile need Shop");
   assert.match(navbar, /Lightbulb/);
   assert.match(navbar, /ShoppingBag/);
+
+  // Repeated clicks on the homepage scroll directly, so an unchanged hash
+  // cannot swallow the navigation.
+  const handlers = navbar.match(/onClick=\{handleProjectIlawClick\}/g) ?? [];
+  assert.equal(handlers.length, 2, "desktop and mobile both need the handler");
+  assert.match(navbar, /pathname !== "\/"/);
+  assert.match(navbar, /scrollIntoView/);
+  assert.match(navbar, /closeMenu\(\)/);
 });
 
 test("hash navigation can reach the Project Ilaw section", async () => {
@@ -375,4 +434,24 @@ test("hash navigation can reach the Project Ilaw section", async () => {
   assert.match(scroll, /location|hash/);
   assert.match(scroll, /scrollIntoView/);
   assert.match(scroll, /decodeURIComponent/);
+});
+
+test("the Give page keeps its details and uses the requested responsive layout", async () => {
+  const page = await read("../../src/pages/GivePage.tsx");
+  const css = await read("../../src/components/PublicPage.css");
+
+  assert.match(page, /3143314461925/);
+  assert.match(page, /Gods Grace Community Church/);
+  assert.match(page, /navigator\.clipboard\.writeText/);
+  assert.match(page, /instapayQr/);
+  assert.match(page, /Scan to Give/);
+  assert.match(page, /qr-card-text/);
+
+  assert.match(css, /\.giving-grid \{[^}]*grid-template-columns: repeat\(2,/s);
+  assert.match(css, /\.qr-card \{[^}]*grid-column: 1\/-1/s);
+  assert.match(css, /\.qr-card \{[^}]*grid-template-columns: minmax/s);
+  assert.match(
+    css,
+    /@media \(max-width: 560px\) \{[\s\S]*\.qr-card \{ grid-template-columns: 1fr/s,
+  );
 });

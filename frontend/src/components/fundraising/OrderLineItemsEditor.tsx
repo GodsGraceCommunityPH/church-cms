@@ -2,6 +2,7 @@ import {
   T_SHIRT_SIZES,
   calculateDraftTotals,
   createDraftItem,
+  defaultColorForProduct,
   defaultSizeForProduct,
   formatPeso,
   getShopItem,
@@ -79,6 +80,7 @@ export default function OrderLineItemsEditor({
                       updateItem(item.key, {
                         productId,
                         size: defaultSizeForProduct(productId),
+                        color: defaultColorForProduct(productId),
                       });
                     }}
                   >
@@ -91,6 +93,33 @@ export default function OrderLineItemsEditor({
                     </option>
                   </select>
                 </div>
+
+                {product ? (
+                  <div className="order-field">
+                    <label htmlFor={`${idPrefix}-color-${item.key}`}>
+                      {product.colorLabel}
+                    </label>
+                    <select
+                      id={`${idPrefix}-color-${item.key}`}
+                      value={item.color}
+                      onChange={(event) =>
+                        updateItem(item.key, { color: event.target.value })
+                      }
+                    >
+                      <option value="">Select a colour</option>
+                      {product.colors.map((color) => (
+                        <option key={color} value={color}>
+                          {color}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div
+                    className="order-field order-size-placeholder"
+                    aria-hidden="true"
+                  />
+                )}
 
                 {isEcoBag(item.productId) ? (
                   <div

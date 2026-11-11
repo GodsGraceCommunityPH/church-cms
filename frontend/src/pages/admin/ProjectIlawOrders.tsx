@@ -3,17 +3,23 @@ import { Link } from "react-router-dom";
 import {
   Download,
   RefreshCcw,
+  Search,
   ShoppingBag,
   SlidersHorizontal,
 } from "lucide-react";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Select from "../../components/ui/Select";
+import ProductionReportPanel from "../../components/fundraising/ProductionReportPanel";
+import ProjectIlawSettingsPanel from "../../components/fundraising/ProjectIlawSettingsPanel";
 import { useAuth } from "../../features/auth/auth";
 import {
+  ECO_BAG_COLORS,
   FULFILLMENT_STATUS_LABELS,
   PAYMENT_STATUS_LABELS,
   SHOP_ITEMS,
+  T_SHIRT_COLORS,
+  T_SHIRT_SIZES,
   formatPeso,
   type ProjectIlawOrder,
   type ProjectIlawOrderFilters,
@@ -42,12 +48,26 @@ const EMPTY_FILTERS: ProjectIlawOrderFilters = {
 
 function itemsSummary(order: ProjectIlawOrder) {
   return order.items
-    .map((item) =>
-      item.productType === "t_shirt"
-        ? `${item.productName} (${item.size}) ×${item.quantity}`
-        : `${item.productName} ×${item.quantity}`,
+    .map(
+      (item) =>
+        `${item.productName} · ${item.color} · ${
+          item.productType === "eco_bag" ? "One Size" : item.size
+        } ×${item.quantity}`,
     )
     .join(", ");
+}
+
+function matchesSearch(order: ProjectIlawOrder, query: string) {
+  if (!query) return true;
+  const haystack = [
+    order.reference,
+    order.customerName,
+    order.mobile,
+    order.paymentReference,
+  ]
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(query);
 }
 
 export default function ProjectIlawOrders() {
@@ -58,6 +78,7 @@ export default function ProjectIlawOrders() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [search, setSearch] = useState("");
   const [filters, setFilters] =
     useState<ProjectIlawOrderFilters>(EMPTY_FILTERS);
 
@@ -77,9 +98,13 @@ export default function ProjectIlawOrders() {
     void load();
   }, [load]);
 
+  const query = search.trim().toLowerCase();
   const filtered = useMemo(
-    () => filterProjectIlawOrders(orders, filters),
-    [filters, orders],
+    () =>
+      filterProjectIlawOrders(orders, filters).filter((order) =>
+        matchesSearch(order, query),
+      ),
+    [filters, orders, query],
   );
   const summary = useMemo(() => buildOrderSummary(filtered), [filtered]);
 
@@ -115,8 +140,8 @@ export default function ProjectIlawOrders() {
           <p className="pilaw-eyebrow">Project Ilaw</p>
           <h1>Project Ilaw Orders</h1>
           <p>
-            Manage customer orders, manually confirm payments, and track
-            fulfilment and production quantities.
+            Review orders and payment evidence, manually confirm payments, and
+            track fulfilment and made-to-order production quantities.
           </p>
         </div>
         <div className="pilaw-orders-actions">
@@ -153,14 +178,19 @@ export default function ProjectIlawOrders() {
           </small>
         </article>
         <article>
-          <span>Orders awaiting payment</span>
+          <span>Awaiting payment</span>
           <strong>{summary.awaitingPaymentOrders}</strong>
           <small>Cancelled orders are excluded</small>
         </article>
         <article>
-          <span>Payments confirmed</span>
-          <strong>{summary.paymentConfirmedOrders}</strong>
-          <small>Manually confirmed by staff</small>
+          <span>Payment verification</span>
+          <strong>{summary.paymentVerificationOrders}</strong>
+          <small>Evidence submitted, awaiting manual review</small>
+        </article>
+        <article>
+          <span>Paid orders</span>
+          <strong>{summary.paidOrders}</strong>
+          <small>Manually confirmed by authorised staff</small>
         </article>
         <article>
           <span>Total expected sales</span>
@@ -170,16 +200,16 @@ export default function ProjectIlawOrders() {
         <article className="pilaw-summary-collections">
           <span>Total confirmed collections</span>
           <strong>{formatPeso(summary.confirmedCollections)}</strong>
-          <small>Payment-confirmed orders only</small>
+          <small>Paid orders only</small>
         </article>
       </section>
 
       {summary.cancelledPaidOrders > 0 && (
         <p className="pilaw-accounting-note" role="note">
           {summary.cancelledPaidOrders} cancelled order
-          {summary.cancelledPaidOrders === 1 ? " was" : "s were"} already
-          payment-confirmed ({formatPeso(summary.cancelledPaidAmount)}). They
-          remain in confirmed collections and are not treated as refunds.
+          {summary.cancelledPaidOrders === 1 ? " was" : "s were"} already paid (
+          {formatPeso(summary.cancelledPaidAmount)}). They remain in confirmed
+          collections and are not treated as refunds.
         </p>
       )}
 
@@ -214,7 +244,7 @@ export default function ProjectIlawOrders() {
             <h2>T-shirt sizes</h2>
           </div>
           <ul className="pilaw-size-list">
-            {["XS", "S", "M", "L", "XL", "2XL", "3XL"].map((size) => (
+            {T_SHIRT_SIZES.map((size) => (
               <li key={size}>
                 <span>{size}</span>
                 <strong>{summary.sizeQuantities[size] ?? 0}</strong>
@@ -226,10 +256,56 @@ export default function ProjectIlawOrders() {
             {summary.completedUnits === 1 ? "" : "s"} in completed orders.
           </p>
         </div>
+
+        <div className="pilaw-breakdown-card">
+          <div className="pilaw-breakdown-heading">
+            <SlidersHorizontal size={18} aria-hidden="true" />
+            <h2>T-shirt colours</h2>
+          </div>
+          <ul className="pilaw-size-list">
+            {T_SHIRT_COLORS.map((color) => (
+              <li key={color}>
+                <span>{color}</span>
+                <strong>{summary.tshirtColorQuantities[color] ?? 0}</strong>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="pilaw-breakdown-card">
+          <div className="pilaw-breakdown-heading">
+            <SlidersHorizontal size={18} aria-hidden="true" />
+            <h2>Eco bag handle colours</h2>
+          </div>
+          <ul className="pilaw-size-list">
+            {ECO_BAG_COLORS.map((color) => (
+              <li key={color}>
+                <span>{color}</span>
+                <strong>{summary.ecoBagColorQuantities[color] ?? 0}</strong>
+              </li>
+            ))}
+          </ul>
+        </div>
       </section>
+
+      <ProductionReportPanel />
+
+      <ProjectIlawSettingsPanel />
 
       <section className="pilaw-panel" aria-label="Order management">
         <div className="pilaw-filters">
+          <label className="pilaw-filter-search">
+            <span>Search</span>
+            <div className="pilaw-search-field">
+              <Search size={16} aria-hidden="true" />
+              <Input
+                type="search"
+                value={search}
+                placeholder="Reference, name, mobile, or payment reference"
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </div>
+          </label>
           <label>
             <span>From date</span>
             <Input
@@ -294,8 +370,11 @@ export default function ProjectIlawOrders() {
           </label>
           <Button
             variant="secondary"
-            onClick={() => setFilters(EMPTY_FILTERS)}
-            disabled={filters === EMPTY_FILTERS}
+            onClick={() => {
+              setFilters(EMPTY_FILTERS);
+              setSearch("");
+            }}
+            disabled={filters === EMPTY_FILTERS && !search}
           >
             Clear filters
           </Button>
@@ -333,7 +412,7 @@ export default function ProjectIlawOrders() {
                   <th scope="col">Date / time</th>
                   <th scope="col">Customer</th>
                   <th scope="col">Mobile</th>
-                  <th scope="col">Products and sizes</th>
+                  <th scope="col">Products, colours, and sizes</th>
                   <th scope="col">Qty</th>
                   <th scope="col">Amount</th>
                   <th scope="col">Payment status</th>
@@ -383,9 +462,9 @@ export default function ProjectIlawOrders() {
 
       <p className="pilaw-accounting-footnote">
         Expected sales exclude cancelled orders. Confirmed collections include
-        only payment-confirmed orders. A cancelled order that was already paid
-        stays visible in the records and CSV export and is not automatically
-        treated as a refund.
+        only paid orders. A cancelled order that was already paid stays visible
+        in the records and CSV export and is not automatically treated as a
+        refund.
       </p>
     </div>
   );

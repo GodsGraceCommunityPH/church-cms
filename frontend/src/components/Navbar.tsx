@@ -1,12 +1,28 @@
-import { useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { useState, type MouseEvent } from "react";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { Menu, X, House, Info, Mail, Lightbulb, ShoppingBag } from "lucide-react";
 import logo from "../assets/ggccc-logo.png";
 
 function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { pathname } = useLocation();
 
   const closeMenu = () => setMenuOpen(false);
+
+  // A hash link does not re-run the router's hash effect when the URL is
+  // unchanged, so repeated clicks used to do nothing. On the homepage, scroll
+  // to the section directly every time; from another page, let the Link
+  // navigate to /#project-ilaw and ScrollToTop handle the first arrival.
+  const handleProjectIlawClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    closeMenu();
+    if (pathname !== "/") return;
+
+    event.preventDefault();
+    const target = document.getElementById("project-ilaw");
+    if (!target) return;
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.history.replaceState(null, "", "/#project-ilaw");
+  };
 
   return (
     <>
@@ -64,6 +80,7 @@ function Navbar() {
 
             <Link
               to="/#project-ilaw"
+              onClick={handleProjectIlawClick}
               className="transition hover:text-[#DDE5C3]"
             >
               Project Ilaw
@@ -187,7 +204,7 @@ function Navbar() {
 
           <Link
             to="/#project-ilaw"
-            onClick={closeMenu}
+            onClick={handleProjectIlawClick}
             className="flex w-[90%] items-center rounded-xl border-l-4 border-transparent px-5 py-4 text-white transition hover:border-[#556B2F] hover:text-[#DDE5C3]"
           >
             <div className="flex items-center gap-4">

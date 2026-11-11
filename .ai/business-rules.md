@@ -396,36 +396,63 @@ and can never browse Members, registrations, or administrative information.
 
 Project Ilaw merchandise ordering is a fundraising workflow, not a payment
 gateway. Customers submit their own multi-item order through the public shop.
-The server owns product availability, unit prices, and totals; the client cannot
-choose a price.
+The server owns the product catalogue, allowed sizes and colours, unit prices,
+and totals; the client cannot choose a price.
 
-Payment is always arranged manually between the customer and the designated
-Project Ilaw contact on Facebook Messenger. The system never posts GCash, bank,
-card, QR, or payment-reference details, never accepts proof of payment, and never
-confirms a payment automatically.
+Products are made to order. There is no stock check and no stock approval step.
+Two products are sold at ₱499 each: the Project Ilaw T-shirt (sizes XS–3XL;
+colours Black, White, Maroon, Green, Blue) and the Project Ilaw Eco Bag (One
+Size; handle colours Maroon, Green, Blue).
 
-Payment status and fulfillment status are separate. New orders start as
-`awaiting_payment` and `not_started`. Only an authorized staff member may
-manually confirm payment. Fulfillment follows controlled transitions:
-`not_started` to `processing` or `ready_for_pickup`; `processing` to
-`ready_for_pickup`; `ready_for_pickup` to `completed`; and cancellation from any
-not-completed state.
+Payment happens through the website. After submitting an order, the customer
+receives an order reference and total, views the official payment instructions
+once they are configured, pays through the configured GCash or bank account,
+then submits a transaction reference and payment screenshot through the website.
+Payment account details and the production cutoff are configuration, not code.
+They start empty and unset, and must not be invented or activated before the
+church confirms them.
 
-Order handling is append-only. Created orders, confirmed payments, fulfillment
-changes, amendments, and cancellations record who made the change, when, and the
-before/after values. Amending an order preserves the previous line items as
-history rather than deleting them.
+Payment screenshots are supporting evidence only. A payment is never confirmed
+automatically. An authorized staff member reviews the evidence, verifies the
+actual transaction in the receiving account, and manually confirms the payment.
+The confirmation records the administrator, the confirmation time, and the
+audit history. Rejecting a submission returns the order to Awaiting Payment
+without deleting its history.
+
+Payment evidence is stored privately. An order reference alone never authorizes
+access to sensitive order information or payment evidence: customers look up
+their own order with the reference plus the mobile number used at submission,
+and reading evidence requires the order-view permission.
+
+Payment status and fulfillment status are separate. Payment status is
+`awaiting_payment`, `payment_verification`, or `paid`. Fulfillment status is
+`not_started`, `in_production`, `ready_for_pickup`, `completed`, or `cancelled`.
+Fulfillment follows controlled transitions: `not_started` to `in_production` or
+`ready_for_pickup`; `in_production` to `ready_for_pickup`; `ready_for_pickup` to
+`completed`; and cancellation from any not-completed state.
+
+Order handling is append-only. Created orders, submitted payments, confirmed or
+rejected payments, fulfillment changes, amendments, and cancellations record who
+made the change, when, and the before/after values. Amending an order preserves
+the previous line items as history rather than deleting them.
+
+Production quantities are made to order. Only paid, non-cancelled orders count
+toward confirmed production, and reports aggregate by product, size, colour, and
+quantity. The production cutoff stays unset until church leadership decides the
+date; while it is unset, every paid, non-cancelled order is included.
 
 Accounting is consistent everywhere:
 
 - Expected sales exclude cancelled orders.
-- Confirmed collections include only payment-confirmed orders.
-- A payment-confirmed order that is later cancelled remains in confirmed
-  collections and is flagged separately; it is not treated as a refund.
+- Confirmed collections include only paid orders.
+- A paid order that is later cancelled remains in confirmed collections and is
+  flagged separately; it is not treated as a refund.
 
 Access follows least privilege. Viewing, confirming payment, managing orders, and
 exporting data are separate permissions. Project Ilaw staff do not receive
-administrator, finance, or unrelated module access by default.
+administrator, finance, or unrelated module access by default. Anonymous
+customers have no direct table access; order submission, lookup, and payment
+submission go through validated server-side functions.
 
 ---
 

@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import type { FormEvent } from "react";
-import { ArrowLeft, RefreshCcw, ShieldAlert } from "lucide-react";
+import {
+  ArrowLeft,
+  FileImage,
+  RefreshCcw,
+  ShieldAlert,
+  ShieldCheck,
+} from "lucide-react";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import OrderLineItemsEditor from "../../components/fundraising/OrderLineItemsEditor";
@@ -24,15 +30,19 @@ import { formatOrderDateTime } from "../../features/fundraising/orderAccounting"
 import {
   amendProjectIlawOrder,
   confirmProjectIlawPayment,
+  getPaymentEvidenceUrl,
   getProjectIlawOrder,
   getProjectIlawOrderActivity,
+  rejectProjectIlawPayment,
   updateProjectIlawFulfillment,
 } from "../../features/fundraising/orderService";
 import "./ProjectIlawOrders.css";
 
 const EVENT_LABELS: Record<ProjectIlawOrderEvent["eventType"], string> = {
   order_created: "Order received",
+  payment_submitted: "Payment submitted",
   payment_confirmed: "Payment confirmed",
+  payment_rejected: "Payment submission rejected",
   fulfillment_changed: "Fulfillment updated",
   order_amended: "Order amended",
   order_cancelled: "Order cancelled",
@@ -42,6 +52,7 @@ function draftFromOrder(order: ProjectIlawOrder): OrderDraft {
   const items: OrderDraftItem[] = order.items.map((item) => ({
     ...createDraftItem(item.productId),
     size: item.size,
+    color: item.color,
     quantity: item.quantity,
   }));
 
@@ -95,11 +106,15 @@ export default function ProjectIlawOrderDetail() {
   const [busy, setBusy] = useState("");
 
   const [paymentNote, setPaymentNote] = useState("");
+  const [rejectReason, setRejectReason] = useState("");
   const [statusNote, setStatusNote] = useState("");
   const [showAmend, setShowAmend] = useState(false);
   const [amendDraft, setAmendDraft] = useState<OrderDraft | null>(null);
   const [amendNote, setAmendNote] = useState("");
   const [amendErrors, setAmendErrors] = useState<string[]>([]);
+
+  const [evidenceUrl, setEvidenceUrl] = useState("");
+  const [evidenceError, setEvidenceError] = useState("");
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -125,6 +140,33 @@ export default function ProjectIlawOrderDetail() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const evidencePath = order?.paymentEvidencePath ?? "";
+  const canViewEvidence = canConfirmPayment;
+
+  useEffect(() => {
+    let active = true;
+    setEvidenceUrl("");
+    setEvidenceError("");
+    if (!evidencePath || !canViewEvidence) return;
+
+    void (async () => {
+      try {
+        const url = await getPaymentEvidenceUrl(evidencePath);
+        if (active) setEvidenceUrl(url);
+      } catch {
+        if (active) {
+          setEvidenceError(
+            "Payment evidence could not be opened. Your access may have changed.",
+          );
+        }
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [canViewEvidence, evidencePath]);
 
   const nextStatuses = useMemo(() => {
     if (!order || !canManage) return [] as FulfillmentStatus[];
@@ -154,7 +196,28 @@ export default function ProjectIlawOrderDetail() {
     await runAction("confirm", async () => {
       await confirmProjectIlawPayment(order.id, paymentNote);
       setPaymentNote("");
-      setNotice("Payment confirmed. The order remains in its current fulfilment state.");
+      setNotice(
+        "Payment confirmed. Only now does this order count toward production quantities.",
+      );
+      await load();
+    });
+  }
+
+  async function handleRejectPayment() {
+    if (!order) return;
+    if (
+      !window.confirm(
+        "Reject this payment submission? The order returns to Awaiting Payment so the customer can submit again.",
+      )
+    ) {
+      return;
+    }
+    await runAction("reject", async () => {
+      await rejectProjectIlawPayment(order.id, rejectReason);
+      setRejectReason("");
+      setNotice(
+        "Payment submission rejected. The order is back to Awaiting Payment and the history is preserved.",
+      );
       await load();
     });
   }
@@ -175,7 +238,7 @@ export default function ProjectIlawOrderDetail() {
       setNotice(
         status === "cancelled"
           ? "Order cancelled. Its history and payment record are preserved."
-          : `Fulfilment status changed to ${FULFILLMENT_STATUS_LABELS[status]}.`,
+          : `Fulfillment status changed to ${FULFILLMENT_STATUS_LABELS[status]}.`,
       );
       await load();
     });
@@ -237,6 +300,8 @@ export default function ProjectIlawOrderDetail() {
     canManage &&
     order.fulfillmentStatus !== "completed" &&
     order.fulfillmentStatus !== "cancelled";
+  const paid = order.paymentStatus === "paid";
+  const awaitingVerification = order.paymentStatus === "payment_verification";
 
   return (
     <div className="pilaw-order-detail-page">
@@ -294,6 +359,7 @@ export default function ProjectIlawOrderDetail() {
               <thead>
                 <tr>
                   <th scope="col">Product</th>
+                  <th scope="col">Colour</th>
                   <th scope="col">Size</th>
                   <th scope="col">Qty</th>
                   <th scope="col">Unit price</th>
@@ -304,6 +370,7 @@ export default function ProjectIlawOrderDetail() {
                 {order.items.map((item) => (
                   <tr key={item.id}>
                     <td>{item.productName}</td>
+                    <td>{item.color}</td>
                     <td>
                       {item.productType === "eco_bag" ? "—" : item.size}
                     </td>
@@ -316,7 +383,10 @@ export default function ProjectIlawOrderDetail() {
             </table>
           </div>
           <div className="pilaw-detail-total">
-            <span>{order.totalQuantity} total item{order.totalQuantity === 1 ? "" : "s"}</span>
+            <span>
+              {order.totalQuantity} total item
+              {order.totalQuantity === 1 ? "" : "s"}
+            </span>
             <strong>{formatPeso(order.totalAmount)}</strong>
           </div>
 
@@ -333,7 +403,7 @@ export default function ProjectIlawOrderDetail() {
           </dl>
           {order.notes && <p className="pilaw-detail-notes">{order.notes}</p>}
 
-          {order.paymentStatus === "payment_confirmed" && (
+          {paid && (
             <div className="pilaw-detail-notes">
               <strong>Payment confirmed</strong>
               <br />
@@ -348,11 +418,10 @@ export default function ProjectIlawOrderDetail() {
               <br />
               {formatOrderDateTime(order.cancelledAt)}
               {order.cancelReason ? ` · ${order.cancelReason}` : ""}
-              {order.paymentStatus === "payment_confirmed" && (
+              {paid && (
                 <p className="pilaw-detail-note">
-                  This order was already payment-confirmed before it was
-                  cancelled. It stays in confirmed collections and is not
-                  treated as a refund here.
+                  This order was already paid before it was cancelled. It stays
+                  in confirmed collections and is not treated as a refund here.
                 </p>
               )}
             </div>
@@ -480,45 +549,150 @@ export default function ProjectIlawOrderDetail() {
         </section>
 
         <div style={{ display: "grid", gap: 16, alignContent: "start" }}>
-          {order.paymentStatus === "awaiting_payment" && !cancelled && (
+          {!cancelled && (
             <section
               className="pilaw-detail-card"
-              aria-labelledby="confirm-payment-title"
+              aria-labelledby="payment-review-title"
             >
-              <h2 id="confirm-payment-title">Confirm payment</h2>
-              {canConfirmPayment ? (
-                <>
-                  <p className="pilaw-detail-note" style={{ marginTop: 0 }}>
-                    Confirm only after Bryan has verified the payment directly.
-                    The system never marks an order paid automatically.
+              <h2 id="payment-review-title">Payment</h2>
+
+              <dl className="pilaw-detail-meta">
+                <div>
+                  <dt>Payment status</dt>
+                  <dd>{PAYMENT_STATUS_LABELS[order.paymentStatus]}</dd>
+                </div>
+                <div>
+                  <dt>Amount due</dt>
+                  <dd>{formatPeso(order.totalAmount)}</dd>
+                </div>
+                <div>
+                  <dt>Transaction reference</dt>
+                  <dd>{order.paymentReference || "Not submitted"}</dd>
+                </div>
+                <div>
+                  <dt>Submitted</dt>
+                  <dd>{formatOrderDateTime(order.paymentSubmittedAt)}</dd>
+                </div>
+              </dl>
+
+              {order.paymentRejectedAt && !awaitingVerification && !paid && (
+                <div className="pilaw-payment-alert" role="status">
+                  <strong>Last submission was rejected</strong>
+                  <p>{formatOrderDateTime(order.paymentRejectedAt)}</p>
+                  {order.paymentRejectionReason && (
+                    <p>{order.paymentRejectionReason}</p>
+                  )}
+                </div>
+              )}
+
+              {evidencePath ? (
+                <div className="pilaw-evidence">
+                  <h3>Payment evidence</h3>
+                  <p className="pilaw-detail-note">
+                    Supporting evidence only. Open it, verify the actual
+                    transaction in the receiving account, then confirm manually.
                   </p>
-                  <div className="pilaw-embedded-form">
+                  {evidenceError && (
+                    <p className="pilaw-inline-error" role="alert">
+                      {evidenceError}
+                    </p>
+                  )}
+                  {evidenceUrl ? (
+                    /\.pdf($|\?)/i.test(evidenceUrl) ? (
+                      <a
+                        className="pilaw-evidence-link"
+                        href={evidenceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <FileImage size={16} aria-hidden="true" /> Open payment
+                        PDF
+                      </a>
+                    ) : (
+                      <a
+                        className="pilaw-evidence-link"
+                        href={evidenceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <img
+                          src={evidenceUrl}
+                          alt="Submitted payment screenshot"
+                        />
+                        <span>Open full-size evidence</span>
+                      </a>
+                    )
+                  ) : (
+                    canViewEvidence &&
+                    !evidenceError && (
+                      <p className="pilaw-detail-note">Preparing evidence...</p>
+                    )
+                  )}
+                </div>
+              ) : (
+                <p className="pilaw-detail-note">
+                  No payment evidence has been submitted yet.
+                </p>
+              )}
+
+              {canConfirmPayment ? (
+                <div className="pilaw-embedded-form">
+                  {awaitingVerification && (
                     <label>
-                      Payment note (optional)
+                      Rejection reason (optional)
                       <Input
-                        value={paymentNote}
+                        value={rejectReason}
                         maxLength={1000}
-                        placeholder="e.g. Cash received at the church office"
-                        onChange={(event) => setPaymentNote(event.target.value)}
+                        placeholder="e.g. Reference not found in the receiving account"
+                        onChange={(event) => setRejectReason(event.target.value)}
                         disabled={Boolean(busy)}
                       />
                     </label>
-                    <div className="pilaw-embedded-form-actions">
+                  )}
+                  <label>
+                    Confirmation note (optional)
+                    <Input
+                      value={paymentNote}
+                      maxLength={1000}
+                      placeholder="e.g. Verified in the church GCash account"
+                      onChange={(event) => setPaymentNote(event.target.value)}
+                      disabled={Boolean(busy) || paid}
+                    />
+                  </label>
+                  <div className="pilaw-embedded-form-actions">
+                    {!paid && (
                       <Button
                         onClick={() => void handleConfirmPayment()}
                         disabled={Boolean(busy)}
                       >
+                        <ShieldCheck size={16} aria-hidden="true" />
                         {busy === "confirm"
                           ? "Confirming..."
                           : "Confirm payment"}
                       </Button>
-                    </div>
+                    )}
+                    {awaitingVerification && (
+                      <Button
+                        variant="danger"
+                        onClick={() => void handleRejectPayment()}
+                        disabled={Boolean(busy)}
+                      >
+                        {busy === "reject" ? "Rejecting..." : "Reject submission"}
+                      </Button>
+                    )}
                   </div>
-                </>
+                  {!awaitingVerification && !paid && (
+                    <p className="pilaw-detail-note">
+                      Payment evidence has not been submitted. Confirm only after
+                      you have verified the actual transaction.
+                    </p>
+                  )}
+                </div>
               ) : (
-                <p className="pilaw-detail-note" style={{ marginTop: 0 }}>
+                <p className="pilaw-detail-note">
                   <ShieldAlert size={15} aria-hidden="true" /> You can view this
-                  order but you do not have permission to confirm payments.
+                  order but you do not have permission to review or confirm
+                  payments.
                 </p>
               )}
             </section>
@@ -578,7 +752,7 @@ export default function ProjectIlawOrderDetail() {
               ) : (
                 <p className="pilaw-detail-note" style={{ marginTop: 0 }}>
                   <ShieldAlert size={15} aria-hidden="true" /> You can view this
-                  order but you do not have permission to change fulfilment.
+                  order but you do not have permission to change fulfillment.
                 </p>
               )}
             </section>
@@ -615,8 +789,8 @@ export default function ProjectIlawOrderDetail() {
 
       <p className="pilaw-accounting-footnote">
         Expected sales exclude cancelled orders. Confirmed collections include
-        only payment-confirmed orders. A cancelled order that was already paid
-        remains visible and is not automatically treated as a refund.
+        only paid orders. A cancelled order that was already paid remains visible
+        and is not automatically treated as a refund.
       </p>
     </div>
   );

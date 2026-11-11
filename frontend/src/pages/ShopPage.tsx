@@ -1,14 +1,15 @@
 import {
   BadgeCheck,
   ClipboardList,
-  Lightbulb,
-  MessageCircle,
+  ShieldCheck,
   ShoppingBag,
+  Upload,
   Wallet,
 } from "lucide-react";
 import PublicPage from "../components/PublicPage";
 import MerchandiseCard from "../components/fundraising/MerchandiseCard";
 import OrderForm from "../components/fundraising/OrderForm";
+import PaymentPanel from "../components/fundraising/PaymentPanel";
 import {
   ORDER_STEPS,
   PROJECT_ILAW,
@@ -20,8 +21,8 @@ import "../features/fundraising/Fundraising.css";
 const STEP_ICONS = [
   ShoppingBag,
   ClipboardList,
-  MessageCircle,
   Wallet,
+  Upload,
   BadgeCheck,
 ];
 
@@ -39,8 +40,8 @@ export default function ShopPage() {
           <p>{PROJECT_ILAW.summary}</p>
           <p>
             The shop is one way the church family can take part. Both items are
-            ₱499 each. Place your order here, then contact Bryan Castro on
-            Facebook Messenger for payment instructions.
+            ₱499 each. Place your order here, then pay through the official
+            payment details published on this page once they are available.
           </p>
         </div>
         <aside className="shop-status-card" aria-labelledby="shop-status-title">
@@ -79,8 +80,9 @@ export default function ShopPage() {
         <div className="public-section-heading">
           <h2 id="how-to-order-title">How to Order</h2>
           <p>
-            Orders are saved here first. Payment is coordinated manually so no
-            payment details are posted publicly.
+            Orders are saved here first. Payment is completed through the
+            website using the official GCash or bank details once they are
+            published.
           </p>
         </div>
         <ol className="shop-order-steps">
@@ -101,9 +103,10 @@ export default function ShopPage() {
           })}
         </ol>
         <p className="shop-payment-note">
-          <Lightbulb size={18} aria-hidden="true" />
-          Do not send payment before Bryan gives you instructions on Messenger.
-          The church does not publish GCash or bank account details on this page.
+          <ShieldCheck size={18} aria-hidden="true" />
+          Only use the payment details shown in the payment section of this
+          page. Payment is never confirmed automatically, and an order reference
+          alone does not expose your payment evidence.
         </p>
       </section>
 
@@ -116,10 +119,25 @@ export default function ShopPage() {
           <h2 id="order-form-title">Place your order</h2>
           <p>
             Add every item you need, then submit once. You will receive an order
-            reference to share with Bryan on Messenger.
+            reference to use in the payment section.
           </p>
         </div>
         <OrderForm />
+      </section>
+
+      <section
+        className="public-section"
+        id="payment"
+        aria-labelledby="payment-title"
+      >
+        <div className="public-section-heading">
+          <h2 id="payment-title">Payment</h2>
+          <p>
+            Find your order with your reference and mobile number, then pay and
+            submit your transaction details.
+          </p>
+        </div>
+        <PaymentPanel />
       </section>
     </PublicPage>
   );

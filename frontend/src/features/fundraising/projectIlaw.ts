@@ -25,10 +25,13 @@ export interface OrderStep {
   description: string;
 }
 
-export type PaymentStatus = "awaiting_payment" | "payment_confirmed";
+export type PaymentStatus =
+  | "awaiting_payment"
+  | "payment_verification"
+  | "paid";
 export type FulfillmentStatus =
   | "not_started"
-  | "processing"
+  | "in_production"
   | "ready_for_pickup"
   | "completed"
   | "cancelled";
@@ -43,6 +46,7 @@ export interface ProjectIlawOrderItem {
   productName: string;
   productType: ProductType;
   size: string;
+  color: string;
   quantity: number;
   unitPrice: number;
   lineTotal: number;
@@ -57,10 +61,15 @@ export interface ProjectIlawOrder {
   totalQuantity: number;
   totalAmount: number;
   paymentStatus: PaymentStatus;
-  fulfillmentStatus: FulfillmentStatus;
+  paymentReference: string;
+  paymentSubmittedAt: string | null;
+  paymentEvidencePath: string | null;
+  paymentRejectedAt: string | null;
+  paymentRejectionReason: string;
   paymentConfirmedAt: string | null;
   paymentConfirmedBy: string | null;
   paymentNote: string;
+  fulfillmentStatus: FulfillmentStatus;
   cancelledAt: string | null;
   cancelReason: string;
   createdAt: string;
@@ -72,7 +81,9 @@ export interface ProjectIlawOrderEvent {
   id: string;
   eventType:
     | "order_created"
+    | "payment_submitted"
     | "payment_confirmed"
+    | "payment_rejected"
     | "fulfillment_changed"
     | "order_amended"
     | "order_cancelled";
@@ -88,6 +99,7 @@ export interface OrderDraftItem {
   key: string;
   productId: string;
   size: string;
+  color: string;
   quantity: string | number;
 }
 
@@ -101,6 +113,7 @@ export interface OrderDraft {
 export interface NormalizedOrderItem {
   productId: string;
   size: string;
+  color: string;
   quantity: number;
 }
 
@@ -118,6 +131,7 @@ export interface OrderDraftValidation {
 export interface CreatedProjectIlawOrder {
   orderId: string;
   reference: string;
+  paymentToken: string;
   totalQuantity: number;
   totalAmount: number;
   paymentStatus: PaymentStatus;
@@ -134,10 +148,13 @@ export interface ProjectIlawExportRow {
   productName: string;
   productType: ProductType;
   size: string;
+  color: string;
   quantity: number;
   unitPrice: number;
   lineTotal: number;
   paymentStatus: PaymentStatus;
+  paymentReference: string;
+  paymentSubmittedAt: string | null;
   fulfillmentStatus: FulfillmentStatus;
   paymentConfirmedAt: string | null;
   paymentConfirmedBy: string | null;
@@ -151,11 +168,67 @@ export interface ProjectIlawOrderFilters {
   fulfillment: string;
 }
 
+export interface ProjectIlawPaymentInstructions {
+  enabled: boolean;
+  gcashAccountName: string;
+  gcashAccountNumber: string;
+  bankName: string;
+  bankAccountName: string;
+  bankAccountNumber: string;
+  paymentInstructions: string;
+}
+
+export interface ProjectIlawPaymentContext {
+  orderId: string;
+  reference: string;
+  customerName: string;
+  totalQuantity: number;
+  totalAmount: number;
+  paymentStatus: PaymentStatus;
+  paymentToken: string;
+  paymentReference: string;
+  paymentSubmittedAt: string | null;
+  paymentRejectedAt: string | null;
+  paymentRejectionReason: string;
+  fulfillmentStatus: FulfillmentStatus;
+  instructions: ProjectIlawPaymentInstructions;
+}
+
+export interface ProjectIlawSettings {
+  paymentsEnabled: boolean;
+  gcashAccountName: string;
+  gcashAccountNumber: string;
+  bankName: string;
+  bankAccountName: string;
+  bankAccountNumber: string;
+  paymentInstructions: string;
+  productionCutoff: string;
+  updatedAt: string | null;
+}
+
+export interface ProductionReportRow {
+  productId: string;
+  productName: string;
+  productType: ProductType;
+  size: string;
+  color: string;
+  quantity: number;
+}
+
+export interface ProductionReport {
+  cutoff: string | null;
+  generatedAt: string;
+  rows: ProductionReportRow[];
+  totalQuantity: number;
+}
+
 export function formatPeso(amount: number) {
   return `₱${new Intl.NumberFormat("en-PH").format(amount)}`;
 }
 
 export const T_SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL"];
+export const T_SHIRT_COLORS = ["Black", "White", "Maroon", "Green", "Blue"];
+export const ECO_BAG_COLORS = ["Maroon", "Green", "Blue"];
 
 export const PROJECT_ILAW = {
   eyebrow: "Fundraising · Project Ilaw",
@@ -182,9 +255,9 @@ export const SHOP_PREVIEW = {
 export const SHOP_STATUS = {
   orderingOpen: true,
   notice:
-    "Ordering is open. Payment is arranged manually with Bryan Castro on Facebook Messenger after your order is saved.",
+    "Ordering is open. Submit your order here, then pay through the payment instructions on this page once they are available.",
   catalogNotice:
-    "Both items are ₱499 each. Place your order here, then contact Bryan Castro on Facebook Messenger for payment instructions.",
+    "Both items are ₱499 each. Choose a size and colour, submit your order, then follow the payment steps on this page.",
   availabilityLabel: "Available to order",
 } as const;
 
@@ -204,7 +277,7 @@ export const SHOP_ITEMS: ShopItem[] = [
       "Everyday T-shirt with the Project Ilaw logo on the front and “Let His Light Shine, Let His Glory Rise” (Haggai 2:9) on the back.",
     sizes: T_SHIRT_SIZES,
     sizeLabel: "Sizes",
-    colors: ["Black", "White", "Maroon", "Green", "Blue"],
+    colors: T_SHIRT_COLORS,
     colorLabel: "Shirt colours",
   },
   {
@@ -222,7 +295,7 @@ export const SHOP_ITEMS: ShopItem[] = [
       "Reusable eco bag with the Project Ilaw logo and the “Let His Light Shine, Let His Glory Rise” design. Available with maroon, green, or blue handles.",
     sizes: ["One Size"],
     sizeLabel: "Size",
-    colors: ["Maroon", "Green", "Blue"],
+    colors: ECO_BAG_COLORS,
     colorLabel: "Handle colours",
   },
 ];
@@ -231,7 +304,7 @@ export const ORDER_STEPS: OrderStep[] = [
   {
     title: "Choose your items",
     description:
-      "Pick the T-shirt or eco bag, choose a size for each T-shirt, and set the quantity.",
+      "Pick the T-shirt or eco bag, choose a size and colour for each item, and set the quantity.",
   },
   {
     title: "Submit your order",
@@ -239,30 +312,31 @@ export const ORDER_STEPS: OrderStep[] = [
       "Enter your name and mobile number. Your order is saved with a unique reference number.",
   },
   {
-    title: "Message Bryan on Messenger",
+    title: "Pay through the website",
     description:
-      "Contact Bryan Castro on Facebook Messenger and share your order reference so he can give you payment instructions.",
+      "Open the payment section, enter your reference and mobile number, and use the official GCash or bank details shown once they are configured.",
   },
   {
-    title: "Pay as instructed",
+    title: "Submit your payment details",
     description:
-      "Follow the payment instructions Bryan gives you directly on Messenger. Payment details are not posted on this website.",
+      "Enter the transaction reference from your receipt and upload a screenshot of the payment through the website.",
   },
   {
-    title: "Wait for payment confirmation",
+    title: "Wait for verification",
     description:
-      "The Project Ilaw team confirms your payment manually in the church system. Your order is never marked paid automatically.",
+      "The Project Ilaw team verifies the actual transaction and manually confirms your payment. Your order is never marked paid automatically.",
   },
 ];
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   awaiting_payment: "Awaiting Payment",
-  payment_confirmed: "Payment Confirmed",
+  payment_verification: "Payment Verification",
+  paid: "Paid",
 };
 
 export const FULFILLMENT_STATUS_LABELS: Record<FulfillmentStatus, string> = {
   not_started: "Not Started",
-  processing: "Processing",
+  in_production: "In Production",
   ready_for_pickup: "Ready for Pickup",
   completed: "Completed",
   cancelled: "Cancelled",
@@ -272,15 +346,19 @@ export const FULFILLMENT_TRANSITIONS: Record<
   FulfillmentStatus,
   FulfillmentStatus[]
 > = {
-  not_started: ["processing", "ready_for_pickup"],
-  processing: ["ready_for_pickup"],
+  not_started: ["in_production", "ready_for_pickup"],
+  in_production: ["ready_for_pickup"],
   ready_for_pickup: ["completed"],
   completed: [],
   cancelled: [],
 };
 
 export function canCancelOrder(status: FulfillmentStatus) {
-  return status === "not_started" || status === "processing" || status === "ready_for_pickup";
+  return (
+    status === "not_started" ||
+    status === "in_production" ||
+    status === "ready_for_pickup"
+  );
 }
 
 export function getShopItem(productId: string) {
@@ -295,39 +373,9 @@ export function defaultSizeForProduct(productId: string) {
   return isEcoBag(productId) ? "One Size" : "";
 }
 
-export function normalizeMessengerUrl(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-
-  try {
-    const url = new URL(trimmed);
-    if (url.protocol !== "https:") return null;
-    const allowedHosts = new Set([
-      "m.me",
-      "messenger.com",
-      "www.messenger.com",
-      "facebook.com",
-      "www.facebook.com",
-    ]);
-    if (!allowedHosts.has(url.hostname.toLowerCase())) return null;
-    return url.toString();
-  } catch {
-    return null;
-  }
+export function defaultColorForProduct(_productId: string) {
+  return "";
 }
-
-const env = (import.meta as { env?: Record<string, string | undefined> }).env ?? {};
-
-/**
- * Configure Bryan Castro's real Messenger link with
- * VITE_PROJECT_ILAW_MESSENGER_URL (for example https://m.me/<username>).
- * When it is missing or invalid, the confirmation dialog keeps the payment
- * instructions but disables the Messenger button instead of inventing a link.
- */
-export const PROJECT_ILAW_MESSENGER_URL = normalizeMessengerUrl(
-  env.VITE_PROJECT_ILAW_MESSENGER_URL,
-);
 
 export function createRequestId() {
   const cryptoApi = globalThis.crypto;
@@ -352,6 +400,7 @@ export function createDraftItem(productId = SHOP_ITEMS[0].id): OrderDraftItem {
         : `item-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     productId,
     size: defaultSizeForProduct(productId),
+    color: defaultColorForProduct(productId),
     quantity: 1,
   };
 }
@@ -412,11 +461,7 @@ export function validateOrderDraft(draft: OrderDraft): OrderDraftValidation {
     }
 
     const quantity = Number(item.quantity);
-    if (
-      !Number.isInteger(quantity) ||
-      quantity <= 0 ||
-      quantity > 99
-    ) {
+    if (!Number.isInteger(quantity) || quantity <= 0 || quantity > 99) {
       errors.push(`Line ${line}: quantity must be a whole number from 1 to 99.`);
     }
 
@@ -427,13 +472,20 @@ export function validateOrderDraft(draft: OrderDraft): OrderDraftValidation {
       errors.push(`Line ${line}: choose a T-shirt size from XS to 3XL.`);
     }
 
+    const color = item.color;
+    if (!product.colors.includes(color)) {
+      errors.push(
+        `Line ${line}: choose a ${product.colorLabel.toLowerCase().replace(/s$/, "")}.`,
+      );
+    }
+
     if (
       Number.isInteger(quantity) &&
       quantity > 0 &&
       quantity <= 99 &&
       !errors.some((error) => error.startsWith(`Line ${line}:`))
     ) {
-      items.push({ productId: product.id, size, quantity });
+      items.push({ productId: product.id, size, color, quantity });
       totalQuantity += quantity;
       totalAmount += product.price * quantity;
     }
