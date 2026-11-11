@@ -65,8 +65,8 @@
 .scripture-card { background: #eef4e7; border-color: #d5e0c7; padding: 30px; }
 .scripture-card blockquote { color: #33451e; font-family: "Source Serif 4",serif; font-size: 1.22rem; font-style: italic; line-height: 1.6; margin: 14px 0; }
 .scripture-card cite { color: #527724; font-style: normal; font-weight: 800; }
-.giving-card { display: flex; flex-direction: column; min-width: 0; padding: 30px; text-align: center; }
-.giving-card p:last-child { margin-top: auto; }
+.giving-card { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 30px; text-align: center; }
+.giving-card p:last-child { margin-top: 0; }
 .giving-icon { color: #527724; display: block; flex: none; margin: 0 auto 16px; }
 .giving-card h3 { font-size: 1.3rem; margin: 0 0 13px; }
 .giving-card p { color: #52627a; line-height: 1.65; margin: 0; }
@@ -76,7 +76,8 @@
 .bank-value { align-items: center; display: flex; gap: 8px; justify-content: space-between; min-width: 0; }
 .bank-value strong { overflow-wrap: anywhere; }
 .public-copy { background: transparent; border: 0; border-radius: 8px; color: #527724; cursor: pointer; display: inline-flex; padding: 7px; }
-.qr-card { align-items: center; display: grid; gap: 34px; grid-column: 1/-1; grid-template-columns: minmax(220px,320px) minmax(0,1fr); text-align: left; }
+.giving-grid > .qr-card { grid-column: 1 / -1; width: 100%; }
+.qr-card { align-items: center; display: grid; gap: 34px; grid-template-columns: minmax(220px,320px) minmax(0,1fr); text-align: left; }
 .qr-card img { background: #fff; border: 1px solid #dce3d4; border-radius: 14px; box-sizing: border-box; display: block; height: auto; max-width: 100%; padding: 12px; width: 320px; }
 .qr-card-text { min-width: 0; }
 .qr-card-text .giving-icon { margin-left: 0; margin-right: 0; }
