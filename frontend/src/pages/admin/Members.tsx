@@ -9,11 +9,15 @@ import Select from "../../components/ui/Select";
 import { getCellGroups } from "../../features/cellGroups/cellGroupService";
 import type { CellGroup } from "../../features/cellGroups/cellGroup";
 import { getUnviewedMemberIds } from "../../features/notifications/notificationService";
+import ExcelExportButton from "../../features/export/ExcelExportButton";
+import { useAuth } from "../../features/auth/auth";
+import { buildMemberExportFromDatabase } from "../../features/members/memberExportService";
 
 function Members() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { hasPermission } = useAuth();
   const { members, loading, error, loadMembers } = useMembers();
   const [search, setSearch] = useState("");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -38,7 +42,9 @@ function Members() {
       const matchesGender = !genderFilter ||
         (genderFilter === "unknown" ? !["male", "female"].includes(normalizedGender) : normalizedGender === genderFilter);
       const matchesCellGroup = !cellGroupFilter ||
-        (cellGroupFilter === "unassigned" ? !member.cellGroupId : member.cellGroupId === cellGroupFilter);
+        (cellGroupFilter === "unassigned" ? !member.cellGroupId
+          : cellGroupFilter === "assigned" ? Boolean(member.cellGroupId)
+            : member.cellGroupId === cellGroupFilter);
       return matchesSearch && matchesGender && matchesCellGroup;
     }).sort((left, right) => {
       const leftName = `${left.firstName} ${left.lastName}`.trim();
@@ -148,9 +154,19 @@ function Members() {
           <div className="list-filter-controls">
             <label><span>Sort</span><Select aria-label="Sort members" value={sortOrder} onChange={(event) => setSortOrder(event.target.value as "asc" | "desc")}><option value="asc">A–Z</option><option value="desc">Z–A</option></Select></label>
             <label><span>Gender</span><Select aria-label="Filter members by gender" value={genderFilter} onChange={(event) => updateFilter("gender", event.target.value)}><option value="all">All</option><option value="male">Male</option><option value="female">Female</option><option value="unknown">Unknown / Not Set</option></Select></label>
-            <label><span>Cell Group</span><Select aria-label="Filter members by Cell Group" value={cellGroupFilter} onChange={(event) => updateFilter("cellGroup", event.target.value)}><option value="all">All Cell Groups</option>{cellGroups.filter((group) => group.status?.trim().toLowerCase() !== "inactive").map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}<option value="unassigned">No Cell Group / Unassigned</option></Select></label>
+            <label><span>Cell Group</span><Select aria-label="Filter members by Cell Group" value={cellGroupFilter} onChange={(event) => updateFilter("cellGroup", event.target.value)}><option value="all">All Cell Groups</option><option value="assigned">Assigned (Any Cell Group)</option>{cellGroups.filter((group) => group.status?.trim().toLowerCase() !== "inactive").map((group) => <option value={group.id} key={group.id}>{group.name}</option>)}<option value="unassigned">No Cell Group / Unassigned</option></Select></label>
             {hasActiveFilters && <button type="button" className="list-clear-filters" onClick={clearFilters}>Clear Filters</button>}
           </div>
+          {hasPermission("members.export") && (
+            <ExcelExportButton
+              hint="Exports every member matching the current search and filters, not just the rows shown."
+              disabled={loading}
+              onExport={() => buildMemberExportFromDatabase(
+                { search, gender: genderFilter, cellGroup: cellGroupFilter },
+                { cellGroupName: cellGroups.find((group) => group.id === cellGroupFilter)?.name },
+              )}
+            />
+          )}
         </div>
 
         {loading ? (

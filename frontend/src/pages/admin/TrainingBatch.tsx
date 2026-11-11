@@ -8,6 +8,8 @@ import SearchableSelect from "../../components/ui/SearchableSelect";
 import Textarea from "../../components/ui/Textarea";
 import Modal from "../../components/Modal";
 import { useAuth } from "../../features/auth/auth";
+import ExcelExportButton from "../../features/export/ExcelExportButton";
+import { buildTrainingBatchRosterExport } from "../../features/training/trainingExport";
 import {
   completeTraining,
   completeTrainingCycle,
@@ -491,14 +493,27 @@ export default function TrainingBatch() {
         <Link to={`/admin/training/${programSlug}`} className="text-sm font-medium text-olive-700 hover:underline">← Back to {workspace.program.name}</Link>
         <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
           <div><p className="text-sm font-medium text-olive-700">{workspace.program.name}</p><h1 className="mt-1 text-3xl font-bold">{activeCycle ? "Current Class" : "Previous Class"}</h1></div>
-          {hasPermission("training.enroll") && activeCycle && (
-            <Button
-              disabled={loadingMembers}
-              onClick={() => void openStudentPicker()}
-            >
-              {loadingMembers ? "Loading Members..." : hasEnrollmentDraft ? "Continue Enrollment" : "+ Add Enrollment"}
-            </Button>
-          )}
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 10 }}>
+            {hasPermission("training.view") && (
+              <ExcelExportButton
+                label="Export Class Roster"
+                hint="Exports every student in this class, including completed, withdrawn, and cancelled records."
+                onExport={async () => buildTrainingBatchRosterExport({
+                  programName: workspace.program.name,
+                  batchName: workspace.batch.name,
+                  students: workspace.enrollments,
+                })}
+              />
+            )}
+            {hasPermission("training.enroll") && activeCycle && (
+              <Button
+                disabled={loadingMembers}
+                onClick={() => void openStudentPicker()}
+              >
+                {loadingMembers ? "Loading Members..." : hasEnrollmentDraft ? "Continue Enrollment" : "+ Add Enrollment"}
+              </Button>
+            )}
+          </div>
         </div>
       </header>
       {error && <p className="rounded-xl bg-red-50 p-3 text-red-700">{error}</p>}

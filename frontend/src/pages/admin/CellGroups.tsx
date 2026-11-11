@@ -11,9 +11,13 @@ import {
   deleteCellGroup,
   getCellGroups,
 } from "../../features/cellGroups/cellGroupService";
+import ExcelExportButton from "../../features/export/ExcelExportButton";
+import { useAuth } from "../../features/auth/auth";
+import { buildCellGroupListExport } from "../../features/cellGroups/cellGroupExport";
 
 export default function CellGroups() {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
   const [cellGroups, setCellGroups] = useState<CellGroup[]>([]);
   const [search, setSearch] = useState("");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc" | "count-desc" | "count-asc">("asc");
@@ -152,6 +156,13 @@ export default function CellGroups() {
             <label><span>Gender</span><Select aria-label="Filter Cell Groups by gender" value={genderFilter} onChange={(event) => setGenderFilter(event.target.value as typeof genderFilter)}><option value="all">All</option><option value="male">Male</option><option value="female">Female</option><option value="unknown">Unknown / Not Set</option></Select></label>
             {hasActiveFilters && <button type="button" className="list-clear-filters" onClick={() => { setSortOrder("asc"); setGenderFilter("all"); }}>Clear Filters</button>}
           </div>
+          {hasPermission("cell_groups.view") && (
+            <ExcelExportButton
+              hint={`Exports all ${filteredCellGroups.length} cell ${filteredCellGroups.length === 1 ? "group" : "groups"} matching the current search and gender filter.`}
+              disabled={loading}
+              onExport={async () => buildCellGroupListExport(filteredCellGroups, genderFilter)}
+            />
+          )}
         </div>
 
         {loading ? (

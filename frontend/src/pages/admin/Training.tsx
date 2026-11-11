@@ -1,5 +1,9 @@
 import { Link, useSearchParams } from "react-router-dom";
 import Button from "../../components/ui/Button";
+import ExcelExportButton from "../../features/export/ExcelExportButton";
+import { useAuth } from "../../features/auth/auth";
+import { buildTrainingOverviewExport } from "../../features/training/trainingExport";
+import { buildTrainingStudentsExportFromDatabase } from "../../features/training/trainingExportService";
 import { useTrainingOverview } from "../../features/training/useTrainingOverview";
 
 function Stat({ label, value }: { label: string; value: number | null }) {
@@ -13,7 +17,9 @@ function Stat({ label, value }: { label: string; value: number | null }) {
 
 export default function Training() {
   const [searchParams] = useSearchParams();
+  const { hasPermission } = useAuth();
   const showCompleted = searchParams.get("status") === "completed";
+  const exportScope = showCompleted ? "completed" : "current";
   const { programs, pendingCount, loading, error, loadPrograms } = useTrainingOverview();
 
   return (
@@ -25,6 +31,22 @@ export default function Training() {
             {showCompleted ? "Review completed enrollments in each program's previous classes." : "Guide members from enrollment through graduation and advancement."}
           </p>
         </div>
+        {hasPermission("training.view") && (
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 12 }}>
+            <ExcelExportButton
+              label={showCompleted ? "Export Completed Students" : "Export Current Students"}
+              hint={`Exports every ${exportScope} student record across all Training programs.`}
+              disabled={loading}
+              onExport={() => buildTrainingStudentsExportFromDatabase(exportScope)}
+            />
+            <ExcelExportButton
+              label="Export Program Summary"
+              hint="Exports the program totals shown on this page."
+              disabled={loading}
+              onExport={async () => buildTrainingOverviewExport(programs, exportScope)}
+            />
+          </div>
+        )}
       </header>
 
       {loading ? (

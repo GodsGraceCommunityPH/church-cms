@@ -15,6 +15,9 @@ export function mapCellGroup(data: any): CellGroup {
     name: data.name,
     slug: data.slug ?? "",
     leaderId: data.leader_id,
+    leaderName: [data.leader_member?.first_name, data.leader_member?.last_name]
+      .filter(Boolean)
+      .join(" "),
     description: data.description,
     status: data.status,
     createdAt: data.created_at,
