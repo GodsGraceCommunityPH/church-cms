@@ -1,12 +1,28 @@
-import { useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { useState, type MouseEvent } from "react";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { Menu, X, House, Info, Mail, Lightbulb, ShoppingBag } from "lucide-react";
 import logo from "../assets/ggccc-logo.png";
 
 function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { pathname } = useLocation();
 
   const closeMenu = () => setMenuOpen(false);
+
+  // A hash link does not re-run the router's hash effect when the URL is
+  // unchanged, so repeated clicks used to do nothing. On the homepage, scroll
+  // to the section directly every time; from another page, let the Link
+  // navigate to /#project-ilaw and ScrollToTop handle the first arrival.
+  const handleProjectIlawClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    closeMenu();
+    if (pathname !== "/") return;
+
+    event.preventDefault();
+    const target = document.getElementById("project-ilaw");
+    if (!target) return;
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.history.replaceState(null, "", "/#project-ilaw");
+  };
 
   return (
     <>
@@ -15,8 +31,8 @@ function Navbar() {
         <div
           className="flex h-20 w-full items-center justify-between"
           style={{
-            paddingLeft: window.innerWidth < 768 ? "24px" : "80px",
-            paddingRight: window.innerWidth < 768 ? "24px" : "80px",
+            paddingLeft: window.innerWidth < 1024 ? "24px" : "80px",
+            paddingRight: window.innerWidth < 1024 ? "24px" : "80px",
           }}
         >
           {/* Logo */}
@@ -43,7 +59,7 @@ function Navbar() {
           </Link>
 
           {/* Desktop */}
-          <div className="hidden items-center gap-5 font-medium text-white md:flex xl:gap-8">
+          <div className="hidden items-center gap-5 font-medium text-white lg:flex xl:gap-8">
             <NavLink
               to="/"
               className={({ isActive }) =>
@@ -64,6 +80,7 @@ function Navbar() {
 
             <Link
               to="/#project-ilaw"
+              onClick={handleProjectIlawClick}
               className="transition hover:text-[#DDE5C3]"
             >
               Project Ilaw
@@ -111,7 +128,7 @@ function Navbar() {
           {/* Hamburger */}
           <button
             onClick={() => setMenuOpen(true)}
-            className="text-white md:hidden"
+            className="text-white lg:hidden"
             aria-label="Open navigation menu"
             aria-expanded={menuOpen}
             aria-controls="mobile-navigation"
@@ -124,7 +141,7 @@ function Navbar() {
       {/* Backdrop */}
       <div
         onClick={closeMenu}
-        className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 md:hidden ${
+        className={`fixed inset-0 z-40 bg-black/50 transition-opacity duration-300 lg:hidden ${
           menuOpen ? "visible opacity-100" : "invisible opacity-0"
         }`}
       />
@@ -134,7 +151,7 @@ function Navbar() {
         id="mobile-navigation"
         aria-label="Mobile navigation"
         aria-hidden={!menuOpen}
-        className={`fixed right-0 top-0 z-50 h-screen w-[58%] max-w-[250px] bg-black/90 backdrop-blur-xl shadow-2xl transition-transform duration-300 md:hidden ${
+        className={`fixed right-0 top-0 z-50 h-screen w-[58%] max-w-[250px] bg-black/90 backdrop-blur-xl shadow-2xl transition-transform duration-300 lg:hidden ${
           menuOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -187,7 +204,7 @@ function Navbar() {
 
           <Link
             to="/#project-ilaw"
-            onClick={closeMenu}
+            onClick={handleProjectIlawClick}
             className="flex w-[90%] items-center rounded-xl border-l-4 border-transparent px-5 py-4 text-white transition hover:border-[#556B2F] hover:text-[#DDE5C3]"
           >
             <div className="flex items-center gap-4">
