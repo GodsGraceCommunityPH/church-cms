@@ -81,12 +81,13 @@ test("the eco bag is one size with maroon, green, and blue handles", async () =>
   assert.equal(bag.colorLabel, "Handle colours");
   assert.match(bag.description, /Let His Light Shine, Let His Glory Rise/);
 
-  // The public product card hides the redundant single "One Size" chip.
+  // The public product card shows the single "One Size" chip from the
+  // showcase release; the order editor still skips the redundant selector.
   const card = await read(
     "../../src/components/fundraising/MerchandiseCard.tsx",
   );
-  assert.match(card, /hasSizeChoice/);
-  assert.match(card, /hasSizeChoice &&/);
+  assert.match(card, /merch-chips/);
+  assert.match(card, /item\.sizes\.map/);
 
   const editor = await read(
     "../../src/components/fundraising/OrderLineItemsEditor.tsx",
@@ -448,7 +449,10 @@ test("the Give page keeps its details and uses the requested responsive layout",
   assert.match(page, /qr-card-text/);
 
   assert.match(css, /\.giving-grid \{[^}]*grid-template-columns: repeat\(2,/s);
-  assert.match(css, /\.qr-card \{[^}]*grid-column: 1\/-1/s);
+  assert.match(
+    css,
+    /\.giving-grid > \.qr-card \{ grid-column: 1 \/ -1; width: 100%; \}/,
+  );
   assert.match(css, /\.qr-card \{[^}]*grid-template-columns: minmax/s);
   assert.match(
     css,
