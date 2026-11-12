@@ -343,6 +343,12 @@
   padding: 7px 11px;
 }
 
+.merch-availability-closed {
+  background: #f1f5f9;
+  border-color: #dbe3ec;
+  color: #52627a;
+}
+
 .shop-intro {
   align-items: stretch;
   display: grid;
@@ -412,6 +418,55 @@
   line-height: 1.6;
   margin: 0 0 26px;
   padding: 14px 18px;
+}
+
+.shop-status-card-closed {
+  background: #f8fafc;
+  border-color: #dbe3ec;
+  color: #475569;
+}
+
+.shop-status-card-closed svg {
+  color: #64748b;
+}
+
+.shop-status-card-closed strong {
+  color: #334155;
+}
+
+.order-closed {
+  align-items: center;
+  background: #fff;
+  border: 1px dashed #cbd5e1;
+  border-radius: 20px;
+  color: #52627a;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 40px 28px;
+  text-align: center;
+}
+
+.order-closed svg {
+  color: #64748b;
+}
+
+.order-closed h3 {
+  color: #243813;
+  font-family: "Source Serif 4", serif;
+  font-size: 1.35rem;
+  margin: 0;
+}
+
+.order-closed p {
+  line-height: 1.65;
+  margin: 0;
+  max-width: 60ch;
+}
+
+.order-closed-note {
+  color: #64748b;
+  font-size: 0.92rem;
 }
 
 .shop-order-steps {

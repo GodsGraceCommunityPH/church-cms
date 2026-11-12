@@ -395,9 +395,16 @@ and can never browse Members, registrations, or administrative information.
 # Project Ilaw Orders
 
 Project Ilaw merchandise ordering is a fundraising workflow, not a payment
-gateway. Customers submit their own multi-item order through the public shop.
-The server owns the product catalogue, allowed sizes and colours, unit prices,
-and totals; the client cannot choose a price.
+gateway. Customers submit their own multi-item order through the public shop
+when ordering is open. The server owns the product catalogue, allowed sizes and
+colours, unit prices, and totals; the client cannot choose a price.
+
+Public order intake is closed by default. The database submission function
+rejects every order while `orders_enabled` is false, so hiding the Shop form is
+not sufficient. Opening order intake requires an authorized administrator action
+and is separate from enabling payment details. The Shop must clearly say that
+ordering is not open yet, and no customer order may be accepted, created, or
+stored while ordering is closed.
 
 Products are made to order. There is no stock check and no stock approval step.
 Two products are sold at ₱499 each: the Project Ilaw T-shirt (sizes XS–3XL;

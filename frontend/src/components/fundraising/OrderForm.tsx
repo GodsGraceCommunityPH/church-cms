@@ -67,10 +67,20 @@ export default function OrderForm() {
       setConfirmation(created);
       setDraft({ ...EMPTY_DRAFT, items: [createDraftItem()] });
       requestIdRef.current = createRequestId();
-    } catch {
-      setFormError(
-        "We could not save your order. Please check your connection and try again. Nothing was charged, and retrying will not create a duplicate order.",
-      );
+    } catch (error) {
+      const message =
+        error && typeof error === "object" && "message" in error
+          ? String((error as { message?: unknown }).message)
+          : "";
+      if (/not open/i.test(message)) {
+        setFormError(
+          "Project Ilaw ordering is not open yet. Your order was not saved.",
+        );
+      } else {
+        setFormError(
+          "We could not save your order. Please check your connection and try again. Nothing was charged, and retrying will not create a duplicate order.",
+        );
+      }
     } finally {
       setSubmitting(false);
     }

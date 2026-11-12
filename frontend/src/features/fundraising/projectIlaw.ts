@@ -195,6 +195,7 @@ export interface ProjectIlawPaymentContext {
 }
 
 export interface ProjectIlawSettings {
+  ordersEnabled: boolean;
   paymentsEnabled: boolean;
   gcashAccountName: string;
   gcashAccountNumber: string;
@@ -204,6 +205,11 @@ export interface ProjectIlawSettings {
   paymentInstructions: string;
   productionCutoff: string;
   updatedAt: string | null;
+}
+
+export interface ProjectIlawPublicSettings {
+  ordersEnabled: boolean;
+  paymentsEnabled: boolean;
 }
 
 export interface ProductionReportRow {
@@ -253,12 +259,17 @@ export const SHOP_PREVIEW = {
 } as const;
 
 export const SHOP_STATUS = {
-  orderingOpen: true,
-  notice:
+  defaultOrdersEnabled: false,
+  openNotice:
     "Ordering is open. Submit your order here, then pay through the payment instructions on this page once they are available.",
-  catalogNotice:
+  closedNotice:
+    "Ordering is not open yet. The catalog is shown for preview only; no orders are being accepted.",
+  openCatalogNotice:
     "Both items are ₱499 each. Choose a size and colour, submit your order, then follow the payment steps on this page.",
+  closedCatalogNotice:
+    "Both items are ₱499 each. Ordering will open once the church announces it.",
   availabilityLabel: "Available to order",
+  closedLabel: "Ordering not open yet",
 } as const;
 
 export const SHOP_ITEMS: ShopItem[] = [

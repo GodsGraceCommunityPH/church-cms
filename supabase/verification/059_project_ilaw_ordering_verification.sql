@@ -183,6 +183,14 @@ begin
     raise exception 'anon must be able to read enabled payment instructions';
   end if;
 
+  if not has_function_privilege(
+    'anon',
+    'public.get_project_ilaw_public_settings()',
+    'execute'
+  ) then
+    raise exception 'anon must be able to read the public ordering and payment status';
+  end if;
+
   if has_function_privilege(
     'anon',
     'public.confirm_project_ilaw_payment(uuid,text)',
@@ -209,7 +217,7 @@ begin
     'execute'
   ) or has_function_privilege(
     'anon',
-    'public.update_project_ilaw_settings(boolean,text,text,text,text,text,text,date)',
+    'public.update_project_ilaw_settings(boolean,boolean,text,text,text,text,text,text,date)',
     'execute'
   ) then
     raise exception 'anon must not execute privileged Project Ilaw functions';
@@ -275,6 +283,17 @@ begin
   end if;
 
   if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'project_ilaw_settings'
+      and column_name = 'orders_enabled'
+      and is_nullable = 'NO'
+      and column_default = 'false'
+  ) then
+    raise exception 'project_ilaw_settings.orders_enabled is missing, nullable, or not defaulting to false';
+  end if;
+
+  if not exists (
     select 1 from pg_constraint
     where conname = 'project_ilaw_orders_payment_status_check'
       and pg_get_constraintdef(oid) like '%payment_verification%'
@@ -295,12 +314,33 @@ begin
   if not found then
     raise exception 'Project Ilaw settings singleton row is missing';
   end if;
+  if settings_row.orders_enabled then
+    raise exception 'Public ordering must start disabled until the church authorizes order intake';
+  end if;
   if settings_row.payments_enabled then
     raise exception 'Payments must start disabled until official account details are provided';
   end if;
   if settings_row.production_cutoff is not null then
     raise exception 'Production cutoff must start unset until leadership decides the date';
   end if;
+
+  -- The submission function itself must reject orders while ordering is closed,
+  -- even if a caller bypasses the Shop interface.
+  begin
+    perform public.submit_project_ilaw_order(
+      gen_random_uuid(),
+      'Verification Test',
+      '09171234567',
+      null,
+      '[{"productId":"project-ilaw-t-shirt","size":"M","color":"Black","quantity":1}]'::jsonb
+    );
+    raise exception 'Order submission succeeded while public ordering is disabled';
+  exception
+    when others then
+      if sqlerrm not like '%ordering is not open yet%' then
+        raise;
+      end if;
+  end;
 
   if not exists (
     select 1 from storage.buckets buckets

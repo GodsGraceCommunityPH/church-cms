@@ -86,11 +86,12 @@ $$;
 
 revoke all on function public.next_project_ilaw_order_reference() from public, anon, authenticated;
 
--- Configurable payment account details and production cutoff. The singleton
--- row starts with payments disabled and no account details. Nothing here
--- invents a GCash/bank account or a cutoff date.
+-- Configurable order intake, payment account details, and production cutoff.
+-- The singleton row starts with public ordering and payments disabled, and no
+-- account details. Nothing here invents a GCash/bank account or a cutoff date.
 create table if not exists public.project_ilaw_settings (
   id boolean primary key default true,
+  orders_enabled boolean not null default false,
   payments_enabled boolean not null default false,
   gcash_account_name text,
   gcash_account_number text,
@@ -526,6 +527,7 @@ as $$
 declare
   existing public.project_ilaw_orders%rowtype;
   created public.project_ilaw_orders%rowtype;
+  settings public.project_ilaw_settings%rowtype;
   validated jsonb;
   snapshot_items jsonb;
   line_number integer := 0;
@@ -538,6 +540,17 @@ declare
 begin
   if p_request_id is null then
     raise exception 'A request identifier is required' using errcode = '22023';
+  end if;
+
+  -- Public ordering is a separate switch from payment instructions. The gate
+  -- lives in this security-definer function so disabling the Shop interface is
+  -- not enough: no order can be accepted or stored while ordering is closed.
+  select * into settings
+  from public.project_ilaw_settings
+  where id;
+
+  if not found or not settings.orders_enabled then
+    raise exception 'Project Ilaw ordering is not open yet' using errcode = 'P0001';
   end if;
 
   if clean_name = '' or char_length(clean_name) > 120 then
@@ -916,6 +929,26 @@ $$;
 
 revoke all on function public.get_project_ilaw_payment_instructions() from public, anon, authenticated;
 grant execute on function public.get_project_ilaw_payment_instructions() to anon, authenticated;
+
+-- Public, read-only status for the Shop page. It exposes only the two switches,
+-- never account details, order data, or settings metadata.
+create or replace function public.get_project_ilaw_public_settings()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select jsonb_build_object(
+    'orders_enabled', settings.orders_enabled,
+    'payments_enabled', settings.payments_enabled
+  )
+  from public.project_ilaw_settings settings
+  where settings.id;
+$$;
+
+revoke all on function public.get_project_ilaw_public_settings() from public, anon, authenticated;
+grant execute on function public.get_project_ilaw_public_settings() to anon, authenticated;
 
 create or replace function public.confirm_project_ilaw_payment(
   p_order_id uuid,
@@ -1574,6 +1607,7 @@ begin
   select * into settings from public.project_ilaw_settings where id;
 
   return jsonb_build_object(
+    'orders_enabled', settings.orders_enabled,
     'payments_enabled', settings.payments_enabled,
     'gcash_account_name', settings.gcash_account_name,
     'gcash_account_number', settings.gcash_account_number,
@@ -1591,6 +1625,7 @@ revoke all on function public.get_project_ilaw_settings() from public, anon, aut
 grant execute on function public.get_project_ilaw_settings() to authenticated;
 
 create or replace function public.update_project_ilaw_settings(
+  p_orders_enabled boolean,
   p_payments_enabled boolean,
   p_gcash_account_name text,
   p_gcash_account_number text,
@@ -1646,7 +1681,8 @@ begin
   end if;
 
   update public.project_ilaw_settings
-  set payments_enabled = coalesce(p_payments_enabled, false),
+  set orders_enabled = coalesce(p_orders_enabled, false),
+      payments_enabled = coalesce(p_payments_enabled, false),
       gcash_account_name = clean_gcash_name,
       gcash_account_number = clean_gcash_number,
       bank_name = clean_bank_name,
@@ -1660,6 +1696,7 @@ begin
   returning * into settings;
 
   return jsonb_build_object(
+    'orders_enabled', settings.orders_enabled,
     'payments_enabled', settings.payments_enabled,
     'gcash_account_name', settings.gcash_account_name,
     'gcash_account_number', settings.gcash_account_number,
@@ -1673,8 +1710,8 @@ begin
 end;
 $$;
 
-revoke all on function public.update_project_ilaw_settings(boolean, text, text, text, text, text, text, date) from public, anon, authenticated;
-grant execute on function public.update_project_ilaw_settings(boolean, text, text, text, text, text, text, date) to authenticated;
+revoke all on function public.update_project_ilaw_settings(boolean, boolean, text, text, text, text, text, text, date) from public, anon, authenticated;
+grant execute on function public.update_project_ilaw_settings(boolean, boolean, text, text, text, text, text, text, date) to authenticated;
 
 -- Private payment evidence storage. Anonymous uploads are only allowed into
 -- orders/<order_id>/<payment_token>/<filename> for an order that is still

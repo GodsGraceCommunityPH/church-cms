@@ -6,6 +6,12 @@ Implemented in code and covered by automated tests. The migration and
 permission/role assignment have **not** been applied to production by this
 change. See [Pre-deploy steps](#pre-deploy-steps).
 
+Public ordering is **closed by default**. The Admin Order Management capability
+can be published and reviewed while `orders_enabled = false`; the database
+submission function rejects every order until an authorized administrator opens
+ordering. Payment details also stay disabled by default and are a separate
+switch from order intake.
+
 Phase 1 (the public fundraising page and catalog) is unchanged. Phase 2 adds
 multi-item ordering with colours, a website payment workflow with manual
 verification, made-to-order production reporting, fulfilment tracking, an
@@ -26,6 +32,12 @@ step; orders determine production quantities.
 ---
 
 ## Public ordering and payment flow
+
+Public ordering is closed until the church authorizes it. While
+`project_ilaw_settings.orders_enabled` is false, `/shop` shows the catalog and a
+clear “Ordering is not open yet” notice, and `submit_project_ilaw_order`
+rejects every submission before any row is created. Hiding the form is only a
+presentation aid; the database gate is authoritative.
 
 1. A customer opens `/shop`, reads the Project Ilaw introduction, and chooses
    products, sizes, colours, and quantities.
@@ -62,13 +74,25 @@ If the customer double-clicks or retries, the same request id returns the
 original reference and totals. A new request id is generated only after a
 successful save.
 
-### Payment account configuration
+### Ordering and payment configuration
 
-Payment account details are configuration, not code. They live in the
-`project_ilaw_settings` singleton and start empty with payments disabled. No
-GCash or bank details are shown to customers until authorized staff save the
-official account information in the Admin Portal and enable payments. The
-migration never invents an account or a cutoff date.
+Two independent switches live in the `project_ilaw_settings` singleton:
+
+- `orders_enabled` — controls whether `submit_project_ilaw_order` accepts new
+  orders. It starts `false` and can only be changed with
+  `project_ilaw.orders.manage`.
+- `payments_enabled` — controls whether official payment details are shown and
+  whether customers can submit payment evidence. It starts `false`.
+
+Disabling payment instructions does **not** open or close order intake, and
+opening order intake does **not** enable payment collection. The public Shop
+reads both switches through `get_project_ilaw_public_settings`, which returns
+only the two booleans.
+
+Payment account details are configuration, not code. They start empty. No GCash
+or bank details are shown to customers until authorized staff save the official
+account information in the Admin Portal and enable payments. The migration never
+invents an account or a cutoff date.
 
 ### Payment evidence
 
@@ -88,7 +112,7 @@ never authorizes access to order data or evidence.
 | `project_ilaw_orders` | Order header: reference, customer, server totals, payment and fulfilment status, payment token/evidence, cancellation metadata. |
 | `project_ilaw_order_items` | Immutable-per-revision line items with `revision`, `superseded_at`, snapshotted product name/type/size/colour/price. |
 | `project_ilaw_order_events` | Append-only audit trail. |
-| `project_ilaw_settings` | Singleton configuration for payment details and the production cutoff. |
+| `project_ilaw_settings` | Singleton configuration for order intake, payment details, and the production cutoff. |
 
 Server-side rules enforced by the migration:
 
@@ -286,6 +310,9 @@ only read and mark their own notifications.
 - The service role is never exposed to the frontend.
 - Activity history is append-only at the database level.
 - Order totals cannot be forged by the client.
+- Public order intake is enforced inside `submit_project_ilaw_order`, not only in
+  the Shop UI. While `orders_enabled` is false, no order row or line item is
+  created.
 - Payment evidence is private and token-scoped for uploads; staff reads require
   `project_ilaw.orders.view`.
 
@@ -342,20 +369,28 @@ integration test intentionally leaves its test order in the disposable database.
    it reports `Project Ilaw Phase 2 verification passed.`
 3. Verify the exact order-staff account and assign
    `project_ilaw_orders_staff` using the SQL above. Do not create an account.
-4. In the Admin Portal, enter the official GCash or bank account details and
+4. Leave `orders_enabled = false` for the Admin Order Management release. The
+   dashboard, detail page, evidence review, production report, settings, and CSV
+   export can be reviewed without accepting public orders.
+5. Only after explicit church authorization, open ordering in the Admin Portal
+   with the “Accept public orders” setting. This is a separate action from
+   enabling payment details.
+6. In the Admin Portal, enter the official GCash or bank account details and
    enable payments only after the church confirms the receiving account. Leave
    the production cutoff unset until leadership decides the date.
-5. Redeploy the frontend and smoke-test `/shop`, order submission, payment
-   lookup, evidence upload, manual payment confirmation/rejection, fulfilment
-   changes, production report, and CSV export.
-6. Confirm the production deployment succeeded before declaring the work
-   complete.
+7. Redeploy the frontend and smoke-test `/shop`, the closed-ordering notice,
+   payment lookup, evidence upload, manual payment confirmation/rejection,
+   fulfilment changes, production report, and CSV export.
+8. When ordering is authorized, smoke-test order submission as well, then confirm
+   the production deployment succeeded before declaring the work complete.
 
 ---
 
 ## Known limitations / blockers
 
 - The migration and role assignment have not been applied to production.
+- Public ordering is disabled by default and must be opened explicitly by an
+  authorized administrator.
 - Official GCash and bank account details have not been supplied, so payments
   remain disabled and no account details are shown on the shop.
 - The production cutoff has not been decided, so it remains unset.

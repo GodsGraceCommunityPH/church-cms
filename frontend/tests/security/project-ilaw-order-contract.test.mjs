@@ -149,10 +149,11 @@ test("payment statuses, fulfilment statuses, and colours match the contract", as
   assert.match(source, /fulfillment_status text not null default 'not_started'/);
 });
 
-test("payment account details and production cutoff start unset and disabled", async () => {
+test("public ordering and payments start disabled and are separate switches", async () => {
   const source = await migrationSource();
 
   assert.match(source, /create table if not exists public\.project_ilaw_settings/);
+  assert.match(source, /orders_enabled boolean not null default false/);
   assert.match(source, /payments_enabled boolean not null default false/);
   assert.match(source, /production_cutoff date/);
   assert.match(source, /insert into public\.project_ilaw_settings \(id\)/);
@@ -162,6 +163,52 @@ test("payment account details and production cutoff start unset and disabled", a
   assert.doesNotMatch(source, /production_cutoff date not null/i);
   assert.doesNotMatch(source, /values \([^)]*'09\d{9}'/);
   assert.doesNotMatch(source, /insert into public\.project_ilaw_settings[^;]*production_cutoff[^;]*\d{4}-\d{2}-\d{2}/i);
+
+  // The security-definer submission function rejects orders while the server
+  // switch is off, before it inserts or stores anything.
+  const submit = functionBody(
+    source,
+    "create or replace function public.submit_project_ilaw_order(",
+  );
+  assert.match(submit, /select \* into settings\s+from public\.project_ilaw_settings/);
+  assert.match(submit, /not settings\.orders_enabled/);
+  assert.match(submit, /Project Ilaw ordering is not open yet/);
+  assert.ok(
+    submit.indexOf("orders_enabled") <
+      submit.indexOf("insert into public.project_ilaw_orders"),
+    "the ordering gate must run before the order insert",
+  );
+
+  const getSettings = functionBody(
+    source,
+    "create or replace function public.get_project_ilaw_settings(",
+  );
+  assert.match(getSettings, /'orders_enabled', settings\.orders_enabled/);
+  assert.match(getSettings, /'payments_enabled', settings\.payments_enabled/);
+
+  const updateSettings = functionBody(
+    source,
+    "create or replace function public.update_project_ilaw_settings(",
+  );
+  assert.match(updateSettings, /p_orders_enabled boolean/);
+  assert.match(updateSettings, /orders_enabled = coalesce\(p_orders_enabled, false\)/);
+  assert.match(
+    updateSettings,
+    /public\.has_permission\('project_ilaw\.orders\.manage'\)/,
+  );
+
+  // The public status RPC exposes only the two switches, never account details.
+  const publicSettings = functionBody(
+    source,
+    "create or replace function public.get_project_ilaw_public_settings(",
+  );
+  assert.match(publicSettings, /'orders_enabled', settings\.orders_enabled/);
+  assert.match(publicSettings, /'payments_enabled', settings\.payments_enabled/);
+  assert.doesNotMatch(publicSettings, /gcash|bank_account|payment_instructions/i);
+  assert.match(
+    source,
+    /grant execute on function public\.get_project_ilaw_public_settings\(\) to anon, authenticated/,
+  );
 });
 
 test("payment confirmation is manual, permission-checked, and never automatic", async () => {
@@ -464,6 +511,57 @@ integration(
       assert.ifError(error);
     }
 
+    // Public ordering starts closed and the server function rejects orders even
+    // when the caller bypasses the Shop interface.
+    const publicStatus = await anon.rpc("get_project_ilaw_public_settings");
+    assert.ifError(publicStatus.error);
+    assert.deepEqual(Object.keys(publicStatus.data).sort(), [
+      "orders_enabled",
+      "payments_enabled",
+    ]);
+    assert.equal(publicStatus.data.orders_enabled, false);
+    assert.equal(publicStatus.data.payments_enabled, false);
+
+    const closedSubmission = await anon.rpc("submit_project_ilaw_order", {
+      p_request_id: crypto.randomUUID(),
+      p_customer_name: "Integration Test",
+      p_mobile: "09171234567",
+      p_notes: null,
+      p_items: [
+        {
+          productId: "project-ilaw-t-shirt",
+          size: "M",
+          color: "Black",
+          quantity: 1,
+        },
+      ],
+    });
+    assert.ok(closedSubmission.error, "ordering is closed by default");
+    assert.match(closedSubmission.error.message, /not open/i);
+
+    const publicInstructions = await anon.rpc(
+      "get_project_ilaw_payment_instructions",
+    );
+    assert.ifError(publicInstructions.error);
+    assert.equal(publicInstructions.data.enabled, false);
+    assert.equal(publicInstructions.data.gcash_account_number, undefined);
+
+    // Only a manager may open public ordering. Payment details stay disabled.
+    const opened = await manager.rpc("update_project_ilaw_settings", {
+      p_orders_enabled: true,
+      p_payments_enabled: false,
+      p_gcash_account_name: null,
+      p_gcash_account_number: null,
+      p_bank_name: null,
+      p_bank_account_name: null,
+      p_bank_account_number: null,
+      p_payment_instructions: null,
+      p_production_cutoff: null,
+    });
+    assert.ifError(opened.error);
+    assert.equal(opened.data.orders_enabled, true);
+    assert.equal(opened.data.payments_enabled, false);
+
     // Public submission uses server-side pricing and rejects spoofed sizes.
     const bad = await anon.rpc("submit_project_ilaw_order", {
       p_request_id: crypto.randomUUID(),
@@ -599,6 +697,7 @@ integration(
     assert.ok(viewerReject.error, "view-only access cannot reject payment");
 
     const viewerSettings = await viewer.rpc("update_project_ilaw_settings", {
+      p_orders_enabled: false,
       p_payments_enabled: false,
       p_gcash_account_name: null,
       p_gcash_account_number: null,
@@ -609,6 +708,25 @@ integration(
       p_production_cutoff: null,
     });
     assert.ok(viewerSettings.error, "view-only access cannot change settings");
+
+    const confirmerSettings = await confirmer.rpc(
+      "update_project_ilaw_settings",
+      {
+        p_orders_enabled: false,
+        p_payments_enabled: false,
+        p_gcash_account_name: null,
+        p_gcash_account_number: null,
+        p_bank_name: null,
+        p_bank_account_name: null,
+        p_bank_account_number: null,
+        p_payment_instructions: null,
+        p_production_cutoff: null,
+      },
+    );
+    assert.ok(
+      confirmerSettings.error,
+      "payment confirmation does not grant settings management",
+    );
 
     // Payment evidence upload is restricted to the order's token-scoped path.
     const evidencePath = `orders/${orderId}/${submitted.data.payment_token}/evidence.png`;
@@ -691,6 +809,22 @@ integration(
       activity.data.some((event) => event.event_type === "payment_confirmed"),
     );
 
+    const unpaid = await anon.rpc("submit_project_ilaw_order", {
+      p_request_id: crypto.randomUUID(),
+      p_customer_name: "Integration Test",
+      p_mobile: "09171234567",
+      p_notes: "awaiting payment; must not count as production",
+      p_items: [
+        {
+          productId: "project-ilaw-t-shirt",
+          size: "3XL",
+          color: "Blue",
+          quantity: 1,
+        },
+      ],
+    });
+    assert.ifError(unpaid.error);
+
     const production = await viewer.rpc("project_ilaw_production_report", {});
     assert.ifError(production.error);
     assert.ok(
@@ -701,6 +835,12 @@ integration(
           row.color === "Black" &&
           row.quantity >= 2,
       ),
+    );
+    assert.ok(
+      !production.data.rows.some(
+        (row) => row.size === "3XL" && row.color === "Blue",
+      ),
+      "orders that are not paid never count as confirmed production",
     );
 
     const outsiderExport = await outsider.rpc("project_ilaw_export_rows", {});

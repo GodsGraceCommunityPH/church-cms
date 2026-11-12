@@ -134,13 +134,42 @@ test("the catalog renders the supplied mockup images without distortion", async 
   assert.match(css, /\.merch-art img \{[^}]*object-fit: contain/s);
 });
 
-test("ordering is open and payment happens through the website", () => {
-  assert.equal(SHOP_STATUS.orderingOpen, true);
-  assert.match(SHOP_STATUS.notice, /payment instructions/i);
-  assert.doesNotMatch(SHOP_STATUS.notice, /messenger/i);
-  assert.match(SHOP_STATUS.catalogNotice, /₱499/);
-  assert.match(SHOP_STATUS.catalogNotice, /colour/i);
+test("public ordering is closed by default and gated by the server setting", async () => {
+  const page = await read("../../src/pages/ShopPage.tsx");
+  const form = await read("../../src/components/fundraising/OrderForm.tsx");
+  const card = await read(
+    "../../src/components/fundraising/MerchandiseCard.tsx",
+  );
+  const preview = await read(
+    "../../src/components/fundraising/ShopPreviewSection.tsx",
+  );
+
+  assert.equal(SHOP_STATUS.defaultOrdersEnabled, false);
+  assert.match(SHOP_STATUS.closedNotice, /not open/i);
+  assert.match(SHOP_STATUS.closedNotice, /preview only/i);
+  assert.match(SHOP_STATUS.openNotice, /payment instructions/i);
+  assert.doesNotMatch(SHOP_STATUS.openNotice, /messenger/i);
+  assert.match(SHOP_STATUS.openCatalogNotice, /₱499/);
+  assert.match(SHOP_STATUS.openCatalogNotice, /colour/i);
+  assert.match(SHOP_STATUS.closedCatalogNotice, /₱499/);
   assert.match(SHOP_STATUS.availabilityLabel, /available/i);
+  assert.equal(SHOP_STATUS.closedLabel, "Ordering not open yet");
+
+  // Product cards and the homepage preview also reflect the closed default.
+  assert.match(card, /ordersEnabled = false/);
+  assert.match(card, /SHOP_STATUS\.closedLabel/);
+  assert.match(preview, /SHOP_STATUS\.closedCatalogNotice/);
+  assert.doesNotMatch(preview, /SHOP_STATUS\.catalogNotice/);
+
+  // The public page reads the server switch and renders the order form only
+  // when ordering is open. The database still rejects submissions if the switch
+  // is off, so hiding the form is not the only control.
+  assert.match(page, /getProjectIlawPublicSettings/);
+  assert.match(page, /setOrdersEnabled\(settings\.ordersEnabled\)/);
+  assert.match(page, /ordersEnabled \? \(\s*<OrderForm \/>/s);
+  assert.match(page, /Ordering is not open yet/);
+  assert.match(form, /not open/i);
+  assert.match(form, /Your order was not saved/);
 });
 
 test("the ordering process keeps the website payment steps in order", () => {

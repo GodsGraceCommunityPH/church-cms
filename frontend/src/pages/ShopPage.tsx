@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
 import {
   BadgeCheck,
   ClipboardList,
+  Clock,
   ShieldCheck,
   ShoppingBag,
   Upload,
@@ -16,6 +18,7 @@ import {
   SHOP_ITEMS,
   SHOP_STATUS,
 } from "../features/fundraising/projectIlaw";
+import { getProjectIlawPublicSettings } from "../features/fundraising/orderService";
 import "../features/fundraising/Fundraising.css";
 
 const STEP_ICONS = [
@@ -27,6 +30,25 @@ const STEP_ICONS = [
 ];
 
 export default function ShopPage() {
+  const [ordersEnabled, setOrdersEnabled] = useState<boolean>(
+    SHOP_STATUS.defaultOrdersEnabled,
+  );
+
+  useEffect(() => {
+    let active = true;
+    getProjectIlawPublicSettings()
+      .then((settings) => {
+        if (active) setOrdersEnabled(settings.ordersEnabled);
+      })
+      .catch(() => {
+        // Fail closed: if the status cannot be read, keep ordering closed.
+        if (active) setOrdersEnabled(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <PublicPage
       eyebrow="Project Ilaw"
@@ -40,14 +62,28 @@ export default function ShopPage() {
           <p>{PROJECT_ILAW.summary}</p>
           <p>
             The shop is one way the church family can take part. Both items are
-            ₱499 each. Place your order here, then pay through the official
-            payment details published on this page once they are available.
+            ₱499 each. Orders are placed here when ordering is open, then paid
+            through the official payment details published on this page once
+            they are available.
           </p>
         </div>
-        <aside className="shop-status-card" aria-labelledby="shop-status-title">
-          <BadgeCheck size={38} strokeWidth={1.6} aria-hidden="true" />
-          <strong id="shop-status-title">Ordering is open</strong>
-          <p>{SHOP_STATUS.notice}</p>
+        <aside
+          className={`shop-status-card${
+            ordersEnabled ? "" : " shop-status-card-closed"
+          }`}
+          aria-labelledby="shop-status-title"
+        >
+          {ordersEnabled ? (
+            <BadgeCheck size={38} strokeWidth={1.6} aria-hidden="true" />
+          ) : (
+            <Clock size={38} strokeWidth={1.6} aria-hidden="true" />
+          )}
+          <strong id="shop-status-title">
+            {ordersEnabled ? "Ordering is open" : "Ordering is not open yet"}
+          </strong>
+          <p>
+            {ordersEnabled ? SHOP_STATUS.openNotice : SHOP_STATUS.closedNotice}
+          </p>
         </aside>
       </section>
 
@@ -63,11 +99,17 @@ export default function ShopPage() {
           </p>
         </div>
         <p className="shop-notice" role="note">
-          {SHOP_STATUS.catalogNotice}
+          {ordersEnabled
+            ? SHOP_STATUS.openCatalogNotice
+            : SHOP_STATUS.closedCatalogNotice}
         </p>
         <div className="merch-grid">
           {SHOP_ITEMS.map((item) => (
-            <MerchandiseCard item={item} key={item.id} />
+            <MerchandiseCard
+              item={item}
+              key={item.id}
+              ordersEnabled={ordersEnabled}
+            />
           ))}
         </div>
       </section>
@@ -118,11 +160,27 @@ export default function ShopPage() {
         <div className="public-section-heading">
           <h2 id="order-form-title">Place your order</h2>
           <p>
-            Add every item you need, then submit once. You will receive an order
-            reference to use in the payment section.
+            {ordersEnabled
+              ? "Add every item you need, then submit once. You will receive an order reference to use in the payment section."
+              : "This section opens only when the church authorizes Project Ilaw order intake."}
           </p>
         </div>
-        <OrderForm />
+        {ordersEnabled ? (
+          <OrderForm />
+        ) : (
+          <div className="order-closed" role="note">
+            <Clock size={30} aria-hidden="true" />
+            <h3>Ordering is not open yet</h3>
+            <p>
+              The church has not opened Project Ilaw order intake. No orders are
+              being accepted, and nothing can be submitted from this page until
+              ordering opens.
+            </p>
+            <p className="order-closed-note">
+              Please check back after the church announces the opening date.
+            </p>
+          </div>
+        )}
       </section>
 
       <section

@@ -10,6 +10,7 @@ import {
 import type { ProjectIlawSettings } from "../../features/fundraising/projectIlaw";
 
 const EMPTY_SETTINGS: ProjectIlawSettings = {
+  ordersEnabled: false,
   paymentsEnabled: false,
   gcashAccountName: "",
   gcashAccountNumber: "",
@@ -57,6 +58,7 @@ export default function ProjectIlawSettingsPanel() {
     setNotice("");
     try {
       const saved = await updateProjectIlawSettings({
+        ordersEnabled: settings.ordersEnabled,
         paymentsEnabled: settings.paymentsEnabled,
         gcashAccountName: settings.gcashAccountName.trim(),
         gcashAccountNumber: settings.gcashAccountNumber.trim(),
@@ -85,7 +87,7 @@ export default function ProjectIlawSettingsPanel() {
       <div className="pilaw-production-heading">
         <div className="pilaw-breakdown-heading">
           <Settings2 size={18} aria-hidden="true" />
-          <h2 id="pilaw-settings-title">Payment and production settings</h2>
+          <h2 id="pilaw-settings-title">Ordering, payment, and production settings</h2>
         </div>
         <div className="pilaw-production-actions">
           <Button variant="secondary" onClick={() => void load()} disabled={loading || saving}>
@@ -96,9 +98,10 @@ export default function ProjectIlawSettingsPanel() {
       </div>
 
       <p className="pilaw-production-note">
-        Payment details are configuration, not code. Payments stay disabled and
-        no account details are shown on the shop until official GCash or bank
-        details are supplied and saved here.
+        Ordering and payment details are separate controls. Public ordering stays
+        closed until it is explicitly enabled here, and payments stay disabled
+        with no account details shown until official GCash or bank details are
+        supplied and saved.
       </p>
 
       {loading ? (
@@ -185,6 +188,24 @@ export default function ProjectIlawSettingsPanel() {
               />
             </label>
           </div>
+
+          <label className="pilaw-settings-toggle">
+            <input
+              type="checkbox"
+              checked={settings.ordersEnabled}
+              onChange={(event) =>
+                update({ ordersEnabled: event.target.checked })
+              }
+              disabled={!canManage || saving}
+            />
+            <span>
+              <strong>Accept public orders</strong>
+              <small>
+                Open only when the church authorizes order intake. This does not
+                enable payment collection.
+              </small>
+            </span>
+          </label>
 
           <label className="pilaw-settings-toggle">
             <input

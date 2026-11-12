@@ -13,6 +13,7 @@ import type {
   ProjectIlawOrderItem,
   ProjectIlawPaymentContext,
   ProjectIlawPaymentInstructions,
+  ProjectIlawPublicSettings,
   ProjectIlawSettings,
 } from "./projectIlaw";
 
@@ -118,6 +119,7 @@ function mapInstructions(row: any): ProjectIlawPaymentInstructions {
 
 function mapSettings(row: any): ProjectIlawSettings {
   return {
+    ordersEnabled: row?.orders_enabled === true,
     paymentsEnabled: row?.payments_enabled === true,
     gcashAccountName: row?.gcash_account_name ?? "",
     gcashAccountNumber: row?.gcash_account_number ?? "",
@@ -408,10 +410,20 @@ export async function getProjectIlawSettings(): Promise<ProjectIlawSettings> {
   return mapSettings(data);
 }
 
+export async function getProjectIlawPublicSettings(): Promise<ProjectIlawPublicSettings> {
+  const { data, error } = await supabase.rpc("get_project_ilaw_public_settings");
+  if (error) throw error;
+  return {
+    ordersEnabled: data?.orders_enabled === true,
+    paymentsEnabled: data?.payments_enabled === true,
+  };
+}
+
 export async function updateProjectIlawSettings(
   input: Omit<ProjectIlawSettings, "updatedAt">,
 ): Promise<ProjectIlawSettings> {
   const { data, error } = await supabase.rpc("update_project_ilaw_settings", {
+    p_orders_enabled: input.ordersEnabled,
     p_payments_enabled: input.paymentsEnabled,
     p_gcash_account_name: input.gcashAccountName || null,
     p_gcash_account_number: input.gcashAccountNumber || null,
