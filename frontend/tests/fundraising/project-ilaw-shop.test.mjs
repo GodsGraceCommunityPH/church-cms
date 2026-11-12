@@ -451,11 +451,19 @@ test("the Give page keeps its details and uses the requested responsive layout",
   assert.match(css, /\.giving-grid \{[^}]*grid-template-columns: repeat\(2,/s);
   assert.match(
     css,
-    /\.giving-grid > \.qr-card \{ grid-column: 1 \/ -1; width: 100%; \}/,
+    /\.giving-grid > \.qr-card \{[^}]*grid-column: 1 \/ -1;[^}]*text-align: left;[^}]*width: 100%; \}/s,
   );
   assert.match(css, /\.qr-card \{[^}]*grid-template-columns: minmax/s);
   assert.match(
     css,
-    /@media \(max-width: 560px\) \{[\s\S]*\.qr-card \{ grid-template-columns: 1fr/s,
+    /\.giving-grid > \.qr-card img \{[^}]*width: 320px/s,
+  );
+  assert.match(
+    css,
+    /@media \(max-width: 560px\) \{[\s\S]*\.giving-grid > \.qr-card img \{[^}]*width: min\(100%,280px\)/s,
+  );
+  assert.match(
+    css,
+    /@media \(max-width: 560px\) \{[\s\S]*\.giving-grid > \.qr-card \{ grid-template-columns: 1fr; padding: 23px 20px; text-align: center; \}/s,
   );
 });
