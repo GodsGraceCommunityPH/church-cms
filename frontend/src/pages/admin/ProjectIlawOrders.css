@@ -1014,3 +1014,38 @@
   background: #1e40af;
   border-color: #1e40af;
 }
+
+/* Action column layout */
+.pilaw-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.pilaw-row-actions .ilaw-primary,
+.pilaw-row-actions .ilaw-secondary,
+.pilaw-row-actions button {
+  white-space: nowrap;
+}
+.pilaw-paid-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #166534;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pilaw-table th:last-child,
+.pilaw-table td:last-child {
+  position: sticky;
+  right: 0;
+  background: #ffffff;
+  z-index: 1;
+}
+.pilaw-table thead th:last-child {
+  background: #f9fafb;
+}
