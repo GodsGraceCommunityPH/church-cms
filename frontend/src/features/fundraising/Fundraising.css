@@ -488,6 +488,10 @@
   margin: 0;
 }
 
+.shop-order-step p + p {
+  margin-top: 8px;
+}
+
 .shop-payment-note {
   align-items: flex-start;
   color: #6b4a0c;

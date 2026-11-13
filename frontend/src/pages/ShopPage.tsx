@@ -139,7 +139,9 @@ export default function ShopPage() {
                   Step {index + 1}
                 </span>
                 <h3>{step.title}</h3>
-                <p>{step.description}</p>
+                {step.description.map((paragraph, paragraphIndex) => (
+                  <p key={paragraphIndex}>{paragraph}</p>
+                ))}
               </li>
             );
           })}
