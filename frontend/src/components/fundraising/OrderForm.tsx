@@ -2,11 +2,12 @@ import { useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import Modal from "../Modal";
 import OrderLineItemsEditor from "./OrderLineItemsEditor";
+import MerchandiseCard from "./MerchandiseCard";
 import { createProjectIlawOrder } from "../../features/fundraising/orderService";
 import {
   ORDER_FULFILMENT,
+  SHOP_ITEMS,
   calculateDraftTotals,
-  createDraftItem,
   createRequestId,
   formatPeso,
   getShopItem,
@@ -21,13 +22,13 @@ const EMPTY_DRAFT: OrderDraft = {
   customerName: "",
   mobile: "",
   notes: "",
-  items: [createDraftItem()],
+  items: [],
 };
 
 export default function OrderForm() {
   const [draft, setDraft] = useState<OrderDraft>(() => ({
     ...EMPTY_DRAFT,
-    items: [createDraftItem()],
+    items: [],
   }));
   const [errors, setErrors] = useState<string[]>([]);
   const [formError, setFormError] = useState("");
@@ -89,7 +90,7 @@ export default function OrderForm() {
         customerName: review.customerName,
         mobile: review.mobile,
       });
-      setDraft({ ...EMPTY_DRAFT, items: [createDraftItem()] });
+      setDraft({ ...EMPTY_DRAFT, items: [] });
       requestIdRef.current = createRequestId();
     } catch (error) {
       const message =
@@ -114,6 +115,24 @@ export default function OrderForm() {
   return (
     <>
       <form className="order-form" onSubmit={handleSubmit} noValidate>
+        <section className="order-form-section" aria-labelledby="merchandise-title">
+          <div className="order-form-section-heading">
+            <h3 id="merchandise-title">Merchandise</h3>
+            <p>Choose the product, colour, size and quantity right here. Add each selection to your order.</p>
+          </div>
+          <div className="merch-grid">
+            {SHOP_ITEMS.map((item) => (
+              <MerchandiseCard
+                item={item}
+                key={item.id}
+                ordersEnabled
+                disabled={submitting || draft.items.length >= 20}
+                onAddItem={(newItem) => updateDraft({ items: [...draft.items, newItem] })}
+              />
+            ))}
+          </div>
+          {draft.items.length >= 20 && <p className="order-form-error" role="status">An order can contain at most 20 line items.</p>}
+        </section>
         <div className="order-form-section">
           <div className="order-form-section-heading">
             <h3>Your details</h3>
