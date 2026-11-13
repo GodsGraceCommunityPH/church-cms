@@ -68,6 +68,8 @@ export interface ProjectIlawOrder {
   paymentRejectionReason: string;
   paymentConfirmedAt: string | null;
   paymentConfirmedBy: string | null;
+  paymentMethod: "gcash" | "cash" | null;
+  paymentAmountReceived: number | null;
   paymentNote: string;
   fulfillmentStatus: FulfillmentStatus;
   cancelledAt: string | null;

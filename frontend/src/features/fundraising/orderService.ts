@@ -93,6 +93,8 @@ function mapOrder(row: any): ProjectIlawOrder {
     paymentRejectionReason: row.payment_rejection_reason ?? "",
     paymentConfirmedAt: row.payment_confirmed_at,
     paymentConfirmedBy: row.payment_confirmed_by,
+    paymentMethod: row.payment_method ?? null,
+    paymentAmountReceived: row.payment_amount_received ?? null,
     paymentNote: row.payment_note ?? "",
     fulfillmentStatus: row.fulfillment_status as FulfillmentStatus,
     cancelledAt: row.cancelled_at,
@@ -314,6 +316,23 @@ export async function getPaymentEvidenceUrl(
 export async function confirmProjectIlawPayment(id: string, note: string) {
   const { data, error } = await supabase.rpc("confirm_project_ilaw_payment", {
     p_order_id: id,
+    p_note: note.trim() || null,
+  });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function recordProjectIlawCashPayment(
+  id: string,
+  amount: number,
+  note: string,
+  confirmedReceived: boolean,
+) {
+  const { data, error } = await supabase.rpc("record_project_ilaw_cash_payment", {
+    p_order_id: id,
+    p_amount: amount,
+    p_confirmed_received: confirmedReceived,
     p_note: note.trim() || null,
   });
 
