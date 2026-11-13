@@ -105,8 +105,9 @@ test("the eco bag is one size with maroon, green, and blue handles", async () =>
   const editor = await read(
     "../../src/components/fundraising/OrderLineItemsEditor.tsx",
   );
-  assert.doesNotMatch(editor, /One Size/);
-  assert.match(editor, /isEcoBag\(item\.productId\)/);
+  assert.match(editor, /order-cart-item-details/);
+  assert.match(editor, /Remove/);
+  assert.doesNotMatch(editor, /Select a product/);
 });
 
 test("the catalog renders the supplied mockup images without distortion", async () => {
@@ -169,14 +170,19 @@ test("public ordering is closed by default and gated by the server setting", asy
   assert.match(card, /ordersEnabled = false/);
   assert.match(card, /SHOP_STATUS\.closedLabel/);
 
-  // The public page reads the server switch and renders the order form only
-  // when ordering is open. The database still rejects submissions if the switch
-  // is off, so hiding the form is not the only control.
+  // Product cards remain visible for preview, while all ordering controls
+  // follow the server-side open/closed setting.
   assert.match(page, /getProjectIlawPublicSettings/);
   assert.match(page, /setOrdersEnabled\(settings\.ordersEnabled\)/);
-  assert.match(page, /ordersEnabled \? \(\s*<OrderForm \/>/s);
+  assert.match(page, /<OrderForm ordersEnabled=\{ordersEnabled\} \/>/);
+  assert.match(page, /id="how-to-order"[\s\S]*id="order-form"/);
+  assert.match(form, /ordersEnabled = true/);
+  assert.match(form, /ordersEnabled=\{ordersEnabled\}/);
+  assert.match(form, /disabled=\{!ordersEnabled/);
+  assert.match(card, /onAddItem/);
+  assert.match(card, /Add to order/);
+  assert.match(card, /Choose size/);
   assert.match(page, /Ordering is not open yet/);
-  assert.match(form, /not open/i);
   assert.match(form, /Your order was not saved/);
 });
 
