@@ -20,7 +20,11 @@ const GROUPS = [
   },
   {
     label: "Church Operations",
-    items: ["/admin/events", "/admin/equipment", "/admin/project-ilaw-orders"],
+    items: ["/admin/events", "/admin/equipment"],
+  },
+  {
+    label: "Project Ilaw",
+    items: ["/admin/project-ilaw-orders", "/admin/project-ilaw-items"],
   },
   {
     label: "Content & Resources",
@@ -36,7 +40,7 @@ function groupSource(sidebar, label) {
   return sidebar.slice(start, end);
 }
 
-test("sidebar renders the four collapsible navigation groups with their children", async () => {
+test("sidebar renders the collapsible navigation groups with their children", async () => {
   const sidebar = await read("../../src/components/admin/Sidebar.tsx");
   for (const group of GROUPS) {
     const source = groupSource(sidebar, group.label);
@@ -59,6 +63,7 @@ test("sidebar preserves every existing navigation route", async () => {
     "/admin/events",
     "/admin/equipment",
     "/admin/project-ilaw-orders",
+    "/admin/project-ilaw-items",
     "/admin/resources",
     "/admin/worship-messages",
     "/admin/church-life",

@@ -53,6 +53,7 @@ import UserManagement from "./pages/admin/UserManagement";
 import MemberRegistrationReviews from "./pages/admin/MemberRegistrationReviews";
 import ResourceForm from "./pages/admin/ResourceForm";
 import ResourceDetail from "./pages/admin/ResourceDetail";
+import ProjectIlawItems from "./pages/admin/ProjectIlawItems";
 import ProjectIlawOrders from "./pages/admin/ProjectIlawOrders";
 import ProjectIlawOrderDetail from "./pages/admin/ProjectIlawOrderDetail";
 import {
@@ -126,6 +127,12 @@ function App() {
           <Route
             path="/admin/project-ilaw-orders/:id"
             element={<ProjectIlawOrderDetail />}
+          />
+        </Route>
+        <Route element={<PermissionRoute permission="project_ilaw.production.view" />}>
+          <Route
+            path="/admin/project-ilaw-items"
+            element={<ProjectIlawItems />}
           />
         </Route>
         <Route element={<PermissionRoute permission="evangelism.view" />}>

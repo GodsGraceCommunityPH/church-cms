@@ -93,11 +93,24 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "Events", to: "/admin/events", icon: CalendarDays, permission: "events.view" },
       { label: "Equipment", to: "/admin/equipment", icon: Package, permission: "equipment.view" },
+    ],
+  },
+  {
+    key: "project-ilaw",
+    label: "Project Ilaw",
+    icon: ShoppingBag,
+    items: [
       {
-        label: "Project Ilaw Orders",
+        label: "Order Management",
         to: "/admin/project-ilaw-orders",
         icon: ShoppingBag,
         permission: "project_ilaw.orders.view",
+      },
+      {
+        label: "Item Management",
+        to: "/admin/project-ilaw-items",
+        icon: Package,
+        permission: "project_ilaw.production.view",
       },
     ],
   },
