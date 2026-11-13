@@ -32,6 +32,7 @@ export default function OrderForm({ ordersEnabled = true }: { ordersEnabled?: bo
   const [errors, setErrors] = useState<string[]>([]);
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"gcash" | "cash">("gcash");
   const [review, setReview] = useState<OrderDraftValidation | null>(null);
   const [confirmation, setConfirmation] =
     useState<CreatedProjectIlawOrder | null>(null);
@@ -78,6 +79,7 @@ export default function OrderForm({ ordersEnabled = true }: { ordersEnabled?: bo
         mobile: review.mobile,
         notes: review.notes,
         items: review.items,
+        paymentMethod,
       });
 
       setReview(null);
@@ -292,6 +294,13 @@ export default function OrderForm({ ordersEnabled = true }: { ordersEnabled?: bo
             </div>
 
             <div className="order-review-section">
+              <h4>Payment method</h4>
+              <label><input type="radio" name="project-ilaw-payment-method" value="gcash" checked={paymentMethod === "gcash"} onChange={() => setPaymentMethod("gcash")} disabled={submitting} /> GCash</label>
+              <label><input type="radio" name="project-ilaw-payment-method" value="cash" checked={paymentMethod === "cash"} onChange={() => setPaymentMethod("cash")} disabled={submitting} /> I will pay cash</label>
+              <p>{paymentMethod === "gcash" ? "You will submit your GCash transaction reference and receipt for manual verification after your order is saved." : "Your order will remain Awaiting Payment until authorized church staff physically receive and record your cash payment."}</p>
+            </div>
+
+            <div className="order-review-section">
               <h4>{ORDER_FULFILMENT.label}</h4>
               <p>
                 <strong>{ORDER_FULFILMENT.method}</strong>
@@ -330,8 +339,9 @@ export default function OrderForm({ ordersEnabled = true }: { ordersEnabled?: bo
           <div className="order-confirmation">
             <p>Thank you for supporting Project Ilaw!</p>
             <p>
-              Your order has been saved. To pay, open the payment section and
-              enter this reference with the mobile number you used.
+              {paymentMethod === "cash"
+                ? "Your order has been saved. You chose to pay in cash at church. Please present your order reference to authorized church staff when you pay."
+                : "Your order has been saved. Open the payment section and enter this reference with the mobile number you used to submit your GCash payment."}
             </p>
             <div className="order-confirmation-reference">
               <span>Order reference</span>
@@ -340,38 +350,50 @@ export default function OrderForm({ ordersEnabled = true }: { ordersEnabled?: bo
               <strong>{formatPeso(confirmation.totalAmount)}</strong>
             </div>
             <div className="order-confirmation-actions">
-              <button
-                type="button"
-                className="ilaw-primary"
-                onClick={() => {
-                  closeConfirmation();
-                  if (paymentSeed) {
-                    navigate("/shop", {
-                      state: { projectIlawPayment: paymentSeed },
-                    });
-                    return;
-                  }
-                  window.setTimeout(() => {
-                    document
-                      .getElementById("pay-order")
-                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                  }, 0);
-                }}
-              >
-                Go to payment
-              </button>
-              <button
-                type="button"
-                className="ilaw-secondary"
-                onClick={closeConfirmation}
-              >
-                Close
-              </button>
+              {paymentMethod === "cash" ? (
+                <button
+                  type="button"
+                  className="ilaw-primary"
+                  onClick={closeConfirmation}
+                >
+                  Pay cash at church
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="ilaw-primary"
+                    onClick={() => {
+                      closeConfirmation();
+                      if (paymentSeed) {
+                        navigate("/shop", {
+                          state: { projectIlawPayment: paymentSeed },
+                        });
+                        return;
+                      }
+                      window.setTimeout(() => {
+                        document
+                          .getElementById("pay-order")
+                          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }, 0);
+                    }}
+                  >
+                    Go to payment
+                  </button>
+                  <button
+                    type="button"
+                    className="ilaw-secondary"
+                    onClick={closeConfirmation}
+                  >
+                    Close
+                  </button>
+                </>
+              )}
             </div>
             <p className="order-confirmation-hint">
-              Keep your reference. Payment is completed separately. Payment
-              instructions, including the GCash InstaPay QR, appear once the
-              church enables payments. Orders are collected at church.
+              {paymentMethod === "cash"
+                ? "Your order is still Awaiting Payment. It will only be marked Paid after authorized church staff receive your cash and record the payment. Keep your order reference and present it when paying. Orders are collected at church."
+                : "Keep your reference. Submit your GCash transaction reference and receipt for manual verification. Orders are collected at church."}
             </p>
           </div>
         )}
