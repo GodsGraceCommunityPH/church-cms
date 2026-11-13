@@ -196,6 +196,14 @@ export interface ProjectIlawPaymentContext {
   instructions: ProjectIlawPaymentInstructions;
 }
 
+// Order context carried from an order confirmation into the payment step so
+// the customer does not have to re-enter their details before paying.
+export interface ProjectIlawPaymentSeed {
+  reference: string;
+  customerName: string;
+  mobile: string;
+}
+
 export interface ProjectIlawSettings {
   ordersEnabled: boolean;
   paymentsEnabled: boolean;

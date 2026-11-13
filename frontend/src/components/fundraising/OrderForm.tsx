@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import Modal from "../Modal";
 import OrderLineItemsEditor from "./OrderLineItemsEditor";
 import { createProjectIlawOrder } from "../../features/fundraising/orderService";
@@ -13,6 +14,7 @@ import {
   type CreatedProjectIlawOrder,
   type OrderDraft,
   type OrderDraftValidation,
+  type ProjectIlawPaymentSeed,
 } from "../../features/fundraising/projectIlaw";
 
 const EMPTY_DRAFT: OrderDraft = {
@@ -33,6 +35,10 @@ export default function OrderForm() {
   const [review, setReview] = useState<OrderDraftValidation | null>(null);
   const [confirmation, setConfirmation] =
     useState<CreatedProjectIlawOrder | null>(null);
+  const [paymentSeed, setPaymentSeed] = useState<ProjectIlawPaymentSeed | null>(
+    null,
+  );
+  const navigate = useNavigate();
   const requestIdRef = useRef(createRequestId());
 
   const totals = calculateDraftTotals(draft.items);
@@ -78,6 +84,11 @@ export default function OrderForm() {
 
       setReview(null);
       setConfirmation(created);
+      setPaymentSeed({
+        reference: created.reference,
+        customerName: review.customerName,
+        mobile: review.mobile,
+      });
       setDraft({ ...EMPTY_DRAFT, items: [createDraftItem()] });
       requestIdRef.current = createRequestId();
     } catch (error) {
@@ -417,6 +428,12 @@ export default function OrderForm() {
                 className="ilaw-primary"
                 onClick={() => {
                   closeConfirmation();
+                  if (paymentSeed) {
+                    navigate("/shop", {
+                      state: { projectIlawPayment: paymentSeed },
+                    });
+                    return;
+                  }
                   window.setTimeout(() => {
                     document
                       .getElementById("pay-order")

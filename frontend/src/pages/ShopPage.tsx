@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   BadgeCheck,
   ClipboardList,
@@ -17,6 +18,7 @@ import {
   PROJECT_ILAW,
   SHOP_ITEMS,
   SHOP_STATUS,
+  type ProjectIlawPaymentSeed,
 } from "../features/fundraising/projectIlaw";
 import { getProjectIlawPublicSettings } from "../features/fundraising/orderService";
 import "../features/fundraising/Fundraising.css";
@@ -33,6 +35,10 @@ export default function ShopPage() {
   const [ordersEnabled, setOrdersEnabled] = useState<boolean>(
     SHOP_STATUS.defaultOrdersEnabled,
   );
+  const location = useLocation();
+  const paymentSeed =
+    (location.state as { projectIlawPayment?: ProjectIlawPaymentSeed } | null)
+      ?.projectIlawPayment ?? null;
 
   useEffect(() => {
     let active = true;
@@ -197,7 +203,7 @@ export default function ShopPage() {
             submit your transaction details.
           </p>
         </div>
-        <PaymentPanel />
+        <PaymentPanel initialOrder={paymentSeed} />
       </section>
     </PublicPage>
   );
