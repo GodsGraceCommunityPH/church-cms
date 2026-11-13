@@ -509,7 +509,6 @@ export default function ProjectIlawItems() {
                       <th scope="col">Processing</th>
                       <th scope="col">Manufacturing</th>
                       <th scope="col">Completed</th>
-                      {canManage && <th scope="col">Actions</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -523,35 +522,6 @@ export default function ProjectIlawItems() {
                         <td>{v.processing_qty}</td>
                         <td>{v.manufacturing_qty}</td>
                         <td>{v.completed_qty}</td>
-                        {canManage && (
-                          <td>
-                            <div className="pilaw-row-actions">
-                              <Button
-                                variant="secondary"
-                                onClick={() => {
-                                  setMoveVariant(v);
-                                  setMoveQty("");
-                                  setMoveFrom("pending");
-                                  setMoveTo("processing");
-                                  setMoveReason("");
-                                }}
-                              >
-                                Move
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                onClick={() => {
-                                  setAdjustVariant(v);
-                                  setAdjustQty("");
-                                  setAdjustReason("");
-                                  setAdjustMode("add");
-                                }}
-                              >
-                                Adjust
-                              </Button>
-                            </div>
-                          </td>
-                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -596,18 +566,33 @@ export default function ProjectIlawItems() {
                           <td>{v.manufacturing_qty}</td>
                           <td>{v.completed_qty}</td>
                           <td>
-                            <Button
-                              variant="secondary"
-                              onClick={() => {
-                                setMoveVariant(v);
-                                setMoveQty("");
-                                setMoveFrom("pending");
-                                setMoveTo("processing");
-                                setMoveReason("");
-                              }}
-                            >
-                              Move Quantities
-                            </Button>
+                            <div className="pilaw-row-actions">
+                              <Button
+                                variant="secondary"
+                                onClick={() => {
+                                  setMoveVariant(v);
+                                  setMoveQty("");
+                                  setMoveFrom("pending");
+                                  setMoveTo("processing");
+                                  setMoveReason("");
+                                }}
+                              >
+                                Move Quantities
+                              </Button>
+                              {canManage && (
+                                <Button
+                                  variant="secondary"
+                                  onClick={() => {
+                                    setAdjustVariant(v);
+                                    setAdjustQty("");
+                                    setAdjustReason("");
+                                    setAdjustMode("add");
+                                  }}
+                                >
+                                  Adjust
+                                </Button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
