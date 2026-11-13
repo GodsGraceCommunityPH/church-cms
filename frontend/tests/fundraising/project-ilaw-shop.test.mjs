@@ -186,16 +186,16 @@ test("the ordering process keeps the website payment steps in order", () => {
     [
       "Choose your items",
       "Submit your order",
-      "Pay through the website",
-      "Submit your payment details",
-      "Wait for verification",
+      "Check your payment options",
+      "Complete your payment",
+      "Wait for confirmation",
     ],
   );
 
   const content = JSON.stringify(ORDER_STEPS);
   assert.doesNotMatch(content, /messenger|bryan/i);
   assert.match(content, /transaction reference/i);
-  assert.match(content, /never marked paid automatically/i);
+  assert.match(content, /only be marked as paid after confirmation/i);
 });
 
 test("draft validation enforces required fields, quantities, sizes, and colours", () => {

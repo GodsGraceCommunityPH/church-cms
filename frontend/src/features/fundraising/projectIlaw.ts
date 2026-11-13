@@ -310,27 +310,27 @@ export const ORDER_STEPS: OrderStep[] = [
   {
     title: "Choose your items",
     description:
-      "Pick the T-shirt or eco bag, choose a size and colour for each item, and set the quantity.",
+      "Piliin kung T-shirt o eco bag ang o-orderin mo. Select your preferred size and colour, then enter the quantity.",
   },
   {
     title: "Submit your order",
     description:
-      "Enter your name and mobile number. Your order is saved with a unique reference number.",
+      "Ilagay ang iyong name at mobile number. Once submitted, may unique order reference kang matatanggap.",
   },
   {
-    title: "Pay through the website",
+    title: "Check your payment options",
     description:
-      "Open the payment section, enter your reference and mobile number, and use the official GCash or bank details shown once they are configured.",
+      "Gamitin ang iyong order reference at mobile number para makita ang payment instructions. Choose between GCash or Cash, depending on your preferred payment method.",
   },
   {
-    title: "Submit your payment details",
+    title: "Complete your payment",
     description:
-      "Enter the transaction reference from your receipt and upload a screenshot of the payment through the website.",
+      "GCash: Magbayad using the official payment details, then enter your transaction reference and upload a screenshot of your receipt. Cash: Piliin ang cash payment option. Our team will record your payment once the cash has been received.",
   },
   {
-    title: "Wait for verification",
+    title: "Wait for confirmation",
     description:
-      "The Project Ilaw team verifies the actual transaction and manually confirms your payment. Your order is never marked paid automatically.",
+      "For GCash, ibe-verify ng Project Ilaw team ang iyong transaction. For Cash, our team will confirm once payment has been received. Your order will only be marked as paid after confirmation.",
   },
 ];
 
