@@ -156,21 +156,17 @@ export default function ShopPage() {
           </p>
         </div>
         <OrderForm ordersEnabled={ordersEnabled} />
-      </section>
 
-      <section
-        className="public-section"
-        id="payment"
-        aria-labelledby="payment-title"
-      >
-        <div className="public-section-heading">
-          <h2 id="payment-title">Payment</h2>
-          <p>
-            Find your order with your reference and mobile number, then pay and
-            submit your transaction details.
-          </p>
+        <div className="shop-payment-inline" id="payment">
+          <div className="public-section-heading">
+            <h2 id="payment-title">Payment</h2>
+            <p>
+              Already placed an order? Find it here using the name and mobile
+              number you provided, then complete your payment.
+            </p>
+          </div>
+          <PaymentPanel initialOrder={paymentSeed} />
         </div>
-        <PaymentPanel initialOrder={paymentSeed} />
       </section>
     </PublicPage>
   );
