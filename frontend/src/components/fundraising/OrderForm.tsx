@@ -25,7 +25,7 @@ const EMPTY_DRAFT: OrderDraft = {
   items: [],
 };
 
-export default function OrderForm() {
+export default function OrderForm({ ordersEnabled = true }: { ordersEnabled?: boolean }) {
   const [draft, setDraft] = useState<OrderDraft>(() => ({
     ...EMPTY_DRAFT,
     items: [],
@@ -125,8 +125,8 @@ export default function OrderForm() {
               <MerchandiseCard
                 item={item}
                 key={item.id}
-                ordersEnabled
-                disabled={submitting || draft.items.length >= 20}
+                ordersEnabled={ordersEnabled}
+                disabled={!ordersEnabled || submitting || draft.items.length >= 20}
                 onAddItem={(newItem) => updateDraft({ items: [...draft.items, newItem] })}
               />
             ))}
@@ -147,6 +147,7 @@ export default function OrderForm() {
                 autoComplete="name"
                 maxLength={120}
                 required
+                disabled={!ordersEnabled}
                 value={draft.customerName}
                 onChange={(event) =>
                   updateDraft({ customerName: event.target.value })
@@ -162,6 +163,7 @@ export default function OrderForm() {
                 autoComplete="tel"
                 maxLength={32}
                 required
+                disabled={!ordersEnabled}
                 placeholder="09XX XXX XXXX"
                 value={draft.mobile}
                 onChange={(event) => updateDraft({ mobile: event.target.value })}
@@ -173,6 +175,7 @@ export default function OrderForm() {
                 id="order-notes"
                 rows={3}
                 maxLength={1000}
+                disabled={!ordersEnabled}
                 placeholder="Anything we should know about your order?"
                 value={draft.notes}
                 onChange={(event) => updateDraft({ notes: event.target.value })}
@@ -185,7 +188,7 @@ export default function OrderForm() {
           idPrefix="public-order"
           items={draft.items}
           onChange={(items) => updateDraft({ items })}
-          disabled={submitting}
+          disabled={!ordersEnabled || submitting}
         />
 
         <div className="order-summary" aria-labelledby="order-summary-title">
@@ -313,7 +316,7 @@ export default function OrderForm() {
             for pickup at church, and payment is completed separately after your
             order reference is issued.
           </p>
-          <button type="submit" className="ilaw-primary" disabled={submitting}>
+          <button type="submit" className="ilaw-primary" disabled={!ordersEnabled || submitting}>
             Review order
           </button>
         </div>
