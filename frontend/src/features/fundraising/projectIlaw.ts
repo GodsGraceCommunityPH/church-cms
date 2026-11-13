@@ -368,7 +368,7 @@ export const ORDER_FULFILMENT = {
 // The confirmed GCash InstaPay QR is a public asset. It is the payment
 // destination only; it never confirms a payment automatically.
 export const PAYMENT_QR = {
-  src: "/images/fundraising/gcash-instapay-qr.jpg",
+  src: "/images/fundraising/gcash-instapay-qr.png",
   label: "GCash (InstaPay QR)",
   notice: "Transfer fees may apply.",
   alt: "GCash InstaPay QR code for Project Ilaw payments",
