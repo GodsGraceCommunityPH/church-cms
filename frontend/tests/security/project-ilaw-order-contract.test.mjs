@@ -1131,5 +1131,5 @@ test("the order management page no longer renders the settings panel", async () 
   const page = await read("../../src/pages/admin/ProjectIlawOrders.tsx");
 
   assert.doesNotMatch(page, /ProjectIlawSettingsPanel/);
-  assert.match(page, /ProductionReportPanel/);
+  assert.doesNotMatch(page, /ProductionReportPanel/);
 });

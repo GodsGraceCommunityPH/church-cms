@@ -784,18 +784,17 @@ test("the Give page keeps its details and uses the requested responsive layout",
     /@media \(max-width: 560px\) \{[\s\S]*\.giving-grid > \.qr-card \{ grid-template-columns: 1fr; padding: 23px 20px; text-align: center; \}/s,
   );
 });
-test("order management puts search before summary cards and keeps the report", async () => {
+test("order management puts search before summary cards and hides production reports", async () => {
   const page = await read("../../src/pages/admin/ProjectIlawOrders.tsx");
 
   const searchIndex = page.indexOf('aria-label="Order search"');
   const summaryIndex = page.indexOf('aria-label="Order summary"');
-  const reportIndex = page.indexOf("<ProductionReportPanel");
 
   assert.ok(searchIndex !== -1, "prominent search panel is required");
   assert.ok(summaryIndex !== -1, "summary cards are required");
-  assert.ok(reportIndex !== -1, "production report is required");
   assert.ok(searchIndex < summaryIndex, "search must precede summary cards");
-  assert.ok(summaryIndex < reportIndex, "production report stays last");
+  assert.doesNotMatch(page, /<ProductionReportPanel/);
+  assert.doesNotMatch(page, /pilaw-breakdown/);
 });
 
 test("order detail offers a cash recording action with an explicit receipt confirmation", async () => {
