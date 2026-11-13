@@ -20,7 +20,7 @@ declare
   staff_permissions text[];
   admin_permission_count integer;
   unexpected_role_count integer;
-  table_name text;
+  checked_table text;
   settings_row public.project_ilaw_settings%rowtype;
 begin
   select array_agg(expected.code order by expected.code) into missing_permissions
@@ -79,7 +79,7 @@ begin
       unexpected_role_count;
   end if;
 
-  foreach table_name in array array[
+  foreach checked_table in array array[
     'project_ilaw_orders',
     'project_ilaw_order_items',
     'project_ilaw_order_events',
@@ -90,24 +90,24 @@ begin
       from pg_class relation
       join pg_namespace namespace on namespace.oid = relation.relnamespace
       where namespace.nspname = 'public'
-        and relation.relname = table_name
+        and relation.relname = checked_table
         and relation.relrowsecurity
     ) then
-      raise exception 'RLS is not enabled on public.%', table_name;
+      raise exception 'RLS is not enabled on public.%', checked_table;
     end if;
 
-    if has_table_privilege('anon', format('public.%I', table_name), 'select') then
-      raise exception 'anon must not be able to read public.%', table_name;
+    if has_table_privilege('anon', format('public.%I', checked_table), 'select') then
+      raise exception 'anon must not be able to read public.%', checked_table;
     end if;
 
-    if has_table_privilege('authenticated', format('public.%I', table_name), 'insert')
-       or has_table_privilege('authenticated', format('public.%I', table_name), 'update')
-       or has_table_privilege('authenticated', format('public.%I', table_name), 'delete') then
-      raise exception 'authenticated must not write public.% directly', table_name;
+    if has_table_privilege('authenticated', format('public.%I', checked_table), 'insert')
+       or has_table_privilege('authenticated', format('public.%I', checked_table), 'update')
+       or has_table_privilege('authenticated', format('public.%I', checked_table), 'delete') then
+      raise exception 'authenticated must not write public.% directly', checked_table;
     end if;
 
-    if not has_table_privilege('authenticated', format('public.%I', table_name), 'select') then
-      raise exception 'authenticated must be able to select public.% through RLS', table_name;
+    if not has_table_privilege('authenticated', format('public.%I', checked_table), 'select') then
+      raise exception 'authenticated must be able to select public.% through RLS', checked_table;
     end if;
   end loop;
 

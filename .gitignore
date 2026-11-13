@@ -3,3 +3,6 @@ vite-local.log
 
 # Workspace-specific editor settings
 .vscode/
+
+# Supabase CLI local state
+supabase/.temp/
