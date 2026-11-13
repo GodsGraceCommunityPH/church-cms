@@ -166,9 +166,14 @@ export default function OrderLineItemsEditor({
                   />
                 </div>
 
-                <div className="order-line-price">
+              </div>
+
+              <div className="order-line-pricing">
+                <div className="order-line-price-row">
                   <span>Unit price</span>
                   <strong>{formatPeso(product?.price ?? 499)}</strong>
+                </div>
+                <div className="order-line-price-row order-line-price-total">
                   <span>Line total</span>
                   <strong>{formatPeso(lineTotal)}</strong>
                 </div>

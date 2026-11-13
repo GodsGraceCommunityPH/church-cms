@@ -123,9 +123,8 @@ export default function ShopPage() {
         <div className="public-section-heading">
           <h2 id="how-to-order-title">How to Order</h2>
           <p>
-            Orders are saved here first. Payment is completed through the
-            website using the official GCash or bank details once they are
-            published.
+            Sundin ang limang steps na ito para makapag-order at makumpleto ang
+            payment mo.
           </p>
         </div>
         <ol className="shop-order-steps">
