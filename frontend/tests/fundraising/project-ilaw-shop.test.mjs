@@ -99,8 +99,9 @@ test("the eco bag is one size with maroon, green, and blue handles", async () =>
   const card = await read(
     "../../src/components/fundraising/MerchandiseCard.tsx",
   );
-  assert.match(card, /merch-chips/);
-  assert.match(card, /item\.sizes\.map/);
+  assert.match(card, /Choose size/);
+  assert.match(card, /item\.colors\.map/);
+  assert.match(card, /One Size/);
 
   const editor = await read(
     "../../src/components/fundraising/OrderLineItemsEditor.tsx",
