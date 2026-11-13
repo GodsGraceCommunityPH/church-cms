@@ -185,6 +185,7 @@ export interface CreateOrderInput {
   mobile: string;
   notes: string;
   items: NormalizedOrderItem[];
+  paymentMethod: "gcash" | "cash";
 }
 
 export async function createProjectIlawOrder(
@@ -196,6 +197,7 @@ export async function createProjectIlawOrder(
     p_mobile: input.mobile,
     p_notes: input.notes || null,
     p_items: input.items,
+    p_payment_method: input.paymentMethod,
   });
 
   if (error) throw error;
