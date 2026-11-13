@@ -414,6 +414,30 @@ test("the confirmation dialog only appears after a successful save and routes to
   assert.doesNotMatch(form, /bryan/i);
 });
 
+test("the order confirmation carries the created order into the payment step", async () => {
+  const form = await read("../../src/components/fundraising/OrderForm.tsx");
+  const page = await read("../../src/pages/ShopPage.tsx");
+  const panel = await read("../../src/components/fundraising/PaymentPanel.tsx");
+
+  // The confirmation seeds the payment step with the just-created order.
+  assert.match(form, /setPaymentSeed\(/);
+  assert.match(form, /setConfirmation\(created\)/);
+  assert.match(
+    form,
+    /navigate\("\/shop", \{\s*state: \{ projectIlawPayment: paymentSeed \},?\s*\}\)/,
+  );
+
+  // The shop page forwards the carried order into the payment panel.
+  assert.match(page, /location\.state/);
+  assert.match(page, /initialOrder=\{paymentSeed\}/);
+
+  // The payment panel opens the carried order automatically, securely, via the
+  // existing name plus mobile lookup, without asking the customer to retype.
+  assert.match(panel, /initialOrder\?: ProjectIlawPaymentSeed \| null/);
+  assert.match(panel, /\[initialOrder\]/);
+  assert.match(panel, /openOrder\(initialOrder\.reference, initialOrder\.mobile\)/);
+});
+
 test("the public order form captures colours and the payment section is present", async () => {
   const form = await read("../../src/components/fundraising/OrderForm.tsx");
   const editor = await read(

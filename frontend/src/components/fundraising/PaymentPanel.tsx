@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Modal from "../Modal";
 import {
   CUSTOMER_FULFILLMENT_STATUS_LABELS,
@@ -7,6 +7,7 @@ import {
   PAYMENT_QR,
   formatPeso,
   type ProjectIlawPaymentContext,
+  type ProjectIlawPaymentSeed,
 } from "../../features/fundraising/projectIlaw";
 import {
   getProjectIlawPaymentContext,
@@ -18,7 +19,11 @@ import {
 const ACCEPTED_EVIDENCE = "image/jpeg,image/png,image/webp,application/pdf";
 const MAX_EVIDENCE_BYTES = 5 * 1024 * 1024;
 
-export default function PaymentPanel() {
+export default function PaymentPanel({
+  initialOrder = null,
+}: {
+  initialOrder?: ProjectIlawPaymentSeed | null;
+}) {
   const [customerName, setCustomerName] = useState("");
   const [mobile, setMobile] = useState("");
   const [matches, setMatches] = useState<
@@ -36,6 +41,16 @@ export default function PaymentPanel() {
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState("");
   const [qrOpen, setQrOpen] = useState(false);
+
+  useEffect(() => {
+    if (!initialOrder) return;
+    setCustomerName(initialOrder.customerName);
+    setMobile(initialOrder.mobile);
+    void openOrder(initialOrder.reference, initialOrder.mobile);
+    // Automatically open the order carried from an order confirmation so the
+    // customer can pay without re-entering their details.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialOrder]);
 
   async function lookup(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
@@ -70,13 +85,14 @@ export default function PaymentPanel() {
     }
   }
 
-  async function openOrder(orderReference: string) {
+  async function openOrder(orderReference: string, orderMobile?: string) {
+    const lookupMobile = orderMobile ?? mobile;
     setLookupLoading(true);
     setLookupError("");
     setSubmitError("");
     setNotice("");
     try {
-      const next = await getProjectIlawPaymentContext(orderReference, mobile);
+      const next = await getProjectIlawPaymentContext(orderReference, lookupMobile);
       setContext(next);
       setPaymentReference(next.paymentReference);
       setEvidence(null);
