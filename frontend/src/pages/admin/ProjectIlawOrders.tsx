@@ -182,8 +182,11 @@ export default function ProjectIlawOrders() {
       setCashNote("");
       setNotice("Cash payment recorded. The order is now paid.");
       await load();
-    } catch {
-      setError("Cash payment could not be recorded. Refresh and try again.");
+    } catch (error) {
+      const message =
+        (error as { message?: string } | null)?.message ||
+        "Cash payment could not be recorded. Refresh and try again.";
+      setError(message);
     } finally {
       setCashBusy(false);
     }

@@ -186,9 +186,10 @@ export default function ProjectIlawOrderDetail() {
       await action();
     } catch (error) {
       setActionError(
-        error instanceof Error
-          ? error.message
-          : "That change could not be saved. Refresh the order and try again.",
+        (error as { message?: string } | null)?.message ||
+          (error instanceof Error
+            ? error.message
+            : "That change could not be saved. Refresh the order and try again."),
       );
     } finally {
       setBusy("");
