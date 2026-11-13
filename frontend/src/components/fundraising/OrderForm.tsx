@@ -32,6 +32,7 @@ export default function OrderForm({ ordersEnabled = true }: { ordersEnabled?: bo
   const [errors, setErrors] = useState<string[]>([]);
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"gcash" | "cash">("gcash");
   const [review, setReview] = useState<OrderDraftValidation | null>(null);
   const [confirmation, setConfirmation] =
     useState<CreatedProjectIlawOrder | null>(null);
@@ -78,6 +79,7 @@ export default function OrderForm({ ordersEnabled = true }: { ordersEnabled?: bo
         mobile: review.mobile,
         notes: review.notes,
         items: review.items,
+        paymentMethod,
       });
 
       setReview(null);
@@ -289,6 +291,13 @@ export default function OrderForm({ ordersEnabled = true }: { ordersEnabled?: bo
                 <span>Total quantity: {review.totalQuantity}</span>
                 <strong>Total: {formatPeso(review.totalAmount)}</strong>
               </div>
+            </div>
+
+            <div className="order-review-section">
+              <h4>Payment method</h4>
+              <label><input type="radio" name="project-ilaw-payment-method" value="gcash" checked={paymentMethod === "gcash"} onChange={() => setPaymentMethod("gcash")} disabled={submitting} /> GCash</label>
+              <label><input type="radio" name="project-ilaw-payment-method" value="cash" checked={paymentMethod === "cash"} onChange={() => setPaymentMethod("cash")} disabled={submitting} /> I will pay cash</label>
+              <p>{paymentMethod === "gcash" ? "You will submit your GCash transaction reference and receipt for manual verification after your order is saved." : "Your order will remain Awaiting Payment until authorized church staff physically receive and record your cash payment."}</p>
             </div>
 
             <div className="order-review-section">
