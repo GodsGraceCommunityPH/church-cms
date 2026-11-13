@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCcw } from "lucide-react";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Modal from "../../components/Modal";
 import Select from "../../components/ui/Select";
 import { useAuth } from "../../features/auth/auth";
-
 import {
   adjustProjectIlawProduction,
   getProjectIlawProductionHistory,
@@ -19,7 +18,6 @@ import {
 import "./ProjectIlawOrders.css";
 
 type Tab = "overview" | "products" | "queue" | "history";
-
 const STAGES = ["pending", "processing", "manufacturing", "completed"] as const;
 const STAGE_LABELS: Record<string, string> = {
   pending: "Pending",
@@ -27,6 +25,19 @@ const STAGE_LABELS: Record<string, string> = {
   manufacturing: "Printing / Manufacturing",
   completed: "Completed",
 };
+
+const TSHIRT_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL"];
+const TSHIRT_COLORS = ["Black", "White", "Maroon", "Green", "Blue"];
+const ECOBAG_COLORS = ["Maroon", "Green", "Blue"];
+const MOVEMENT_TYPES = [
+  "forward",
+  "backward",
+  "auto_add",
+  "auto_deduct",
+  "manual_add",
+  "manual_remove",
+  "review_adjustment",
+];
 
 interface Variant {
   variant_id: string;
@@ -57,6 +68,11 @@ interface Movement {
   created_at: string;
 }
 
+const productLabel = (pt: string) =>
+  pt === "t_shirt" ? "Project Ilaw T-shirt" : "Project Ilaw Eco Bag";
+
+
+
 export default function ProjectIlawItems() {
   const { hasPermission } = useAuth();
   const canView = hasPermission("project_ilaw.production.view");
@@ -71,17 +87,31 @@ export default function ProjectIlawItems() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Move dialog state.
+  // Product filters.
+  const [filterProduct, setFilterProduct] = useState("all");
+  const [filterSize, setFilterSize] = useState("all");
+  const [filterColor, setFilterColor] = useState("all");
+  const [showZero, setShowZero] = useState(false);
+  const [showAllVariants, setShowAllVariants] = useState(false);
+
+  // History filters.
+  const [histProduct, setHistProduct] = useState("all");
+  const [histType, setHistType] = useState("all");
+  const [histFrom, setHistFrom] = useState("");
+  const [histTo, setHistTo] = useState("");
+
+  // Move dialog.
   const [moveVariant, setMoveVariant] = useState<Variant | null>(null);
   const [moveQty, setMoveQty] = useState("");
-  const [moveFrom, setMoveFrom] = useState("pending");
-  const [moveTo, setMoveTo] = useState("processing");
+  const [moveFrom, setMoveFrom] = useState<string>("pending");
+  const [moveTo, setMoveTo] = useState<string>("processing");
   const [moveReason, setMoveReason] = useState("");
   const [moveBusy, setMoveBusy] = useState(false);
 
-  // Adjust dialog state.
+  // Adjust dialog.
   const [adjustVariant, setAdjustVariant] = useState<Variant | null>(null);
-  const [adjustDelta, setAdjustDelta] = useState("");
+  const [adjustMode, setAdjustMode] = useState<"add" | "remove">("add");
+  const [adjustQty, setAdjustQty] = useState("");
   const [adjustReason, setAdjustReason] = useState("");
   const [adjustBusy, setAdjustBusy] = useState(false);
 
@@ -94,7 +124,7 @@ export default function ProjectIlawItems() {
         getProjectIlawProductionOverview(),
         getProjectIlawProductionVariants(),
         getProjectIlawProductionQueue(),
-        getProjectIlawProductionHistory(50),
+        getProjectIlawProductionHistory(100),
         canManage ? getProjectIlawProductionReviewFlags() : Promise.resolve([]),
       ]);
       setOverview(ov);
@@ -113,6 +143,62 @@ export default function ProjectIlawItems() {
     void load();
   }, [load]);
 
+  const filteredVariants = useMemo(() => {
+    return variants.filter((v) => {
+      if (filterProduct !== "all" && v.product_type !== filterProduct) return false;
+      if (filterSize !== "all" && v.size !== filterSize) return false;
+      if (filterColor !== "all" && v.color !== filterColor) return false;
+      if (!showZero && v.required_qty === 0 && !showAllVariants) return false;
+      return true;
+    });
+  }, [variants, filterProduct, filterSize, filterColor, showZero, showAllVariants]);
+
+  const filteredQueue = useMemo(() => {
+    return queue.filter((v) => {
+      if (filterProduct !== "all" && v.product_type !== filterProduct) return false;
+      if (filterSize !== "all" && v.size !== filterSize) return false;
+      if (filterColor !== "all" && v.color !== filterColor) return false;
+      return true;
+    });
+  }, [queue, filterProduct, filterSize, filterColor]);
+
+  const filteredHistory = useMemo(() => {
+    return history.filter((m) => {
+      if (histProduct !== "all" && m.product_type !== histProduct) return false;
+      if (histType !== "all" && m.movement_type !== histType) return false;
+      if (histFrom) {
+        const d = new Date(m.created_at);
+        if (d < new Date(histFrom)) return false;
+      }
+      if (histTo) {
+        const d = new Date(m.created_at);
+        if (d > new Date(histTo + "T23:59:59")) return false;
+      }
+      return true;
+    });
+  }, [history, histProduct, histType, histFrom, histTo]);
+
+  const productTotals = useMemo(() => {
+    const acc: Record<string, { required: number; pending: number; processing: number; manufacturing: number; completed: number }> = {};
+    for (const v of variants) {
+      if (!acc[v.product_type]) acc[v.product_type] = { required: 0, pending: 0, processing: 0, manufacturing: 0, completed: 0 };
+      acc[v.product_type].required += v.required_qty;
+      acc[v.product_type].pending += v.pending_qty;
+      acc[v.product_type].processing += v.processing_qty;
+      acc[v.product_type].manufacturing += v.manufacturing_qty;
+      acc[v.product_type].completed += v.completed_qty;
+    }
+    return acc;
+  }, [variants]);
+
+  const resetFilters = () => {
+    setFilterProduct("all");
+    setFilterSize("all");
+    setFilterColor("all");
+    setShowZero(false);
+    setShowAllVariants(false);
+  };
+
   async function handleMove() {
     if (!moveVariant || moveBusy) return;
     const qty = Number(moveQty);
@@ -128,6 +214,15 @@ export default function ProjectIlawItems() {
     }
     if (toIdx < fromIdx && !moveReason.trim()) {
       setError("A reason is required for backward movements.");
+      return;
+    }
+    const avail =
+      moveFrom === "pending" ? moveVariant.pending_qty
+      : moveFrom === "processing" ? moveVariant.processing_qty
+      : moveFrom === "manufacturing" ? moveVariant.manufacturing_qty
+      : moveVariant.completed_qty;
+    if (qty > avail) {
+      setError("Not enough units in the source stage.");
       return;
     }
     setMoveBusy(true);
@@ -153,11 +248,13 @@ export default function ProjectIlawItems() {
 
   async function handleAdjust() {
     if (!adjustVariant || adjustBusy) return;
-    const delta = Number(adjustDelta);
+    let delta = Number(adjustQty);
     if (!Number.isFinite(delta) || delta === 0) {
       setError("Enter a non-zero quantity.");
       return;
     }
+    if (adjustMode === "remove") delta = -Math.abs(delta);
+    else delta = Math.abs(delta);
     if (!adjustReason.trim()) {
       setError("A reason is required for manual adjustments.");
       return;
@@ -167,7 +264,7 @@ export default function ProjectIlawItems() {
     try {
       await adjustProjectIlawProduction(adjustVariant.variant_id, delta, adjustReason.trim());
       setAdjustVariant(null);
-      setAdjustDelta("");
+      setAdjustQty("");
       setAdjustReason("");
       await load();
     } catch {
@@ -197,8 +294,22 @@ export default function ProjectIlawItems() {
     );
   }
 
-  const productLabel = (v: Variant) =>
-    v.product_type === "t_shirt" ? "Project Ilaw T-shirt" : "Project Ilaw Eco Bag";
+  const availableSource = moveVariant
+    ? (moveFrom === "pending" ? moveVariant.pending_qty
+      : moveFrom === "processing" ? moveVariant.processing_qty
+      : moveFrom === "manufacturing" ? moveVariant.manufacturing_qty
+      : moveVariant.completed_qty)
+    : 0;
+
+  const resultingAfterMove = moveVariant
+    ? {
+        from: availableSource - (Number(moveQty) || 0),
+        to: (moveTo === "pending" ? moveVariant.pending_qty
+          : moveTo === "processing" ? moveVariant.processing_qty
+          : moveTo === "manufacturing" ? moveVariant.manufacturing_qty
+          : moveVariant.completed_qty) + (Number(moveQty) || 0),
+      }
+    : { from: 0, to: 0 };
 
   return (
     <div className="pilaw-orders-page">
@@ -232,6 +343,7 @@ export default function ProjectIlawItems() {
             type="button"
             className={tab === t ? "pilaw-tab pilaw-tab-active" : "pilaw-tab"}
             onClick={() => setTab(t)}
+            aria-current={tab === t ? "page" : undefined}
           >
             {t === "overview" && "Overview"}
             {t === "products" && "Products"}
@@ -246,68 +358,71 @@ export default function ProjectIlawItems() {
       ) : (
         <>
           {tab === "overview" && overview && (
-            <section className="pilaw-summary" aria-label="Production summary">
-              <article>
-                <span>Total required</span>
-                <strong>{overview.total_required}</strong>
-                <small>All paid, non-cancelled orders</small>
-              </article>
-              <article>
-                <span>Pending</span>
-                <strong>{overview.pending}</strong>
-                <small>Awaiting production</small>
-              </article>
-              <article>
-                <span>Processing</span>
-                <strong>{overview.processing}</strong>
-                <small>In progress</small>
-              </article>
-              <article>
-                <span>Printing / Manufacturing</span>
-                <strong>{overview.manufacturing}</strong>
-                <small>Being produced</small>
-              </article>
-              <article>
-                <span>Completed</span>
-                <strong>{overview.completed}</strong>
-                <small>Finished units</small>
-              </article>
-            </section>
-          )}
+            <>
+              <section className="pilaw-summary" aria-label="Production summary">
+                <article>
+                  <span>Total required</span>
+                  <strong>{overview.total_required}</strong>
+                  <small>All paid, non-cancelled orders</small>
+                </article>
+                <article>
+                  <span>Pending</span>
+                  <strong>{overview.pending}</strong>
+                  <small>Awaiting production</small>
+                </article>
+                <article>
+                  <span>Processing</span>
+                  <strong>{overview.processing}</strong>
+                  <small>In progress</small>
+                </article>
+                <article>
+                  <span>Printing / Manufacturing</span>
+                  <strong>{overview.manufacturing}</strong>
+                  <small>Being produced</small>
+                </article>
+                <article>
+                  <span>Completed</span>
+                  <strong>{overview.completed}</strong>
+                  <small>Finished units</small>
+                </article>
+              </section>
 
-          {tab === "overview" && (
-            <section className="pilaw-panel" aria-label="Product summary">
-              <h2>Product-level summary</h2>
-              {["t_shirt", "eco_bag"].map((pt) => {
-                const vs = variants.filter((v) => v.product_type === pt);
-                const totals = vs.reduce(
-                  (acc, v) => ({
-                    required: acc.required + v.required_qty,
-                    pending: acc.pending + v.pending_qty,
-                    processing: acc.processing + v.processing_qty,
-                    manufacturing: acc.manufacturing + v.manufacturing_qty,
-                    completed: acc.completed + v.completed_qty,
-                  }),
-                  { required: 0, pending: 0, processing: 0, manufacturing: 0, completed: 0 },
-                );
-                return (
-                  <div key={pt} className="pilaw-breakdown-card" style={{ marginBottom: 12 }}>
-                    <h3>{pt === "t_shirt" ? "Project Ilaw T-shirt" : "Project Ilaw Eco Bag"}</h3>
-                    <p>
-                      Required {totals.required} · Pending {totals.pending} · Processing{" "}
-                      {totals.processing} · Manufacturing {totals.manufacturing} · Completed{" "}
-                      {totals.completed}
-                    </p>
-                  </div>
-                );
-              })}
+              <section className="pilaw-panel" aria-label="Product summary">
+                <h2>Product-level summary</h2>
+                {["t_shirt", "eco_bag"].map((pt) => {
+                  const t = productTotals[pt] ?? { required: 0, pending: 0, processing: 0, manufacturing: 0, completed: 0 };
+                  const pct = t.required > 0 ? Math.round((t.completed / t.required) * 100) : 0;
+                  return (
+                    <div key={pt} className="pilaw-breakdown-card" style={{ marginBottom: 12 }}>
+                      <h3>{pt === "t_shirt" ? "Project Ilaw T-shirt" : "Project Ilaw Eco Bag"}</h3>
+                      <p>
+                        Required {t.required} · Pending {t.pending} · Processing {t.processing} ·
+                        Manufacturing {t.manufacturing} · Completed {t.completed}
+                      </p>
+                      <div style={{ background: "#e5e7eb", borderRadius: 4, height: 8, marginTop: 8 }}>
+                        <div
+                          style={{
+                            background: "#4ade80",
+                            borderRadius: 4,
+                            height: 8,
+                            width: `${pct}%`,
+                          }}
+                        />
+                      </div>
+                      <small>{pct}% complete</small>
+                    </div>
+                  );
+                })}
+              </section>
+
               {reviewFlags.length > 0 && (
-                <div className="pilaw-panel" style={{ marginTop: 16 }}>
+                <section className="pilaw-panel" aria-label="Cancellation review">
                   <h2>Cancellation review required</h2>
                   <ul>
                     {reviewFlags.map((f) => (
-                      <li key={f.id}>
-                        {f.product_type} · {f.size} · {f.color} — {f.quantity} unit(s) need review
+                      <li key={f.id} style={{ marginBottom: 8 }}>
+                        {f.product_type === "t_shirt" ? "T-shirt" : "Eco Bag"} · {f.size} · {f.color} —{" "}
+                        {f.quantity} unit(s) need review
                         {canManage && (
                           <Button
                             variant="secondary"
@@ -320,14 +435,68 @@ export default function ProjectIlawItems() {
                       </li>
                     ))}
                   </ul>
-                </div>
+                </section>
               )}
+            </>
+          )}
+
+          {(tab === "products" || tab === "queue") && (
+            <section className="pilaw-panel" aria-label="Filters">
+              <div className="pilaw-filters">
+                <label>
+                  <span>Product</span>
+                  <Select value={filterProduct} onChange={(e: any) => setFilterProduct(e.target.value)}>
+                    <option value="all">All products</option>
+                    <option value="t_shirt">Project Ilaw T-shirt</option>
+                    <option value="eco_bag">Project Ilaw Eco Bag</option>
+                  </Select>
+                </label>
+                <label>
+                  <span>Size</span>
+                  <Select
+                    value={filterSize}
+                    onChange={(e: any) => setFilterSize(e.target.value)}
+                    disabled={filterProduct === "eco_bag"}
+                  >
+                    <option value="all">All sizes</option>
+                    {(filterProduct === "eco_bag" ? ["One Size"] : (filterProduct === "t_shirt" ? TSHIRT_SIZES : [...TSHIRT_SIZES, "One Size"])).map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+                <label>
+                  <span>Colour</span>
+                  <Select value={filterColor} onChange={(e: any) => setFilterColor(e.target.value)}>
+                    <option value="all">All colours</option>
+                    {(filterProduct === "eco_bag" ? ECOBAG_COLORS : (filterProduct === "t_shirt" ? TSHIRT_COLORS : [...TSHIRT_COLORS, ...ECOBAG_COLORS].filter((v, i, a) => a.indexOf(v) === i))).map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+                {tab === "products" && (
+                  <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <input
+                      type="checkbox"
+                      checked={showZero}
+                      onChange={(e) => setShowZero(e.target.checked)}
+                    />
+                    <span>Show zero-required variants</span>
+                  </label>
+                )}
+                <Button variant="secondary" onClick={resetFilters}>
+                  Clear filters
+                </Button>
+              </div>
             </section>
           )}
 
           {tab === "products" && (
             <section className="pilaw-panel" aria-label="Products">
-              <h2>Product variants</h2>
+              <h2>Products and variants</h2>
               <div className="pilaw-table-wrap">
                 <table className="pilaw-table">
                   <thead>
@@ -344,9 +513,9 @@ export default function ProjectIlawItems() {
                     </tr>
                   </thead>
                   <tbody>
-                    {variants.map((v) => (
+                    {filteredVariants.map((v) => (
                       <tr key={v.variant_id}>
-                        <td>{productLabel(v)}</td>
+                        <td>{productLabel(v.product_type)}</td>
                         <td>{v.size}</td>
                         <td>{v.color}</td>
                         <td>{v.required_qty}</td>
@@ -373,8 +542,9 @@ export default function ProjectIlawItems() {
                                 variant="secondary"
                                 onClick={() => {
                                   setAdjustVariant(v);
-                                  setAdjustDelta("");
+                                  setAdjustQty("");
                                   setAdjustReason("");
+                                  setAdjustMode("add");
                                 }}
                               >
                                 Adjust
@@ -387,13 +557,16 @@ export default function ProjectIlawItems() {
                   </tbody>
                 </table>
               </div>
+              {filteredVariants.length === 0 && (
+                <p className="pilaw-state">No variants match the selected filters.</p>
+              )}
             </section>
           )}
 
           {tab === "queue" && (
             <section className="pilaw-panel" aria-label="Production queue">
               <h2>Production queue</h2>
-              {queue.length === 0 ? (
+              {filteredQueue.length === 0 ? (
                 <p className="pilaw-state">No variants require production.</p>
               ) : (
                 <div className="pilaw-table-wrap">
@@ -412,9 +585,9 @@ export default function ProjectIlawItems() {
                       </tr>
                     </thead>
                     <tbody>
-                      {queue.map((v) => (
+                      {filteredQueue.map((v) => (
                         <tr key={v.variant_id}>
-                          <td>{productLabel(v)}</td>
+                          <td>{productLabel(v.product_type)}</td>
                           <td>{v.size}</td>
                           <td>{v.color}</td>
                           <td>{v.required_qty}</td>
@@ -433,7 +606,7 @@ export default function ProjectIlawItems() {
                                 setMoveReason("");
                               }}
                             >
-                              Move
+                              Move Quantities
                             </Button>
                           </td>
                         </tr>
@@ -448,7 +621,36 @@ export default function ProjectIlawItems() {
           {tab === "history" && (
             <section className="pilaw-panel" aria-label="Production history">
               <h2>Production history</h2>
-              {history.length === 0 ? (
+              <div className="pilaw-filters">
+                <label>
+                  <span>Product</span>
+                  <Select value={histProduct} onChange={(e: any) => setHistProduct(e.target.value)}>
+                    <option value="all">All products</option>
+                    <option value="t_shirt">T-shirt</option>
+                    <option value="eco_bag">Eco Bag</option>
+                  </Select>
+                </label>
+                <label>
+                  <span>Movement type</span>
+                  <Select value={histType} onChange={(e: any) => setHistType(e.target.value)}>
+                    <option value="all">All types</option>
+                    {MOVEMENT_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+                <label>
+                  <span>From</span>
+                  <Input type="date" value={histFrom} onChange={(e: any) => setHistFrom(e.target.value)} />
+                </label>
+                <label>
+                  <span>To</span>
+                  <Input type="date" value={histTo} onChange={(e: any) => setHistTo(e.target.value)} />
+                </label>
+              </div>
+              {filteredHistory.length === 0 ? (
                 <p className="pilaw-state">No production activity recorded yet.</p>
               ) : (
                 <div className="pilaw-table-wrap">
@@ -467,12 +669,10 @@ export default function ProjectIlawItems() {
                       </tr>
                     </thead>
                     <tbody>
-                      {history.map((m) => (
+                      {filteredHistory.map((m) => (
                         <tr key={m.id}>
                           <td>{new Date(m.created_at).toLocaleString()}</td>
-                          <td>
-                            {m.product_type === "t_shirt" ? "T-shirt" : "Eco Bag"}
-                          </td>
+                          <td>{m.product_type === "t_shirt" ? "T-shirt" : "Eco Bag"}</td>
                           <td>{m.size}</td>
                           <td>{m.color}</td>
                           <td>{m.quantity}</td>
@@ -496,11 +696,11 @@ export default function ProjectIlawItems() {
         {moveVariant && (
           <div className="pilaw-embedded-form">
             <p>
-              {productLabel(moveVariant)} · {moveVariant.size} · {moveVariant.color}
+              <strong>{productLabel(moveVariant.product_type)}</strong> · {moveVariant.size} · {moveVariant.color}
             </p>
             <p>
-              Pending {moveVariant.pending_qty} · Processing {moveVariant.processing_qty} ·
-              Manufacturing {moveVariant.manufacturing_qty} · Completed {moveVariant.completed_qty}
+              Pending {moveVariant.pending_qty} · Processing {moveVariant.processing_qty} · Manufacturing{" "}
+              {moveVariant.manufacturing_qty} · Completed {moveVariant.completed_qty}
             </p>
             <label>
               Quantity
@@ -508,13 +708,13 @@ export default function ProjectIlawItems() {
                 type="number"
                 min={1}
                 value={moveQty}
-                onChange={(e) => setMoveQty(e.target.value)}
+                onChange={(e: any) => setMoveQty(e.target.value)}
                 disabled={moveBusy}
               />
             </label>
             <label>
               From
-              <Select value={moveFrom} onChange={(e) => setMoveFrom(e.target.value)} disabled={moveBusy}>
+              <Select value={moveFrom} onChange={(e: any) => setMoveFrom(e.target.value)} disabled={moveBusy}>
                 {STAGES.map((s) => (
                   <option key={s} value={s}>
                     {STAGE_LABELS[s]}
@@ -524,7 +724,7 @@ export default function ProjectIlawItems() {
             </label>
             <label>
               To
-              <Select value={moveTo} onChange={(e) => setMoveTo(e.target.value)} disabled={moveBusy}>
+              <Select value={moveTo} onChange={(e: any) => setMoveTo(e.target.value)} disabled={moveBusy}>
                 {STAGES.map((s) => (
                   <option key={s} value={s}>
                     {STAGE_LABELS[s]}
@@ -534,12 +734,11 @@ export default function ProjectIlawItems() {
             </label>
             <label>
               Reason (required for backward moves)
-              <Input
-                value={moveReason}
-                onChange={(e) => setMoveReason(e.target.value)}
-                disabled={moveBusy}
-              />
+              <Input value={moveReason} onChange={(e: any) => setMoveReason(e.target.value)} disabled={moveBusy} />
             </label>
+            <p className="pilaw-detail-note">
+              Resulting: source {resultingAfterMove.from}, destination {resultingAfterMove.to}
+            </p>
             <div className="pilaw-embedded-form-actions">
               <Button onClick={() => void handleMove()} disabled={moveBusy}>
                 {moveBusy ? "Moving..." : "Move"}
@@ -550,29 +749,32 @@ export default function ProjectIlawItems() {
       </Modal>
 
       {/* Adjust dialog */}
-      <Modal open={Boolean(adjustVariant)} title="Manual adjustment" onClose={() => setAdjustVariant(null)}>
+      <Modal open={Boolean(adjustVariant)} title="Manual adjustment (admin)" onClose={() => setAdjustVariant(null)}>
         {adjustVariant && (
           <div className="pilaw-embedded-form">
             <p>
-              {productLabel(adjustVariant)} · {adjustVariant.size} · {adjustVariant.color}
+              <strong>{productLabel(adjustVariant.product_type)}</strong> · {adjustVariant.size} · {adjustVariant.color}
             </p>
-            <p>Use positive to add, negative to remove.</p>
             <label>
-              Quantity (+/-)
+              Type
+              <Select value={adjustMode} onChange={(e: any) => setAdjustMode(e.target.value)} disabled={adjustBusy}>
+                <option value="add">Add</option>
+                <option value="remove">Remove</option>
+              </Select>
+            </label>
+            <label>
+              Quantity
               <Input
                 type="number"
-                value={adjustDelta}
-                onChange={(e) => setAdjustDelta(e.target.value)}
+                min={1}
+                value={adjustQty}
+                onChange={(e: any) => setAdjustQty(e.target.value)}
                 disabled={adjustBusy}
               />
             </label>
             <label>
               Reason (required)
-              <Input
-                value={adjustReason}
-                onChange={(e) => setAdjustReason(e.target.value)}
-                disabled={adjustBusy}
-              />
+              <Input value={adjustReason} onChange={(e: any) => setAdjustReason(e.target.value)} disabled={adjustBusy} />
             </label>
             <div className="pilaw-embedded-form-actions">
               <Button onClick={() => void handleAdjust()} disabled={adjustBusy}>
