@@ -1502,3 +1502,116 @@
   max-width: 100%;
   width: 100%;
 }
+
+
+/* Project Ilaw individual shirt colour gallery */
+.merch-shirt-gallery {
+  background: #f7f6f2;
+  display: grid;
+  gap: 2px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 8px;
+}
+.merch-shirt-thumbnail,
+.merch-gallery-color {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  color: #334155;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 700;
+  gap: 5px;
+  min-width: 0;
+  padding: 7px;
+}
+.merch-shirt-thumbnail:hover,
+.merch-gallery-color:hover,
+.merch-gallery-color.is-selected {
+  border-color: #587d28;
+  box-shadow: 0 0 0 2px rgba(88,125,40,.14);
+}
+.merch-shirt-preview {
+  background-color: #e5e7eb;
+  background-repeat: no-repeat;
+  background-size: 200% 200%;
+  display: block;
+  height: 112px;
+  width: 100%;
+}
+.merch-shirt-preview-black { background-position: 0 0; }
+.merch-shirt-preview-white { background-position: 100% 0; }
+.merch-shirt-preview-maroon,
+.merch-shirt-preview-green,
+.merch-shirt-preview-blue { background-size: 300% 200%; }
+.merch-shirt-preview-maroon { background-position: 0 100%; }
+.merch-shirt-preview-green { background-position: 50% 100%; }
+.merch-shirt-preview-blue { background-position: 100% 100%; }
+.merch-gallery-backdrop {
+  align-items: center;
+  background: rgba(15,23,42,.72);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 20px;
+  position: fixed;
+  z-index: 1000;
+}
+.merch-gallery-dialog {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 24px 70px rgba(0,0,0,.3);
+  max-height: min(90vh, 900px);
+  max-width: 760px;
+  overflow: auto;
+  padding: 22px;
+  width: min(100%, 760px);
+}
+.merch-gallery-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.merch-gallery-heading h3 { margin: 0; }
+.merch-gallery-close {
+  background: #f1f5f9;
+  border: 0;
+  border-radius: 50%;
+  color: #334155;
+  cursor: pointer;
+  font-size: 1.7rem;
+  height: 40px;
+  line-height: 1;
+  width: 40px;
+}
+.merch-gallery-dialog .merch-shirt-preview-large {
+  background-size: 200% 200%;
+  height: min(48vh, 420px);
+}
+.merch-gallery-dialog .merch-shirt-preview-large.merch-shirt-preview-maroon,
+.merch-gallery-dialog .merch-shirt-preview-large.merch-shirt-preview-green,
+.merch-gallery-dialog .merch-shirt-preview-large.merch-shirt-preview-blue {
+  background-size: 300% 200%;
+}
+.merch-gallery-colors {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-top: 14px;
+}
+.merch-gallery-note {
+  color: #64748b;
+  font-size: .9rem;
+  line-height: 1.5;
+  margin: 14px 0 0;
+}
+@media (max-width: 520px) {
+  .merch-shirt-preview { height: 90px; }
+  .merch-gallery-dialog { padding: 16px; }
+  .merch-gallery-colors { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
