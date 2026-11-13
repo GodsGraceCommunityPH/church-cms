@@ -59,10 +59,14 @@ presentation aid; the database gate is authoritative.
    - “Thank you for supporting Project Ilaw!”
    - The order reference and the server-calculated total.
    - A “Go to payment” button that scrolls to the payment section.
-7. In the payment section the customer enters the order reference **and** the
-   mobile number used at submission. `get_project_ilaw_payment_context` returns
-   the order summary, its payment status, and the official payment instructions
-   when payments are enabled.
+7. In the payment section the customer enters the **name and mobile number** used
+   at submission — no order reference is required. `get_project_ilaw_payment_contexts_by_customer`
+   returns every matching order (newest first). When only one order matches it
+   opens directly; when several match the customer chooses. The selected order is
+   then opened through `get_project_ilaw_payment_context`, which keeps the
+   reference, payment token, and payment details internal to that step.
+   `get_project_ilaw_payment_context` remains available for internal and
+   reference-based workflows.
 8. When payments are enabled, the payment section shows the confirmed
    **GCash (InstaPay QR)** image, the exact amount due, the order reference, the
    “Transfer fees may apply.” notice, and a button to enlarge the QR. The QR is
@@ -413,9 +417,10 @@ integration test intentionally leaves its test order in the disposable database.
 
 ## Pre-deploy steps
 
-1. Review and apply
-   `supabase/migrations/20261110090000_project_ilaw_ordering.sql` to the target
-   environment.
+1. Review and apply, in order:
+   `supabase/migrations/20261110090000_project_ilaw_ordering.sql` and then
+   `supabase/migrations/20261113120000_project_ilaw_customer_lookup.sql` to the
+   target environment.
 2. Run
    `supabase/verification/059_project_ilaw_ordering_verification.sql` and confirm
    it reports `Project Ilaw Phase 2 verification passed.`

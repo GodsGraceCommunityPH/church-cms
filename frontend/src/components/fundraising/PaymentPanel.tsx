@@ -10,6 +10,7 @@ import {
 } from "../../features/fundraising/projectIlaw";
 import {
   getProjectIlawPaymentContext,
+  getProjectIlawPaymentContextsByCustomer,
   submitProjectIlawPayment,
   uploadProjectIlawPaymentEvidence,
 } from "../../features/fundraising/orderService";
@@ -18,8 +19,11 @@ const ACCEPTED_EVIDENCE = "image/jpeg,image/png,image/webp,application/pdf";
 const MAX_EVIDENCE_BYTES = 5 * 1024 * 1024;
 
 export default function PaymentPanel() {
-  const [reference, setReference] = useState("");
+  const [customerName, setCustomerName] = useState("");
   const [mobile, setMobile] = useState("");
+  const [matches, setMatches] = useState<
+    import("../../features/fundraising/projectIlaw").ProjectIlawCustomerOrderMatch[]
+  >([]);
   const [context, setContext] = useState<ProjectIlawPaymentContext | null>(
     null,
   );
@@ -40,15 +44,47 @@ export default function PaymentPanel() {
     setLookupError("");
     setSubmitError("");
     setNotice("");
+    setContext(null);
+    setMatches([]);
     try {
-      const next = await getProjectIlawPaymentContext(reference, mobile);
+      const found = await getProjectIlawPaymentContextsByCustomer(
+        customerName,
+        mobile,
+      );
+      setMatches(found);
+      if (found.length === 0) {
+        setLookupError(
+          "No orders found matching those details. Check your name and mobile number and try again.",
+        );
+      } else if (found.length === 1) {
+        await openOrder(found[0].reference);
+      }
+    } catch {
+      setMatches([]);
+      setContext(null);
+      setLookupError(
+        "We could not look up your order right now. Please try again later.",
+      );
+    } finally {
+      setLookupLoading(false);
+    }
+  }
+
+  async function openOrder(orderReference: string) {
+    setLookupLoading(true);
+    setLookupError("");
+    setSubmitError("");
+    setNotice("");
+    try {
+      const next = await getProjectIlawPaymentContext(orderReference, mobile);
       setContext(next);
       setPaymentReference(next.paymentReference);
       setEvidence(null);
+      setMatches([]);
     } catch {
       setContext(null);
       setLookupError(
-        "We could not find an order with that reference and mobile number. Check both and try again.",
+        "We could not open that order. Please try again.",
       );
     } finally {
       setLookupLoading(false);
@@ -91,7 +127,7 @@ export default function PaymentPanel() {
         paymentReference: cleanReference,
         evidencePath: path,
       });
-      const refreshed = await getProjectIlawPaymentContext(reference, mobile);
+      const refreshed = await getProjectIlawPaymentContext(context.reference, mobile);
       setContext(refreshed);
       setPaymentReference(refreshed.paymentReference);
       setEvidence(null);
@@ -119,20 +155,20 @@ export default function PaymentPanel() {
       <div className="payment-panel-heading">
         <h3>Pay for your order</h3>
         <p>
-          Enter the order reference and the mobile number you used when you
-          submitted the order.
+          Enter the name and mobile number you used when you submitted the
+          order. You do not need your order reference.
         </p>
       </div>
 
       <form className="payment-lookup" onSubmit={lookup}>
         <div className="order-field">
-          <label htmlFor="payment-reference">Order reference</label>
+          <label htmlFor="payment-name">Your name</label>
           <input
-            id="payment-reference"
-            value={reference}
-            autoComplete="off"
-            placeholder="PI-YYYYMMDD-NNNNNN"
-            onChange={(event) => setReference(event.target.value)}
+            id="payment-name"
+            value={customerName}
+            autoComplete="name"
+            placeholder="Name used when ordering"
+            onChange={(event) => setCustomerName(event.target.value)}
             required
           />
         </div>
@@ -153,6 +189,37 @@ export default function PaymentPanel() {
           {lookupLoading ? "Looking up..." : "Find my order"}
         </button>
       </form>
+
+      {matches.length > 1 && (
+        <div className="payment-matches" role="list">
+          <p className="payment-note">
+            We found several orders with those details. Choose the one you want
+            to pay.
+          </p>
+          <ul className="payment-match-list">
+            {matches.map((match) => (
+              <li key={match.reference} className="payment-match">
+                <div>
+                  <strong>{match.reference}</strong>
+                  <span>
+                    {formatPeso(match.totalAmount)} ·{" "}
+                    {CUSTOMER_PAYMENT_STATUS_LABELS[match.paymentStatus]} ·{" "}
+                    {CUSTOMER_FULFILLMENT_STATUS_LABELS[match.fulfillmentStatus]}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="ilaw-secondary"
+                  onClick={() => openOrder(match.reference)}
+                  disabled={lookupLoading}
+                >
+                  View / pay
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {lookupError && (
         <p className="order-form-error" role="alert">

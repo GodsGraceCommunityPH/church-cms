@@ -374,6 +374,28 @@ export const PAYMENT_QR = {
   alt: "GCash InstaPay QR code for Project Ilaw payments",
 } as const;
 
+export function normalizePhilippineMobile(value: string): string | null {
+  if (/[a-zA-Z]/.test(value)) return null;
+  const digits = value.replace(/\D/g, "");
+  if (/^09\d{9}$/.test(digits)) return digits;
+  if (/^639\d{9}$/.test(digits)) return "0" + digits.slice(2);
+  if (/^9\d{9}$/.test(digits)) return "0" + digits;
+  return null;
+}
+
+export function normalizeCustomerName(value: string): string {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+export interface ProjectIlawCustomerOrderMatch {
+  reference: string;
+  customerName: string;
+  totalQuantity: number;
+  totalAmount: number;
+  paymentStatus: PaymentStatus;
+  fulfillmentStatus: FulfillmentStatus;
+}
+
 export const FULFILLMENT_STATUS_LABELS: Record<FulfillmentStatus, string> = {
   not_started: "Not Started",
   in_production: "In Production",

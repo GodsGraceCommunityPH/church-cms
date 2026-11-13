@@ -7,6 +7,13 @@ const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 const MIGRATION =
   "../../../supabase/migrations/20261110090000_project_ilaw_ordering.sql";
 
+const LOOKUP_MIGRATION =
+  "../../../supabase/migrations/20261113120000_project_ilaw_customer_lookup.sql";
+
+async function lookupMigrationSource() {
+  return read(LOOKUP_MIGRATION);
+}
+
 async function migrationSource() {
   return read(MIGRATION);
 }
@@ -995,3 +1002,74 @@ integration(
     }
   },
 );
+test("customer lookup by name and mobile requires both and normalizes inputs", async () => {
+  const source = await lookupMigrationSource();
+  const fn = functionBody(
+    source,
+    "create or replace function public.get_project_ilaw_payment_contexts_by_customer(",
+  );
+
+  assert.match(fn, /p_name text/);
+  assert.match(fn, /p_mobile text/);
+  assert.match(fn, /clean_name text := lower\(trim\(regexp_replace/);
+  assert.match(fn, /norm_mobile text := public\.normalize_project_ilaw_mobile\(p_mobile\)/);
+  assert.match(fn, /if clean_name = '' or norm_mobile is null then/);
+  assert.match(fn, /Name and mobile number are required/);
+  assert.match(fn, /public\.normalize_project_ilaw_mobile\(o\.mobile\) = norm_mobile/);
+  assert.match(fn, /lower\(trim\(regexp_replace\(o\.customer_name/);
+  assert.match(
+    fn,
+    /jsonb_build_object\([\s\S]*?'reference', o\.reference[\s\S]*?'payment_status', o\.payment_status/,
+  );
+  assert.doesNotMatch(fn, /'payment_token'/);
+});
+
+test("customer lookup is rate limited per normalised mobile number", async () => {
+  const source = await lookupMigrationSource();
+
+  assert.match(source, /create table if not exists public\.project_ilaw_customer_lookup_attempts/);
+  assert.match(source, /mobile_hash text not null/);
+  assert.match(source, /attempted_at timestamptz not null default now\(\)/);
+  assert.match(source, /project_ilaw_customer_lookup_attempts_mobile_hash_idx/);
+
+  const fn = functionBody(
+    source,
+    "create or replace function public.get_project_ilaw_payment_contexts_by_customer(",
+  );
+  assert.match(fn, /select count\(\*\) into attempt_count/);
+  assert.match(fn, /mobile_hash = v_mobile_hash/);
+  assert.match(fn, /attempted_at > now\(\) - interval '15 minutes'/);
+  assert.match(fn, /if attempt_count >= 10 then/);
+  assert.match(fn, /Too many lookup attempts/);
+  assert.match(fn, /insert into public\.project_ilaw_customer_lookup_attempts/);
+});
+
+test("customer lookup and normaliser are granted to anonymous customers", async () => {
+  const source = await lookupMigrationSource();
+
+  assert.match(
+    source,
+    /grant execute on function public\.get_project_ilaw_payment_contexts_by_customer\(text, text\) to anon, authenticated/,
+  );
+  assert.match(
+    source,
+    /revoke all on function public\.get_project_ilaw_payment_contexts_by_customer\(text, text\) from public/,
+  );
+  assert.match(
+    source,
+    /grant execute on function public\.normalize_project_ilaw_mobile\(text\) to anon, authenticated/,
+  );
+});
+
+test("the customer payment panel uses name plus mobile lookup", async () => {
+  const panel = await read("../../src/components/fundraising/PaymentPanel.tsx");
+  const service = await read("../../src/features/fundraising/orderService.ts");
+
+  assert.match(panel, /getProjectIlawPaymentContextsByCustomer/);
+  assert.match(service, /getProjectIlawPaymentContextsByCustomer/);
+  assert.match(panel, /id="payment-name"/);
+  assert.match(panel, /id="payment-mobile"/);
+  assert.doesNotMatch(panel, /id="payment-reference"/);
+  assert.match(panel, /required/);
+  assert.match(panel, /openOrder/);
+});

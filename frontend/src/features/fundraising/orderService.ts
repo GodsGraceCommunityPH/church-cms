@@ -11,6 +11,7 @@ import type {
   ProjectIlawOrderEvent,
   ProjectIlawOrderFilters,
   ProjectIlawOrderItem,
+  ProjectIlawCustomerOrderMatch,
   ProjectIlawPaymentContext,
   ProjectIlawPaymentInstructions,
   ProjectIlawPublicSettings,
@@ -234,6 +235,28 @@ export async function getProjectIlawPaymentContext(
     fulfillmentStatus: data.fulfillment_status,
     instructions: mapInstructions(data.instructions),
   };
+}
+
+export async function getProjectIlawPaymentContextsByCustomer(
+  name: string,
+  mobile: string,
+): Promise<ProjectIlawCustomerOrderMatch[]> {
+  const { data, error } = await supabase.rpc(
+    "get_project_ilaw_payment_contexts_by_customer",
+    { p_name: name, p_mobile: mobile },
+  );
+
+  if (error) throw error;
+
+  const rows = Array.isArray(data) ? data : [];
+  return rows.map((row: any) => ({
+    reference: row.reference,
+    customerName: row.customer_name,
+    totalQuantity: row.total_quantity,
+    totalAmount: row.total_amount,
+    paymentStatus: row.payment_status,
+    fulfillmentStatus: row.fulfillment_status,
+  }));
 }
 
 export async function uploadProjectIlawPaymentEvidence(
