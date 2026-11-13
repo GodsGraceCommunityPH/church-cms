@@ -7,7 +7,6 @@ import { createProjectIlawOrder } from "../../features/fundraising/orderService"
 import {
   ORDER_FULFILMENT,
   SHOP_ITEMS,
-  calculateDraftTotals,
   createRequestId,
   formatPeso,
   getShopItem,
@@ -41,8 +40,6 @@ export default function OrderForm({ ordersEnabled = true }: { ordersEnabled?: bo
   );
   const navigate = useNavigate();
   const requestIdRef = useRef(createRequestId());
-
-  const totals = calculateDraftTotals(draft.items);
 
   const updateDraft = (patch: Partial<OrderDraft>) => {
     setDraft((current) => ({ ...current, ...patch }));
@@ -190,108 +187,6 @@ export default function OrderForm({ ordersEnabled = true }: { ordersEnabled?: bo
           onChange={(items) => updateDraft({ items })}
           disabled={!ordersEnabled || submitting}
         />
-
-        <div className="order-summary" aria-labelledby="order-summary-title">
-          <h3 id="order-summary-title">Order summary</h3>
-          <div className="order-summary-mobile">
-            {draft.items.map((item) => {
-              const product = getShopItem(item.productId);
-              const quantity = Number(item.quantity);
-              const validQuantity =
-                Number.isInteger(quantity) && quantity > 0;
-              return (
-                <div className="order-summary-mobile-row" key={item.key}>
-                  <div className="order-summary-mobile-field">
-                    <span>Product</span>
-                    <strong>{product?.name ?? "—"}</strong>
-                  </div>
-                  <div className="order-summary-mobile-field">
-                    <span>Colour</span>
-                    <strong>{item.color || "—"}</strong>
-                  </div>
-                  <div className="order-summary-mobile-field">
-                    <span>Size</span>
-                    <strong>
-                      {product
-                        ? product.id === "project-ilaw-eco-bag"
-                          ? "—"
-                          : item.size || "—"
-                        : "—"}
-                    </strong>
-                  </div>
-                  <div className="order-summary-mobile-field">
-                    <span>Quantity</span>
-                    <strong>{validQuantity ? quantity : "—"}</strong>
-                  </div>
-                  <div className="order-summary-mobile-field">
-                    <span>Unit price</span>
-                    <strong>{formatPeso(product?.price ?? 499)}</strong>
-                  </div>
-                  <div className="order-summary-mobile-field">
-                    <span>Line total</span>
-                    <strong>
-                      {validQuantity
-                        ? formatPeso((product?.price ?? 499) * quantity)
-                        : "—"}
-                    </strong>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div className="order-summary-table-wrap">
-            <table className="order-summary-table">
-              <thead>
-                <tr>
-                  <th scope="col">Product</th>
-                  <th scope="col">Colour</th>
-                  <th scope="col">Size</th>
-                  <th scope="col">Qty</th>
-                  <th scope="col">Unit price</th>
-                  <th scope="col">Line total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {draft.items.map((item) => {
-                  const product = getShopItem(item.productId);
-                  const quantity = Number(item.quantity);
-                  const validQuantity =
-                    Number.isInteger(quantity) && quantity > 0;
-                  return (
-                    <tr key={item.key}>
-                      <td>{product?.name ?? "—"}</td>
-                      <td>{item.color || "—"}</td>
-                      <td>
-                        {product
-                          ? product.id === "project-ilaw-eco-bag"
-                            ? "—"
-                            : item.size || "—"
-                          : "—"}
-                      </td>
-                      <td>{validQuantity ? quantity : "—"}</td>
-                      <td>{formatPeso(product?.price ?? 499)}</td>
-                      <td>
-                        {validQuantity
-                          ? formatPeso((product?.price ?? 499) * quantity)
-                          : "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <div className="order-summary-totals">
-            <div>
-              <span>Total quantity</span>
-              <strong>{totals.totalQuantity}</strong>
-            </div>
-            <div>
-              <span>Order total</span>
-              <strong>{formatPeso(totals.totalAmount)}</strong>
-            </div>
-          </div>
-        </div>
 
         {errors.length > 0 && (
           <div className="order-form-errors" role="alert">
