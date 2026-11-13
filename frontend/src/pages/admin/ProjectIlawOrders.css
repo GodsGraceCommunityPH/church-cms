@@ -976,3 +976,41 @@
     padding: 16px;
   }
 }
+
+/* Item Management tabs */
+.pilaw-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 8px;
+}
+.pilaw-tab {
+  padding: 8px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.pilaw-tab:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+.pilaw-tab:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+.pilaw-tab-active {
+  background: #1d4ed8;
+  color: #ffffff;
+  border-color: #1d4ed8;
+}
+.pilaw-tab-active:hover {
+  background: #1e40af;
+  border-color: #1e40af;
+}
