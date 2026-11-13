@@ -1686,3 +1686,16 @@
   .merch-order-controls { grid-template-columns: 1fr; }
   .merch-add-button { grid-column: auto; }
 }
+
+/* Keep ordering and payment in one continuous customer flow. */
+.shop-payment-inline {
+  border-top: 1px solid #e3eadb;
+  margin-top: 34px;
+  padding-top: 30px;
+}
+.shop-payment-inline .public-section-heading {
+  margin-bottom: 18px;
+}
+.shop-payment-inline .public-section-heading h2 {
+  margin-bottom: 6px;
+}
