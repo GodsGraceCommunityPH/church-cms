@@ -143,22 +143,7 @@ export default function ShopPage() {
               : "The merchandise is shown for preview. Ordering is currently closed."}
           </p>
         </div>
-        {ordersEnabled ? (
-          <OrderForm />
-        ) : (
-          <div className="order-closed" role="note">
-            <Clock size={30} aria-hidden="true" />
-            <h3>Ordering is not open yet</h3>
-            <p>
-              The church has not opened Project Ilaw order intake. No orders are
-              being accepted, and nothing can be submitted from this page until
-              ordering opens.
-            </p>
-            <p className="order-closed-note">
-              Please check back after the church announces the opening date.
-            </p>
-          </div>
-        )}
+        <OrderForm ordersEnabled={ordersEnabled} />
       </section>
 
       <section
