@@ -1615,3 +1615,74 @@
   .merch-gallery-dialog { padding: 16px; }
   .merch-gallery-colors { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+
+/* Integrated merchandise-to-order flow */
+.order-form-section .merch-grid { align-items: stretch; }
+.order-form-section .merch-card { height: 100%; }
+.merch-order-controls {
+  border-top: 1px solid #e2e8f0;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 18px;
+  padding-top: 16px;
+}
+.merch-order-controls .order-field select,
+.merch-order-controls .order-field input {
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  box-sizing: border-box;
+  color: #172033;
+  font: inherit;
+  min-height: 44px;
+  padding: 10px 12px;
+  width: 100%;
+}
+.merch-order-controls .order-field label {
+  color: #334155;
+  display: block;
+  font-size: .82rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.merch-add-button { grid-column: 1 / -1; width: 100%; }
+.merch-add-button:disabled { cursor: not-allowed; opacity: .55; }
+.order-cart-empty {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  color: #64748b;
+  line-height: 1.5;
+  padding: 16px;
+}
+.order-cart-item-details { display: grid; gap: 4px; }
+.order-cart-item-details span { color: #64748b; font-size: .9rem; }
+.order-cart-item-footer {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+.order-cart-item-footer label { color: #475569; font-size: .85rem; font-weight: 700; }
+.order-cart-item-footer input {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font: inherit;
+  max-width: 90px;
+  padding: 8px;
+}
+.order-cart-item-footer strong { color: #243813; margin-left: auto; }
+.order-line-items > h3 {
+  color: #243813;
+  font-family: "Source Serif 4", serif;
+  font-size: 1.35rem;
+  margin: 0;
+}
+@media (max-width: 620px) {
+  .merch-order-controls { grid-template-columns: 1fr; }
+  .merch-add-button { grid-column: auto; }
+}
