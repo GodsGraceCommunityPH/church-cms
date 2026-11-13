@@ -461,6 +461,91 @@ test("the public order form captures colours and the payment section is present"
   assert.match(panel, /Payment collection is not open yet/);
 });
 
+test("every order item renders its own colour selector from the product configuration", async () => {
+  const editor = await read(
+    "../../src/components/fundraising/OrderLineItemsEditor.tsx",
+  );
+
+  // Each product must publish both a label and its allowed colours, otherwise
+  // the editor would render an empty or missing colour dropdown.
+  for (const item of SHOP_ITEMS) {
+    assert.ok(item.colors.length > 0, `${item.id} needs at least one colour`);
+    assert.equal(
+      new Set(item.colors).size,
+      item.colors.length,
+      `${item.id} colours must be unique`,
+    );
+    assert.ok(item.colorLabel.trim().length > 0, `${item.id} needs a colour label`);
+  }
+
+  assert.deepEqual(
+    SHOP_ITEMS.find((item) => item.id === "project-ilaw-t-shirt")?.colors,
+    ["Black", "White", "Maroon", "Green", "Blue"],
+  );
+  assert.deepEqual(
+    SHOP_ITEMS.find((item) => item.id === "project-ilaw-eco-bag")?.colors,
+    ["Maroon", "Green", "Blue"],
+  );
+
+  // The selector is rendered per line item, keyed to that item so each row
+  // keeps an independent selection.
+  assert.match(editor, /id=\{`\$\{idPrefix\}-color-\$\{item\.key\}`\}/);
+  assert.match(editor, /value=\{item\.color\}/);
+  assert.match(
+    editor,
+    /updateItem\(item\.key, \{ color: event\.target\.value \}\)/,
+  );
+  assert.match(editor, /product\.colors\.map/);
+  assert.match(editor, /Select a colour/);
+  assert.match(editor, /product\.colorLabel/);
+
+  // A T-shirt shows the colour field between Product and Size; the eco bag
+  // keeps its handle-colour field and hides the redundant size selector.
+  const productIndex = editor.indexOf("-product-${item.key}");
+  const colourIndex = editor.indexOf("-color-${item.key}");
+  const sizeIndex = editor.indexOf("-size-${item.key}");
+  assert.ok(productIndex < colourIndex, "colour follows the product selector");
+  assert.ok(colourIndex < sizeIndex, "colour precedes the size selector");
+  assert.match(editor, /isEcoBag\(item\.productId\)/);
+
+  // Colour state lives in the draft item, never in shared component state.
+  assert.doesNotMatch(editor, /useState/);
+});
+
+test("the chosen colour reaches the review, the summary, and the submitted order", async () => {
+  const form = await read("../../src/components/fundraising/OrderForm.tsx");
+  const service = await read("../../src/features/fundraising/orderService.ts");
+
+  // Validation keeps each line item's own colour and passes it through.
+  const validation = validateOrderDraft({
+    customerName: "Grace Member",
+    mobile: "09171234567",
+    notes: "",
+    items: [
+      { ...createDraftItem(), size: "M", color: "Black", quantity: 1 },
+      {
+        ...createDraftItem("project-ilaw-eco-bag"),
+        color: "Green",
+        quantity: 2,
+      },
+    ],
+  });
+  assert.equal(validation.ok, true);
+  assert.deepEqual(
+    validation.items.map((item) => item.color),
+    ["Black", "Green"],
+  );
+
+  // The live summary and the pre-submit review both show the Colour column.
+  assert.match(form, /<th scope="col">Colour<\/th>/);
+  assert.match(form, /<td>\{item\.color \|\| "—"\}<\/td>/);
+  assert.match(form, /<td>\{item\.color\}<\/td>/);
+
+  // The reviewed items, including colour, are what gets submitted.
+  assert.match(form, /items: review\.items/);
+  assert.match(service, /p_items: input\.items/);
+});
+
 test("the confirmed GCash InstaPay QR is a public, unchanged asset", async () => {
   assert.equal(
     PAYMENT_QR.src,
