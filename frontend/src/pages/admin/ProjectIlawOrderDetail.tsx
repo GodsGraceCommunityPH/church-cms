@@ -205,6 +205,13 @@ export default function ProjectIlawOrderDetail() {
 
   async function handleRejectPayment() {
     if (!order) return;
+    const reason = rejectReason.trim();
+    if (reason.length < 5) {
+      setActionError(
+        "Enter a rejection reason of at least 5 characters so the customer knows what to fix.",
+      );
+      return;
+    }
     if (
       !window.confirm(
         "Reject this payment submission? The order returns to Awaiting Payment so the customer can submit again.",
@@ -213,7 +220,7 @@ export default function ProjectIlawOrderDetail() {
       return;
     }
     await runAction("reject", async () => {
-      await rejectProjectIlawPayment(order.id, rejectReason);
+      await rejectProjectIlawPayment(order.id, reason);
       setRejectReason("");
       setNotice(
         "Payment submission rejected. The order is back to Awaiting Payment and the history is preserved.",
@@ -639,10 +646,11 @@ export default function ProjectIlawOrderDetail() {
                 <div className="pilaw-embedded-form">
                   {awaitingVerification && (
                     <label>
-                      Rejection reason (optional)
+                      Rejection reason (required)
                       <Input
                         value={rejectReason}
                         maxLength={1000}
+                        minLength={5}
                         placeholder="e.g. Reference not found in the receiving account"
                         onChange={(event) => setRejectReason(event.target.value)}
                         disabled={Boolean(busy)}
@@ -660,10 +668,10 @@ export default function ProjectIlawOrderDetail() {
                     />
                   </label>
                   <div className="pilaw-embedded-form-actions">
-                    {!paid && (
+                    {awaitingVerification && (
                       <Button
                         onClick={() => void handleConfirmPayment()}
-                        disabled={Boolean(busy)}
+                        disabled={Boolean(busy) || !evidencePath}
                       >
                         <ShieldCheck size={16} aria-hidden="true" />
                         {busy === "confirm"
@@ -675,7 +683,9 @@ export default function ProjectIlawOrderDetail() {
                       <Button
                         variant="danger"
                         onClick={() => void handleRejectPayment()}
-                        disabled={Boolean(busy)}
+                        disabled={
+                          Boolean(busy) || rejectReason.trim().length < 5
+                        }
                       >
                         {busy === "reject" ? "Rejecting..." : "Reject submission"}
                       </Button>
@@ -683,8 +693,10 @@ export default function ProjectIlawOrderDetail() {
                   </div>
                   {!awaitingVerification && !paid && (
                     <p className="pilaw-detail-note">
-                      Payment evidence has not been submitted. Confirm only after
-                      you have verified the actual transaction.
+                      Payment review starts after the customer submits a
+                      transaction reference and evidence. Uploading evidence does
+                      not mark the order paid; confirm only after verifying the
+                      actual transaction.
                     </p>
                   )}
                 </div>

@@ -72,7 +72,7 @@ export default function ProjectIlawSettingsPanel() {
       setNotice("Project Ilaw settings saved.");
     } catch {
       setError(
-        "Settings were not saved. Enabling payments requires a complete GCash or bank account.",
+        "Settings were not saved. Check the account details and try again.",
       );
     } finally {
       setSaving(false);
@@ -99,9 +99,10 @@ export default function ProjectIlawSettingsPanel() {
 
       <p className="pilaw-production-note">
         Ordering and payment details are separate controls. Public ordering stays
-        closed until it is explicitly enabled here, and payments stay disabled
-        with no account details shown until official GCash or bank details are
-        supplied and saved.
+        closed until it is explicitly enabled here. Payments stay disabled until
+        they are enabled here; when enabled, the confirmed GCash InstaPay QR is
+        shown to customers. Account text details are optional supporting
+        information and are never invented.
       </p>
 
       {loading ? (
@@ -219,7 +220,8 @@ export default function ProjectIlawSettingsPanel() {
             <span>
               <strong>Show payment details to customers</strong>
               <small>
-                Only enable after the official receiving account is confirmed.
+                The confirmed GCash InstaPay QR is shown when this is on. Enable
+                only after the church confirms the receiving account.
               </small>
             </span>
           </label>

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Check, Copy, HandCoins, Heart, Landmark, Wallet } from "lucide-react";
-import instapayQr from "../assets/instapay-qr.png";
 import PublicPage from "../components/PublicPage";
+
+const instapayQr = "/images/fundraising/gcash-instapay-qr.jpg";
 
 const accountName = "Gods Grace Community Church";
 const accountNumber = "3143314461925";

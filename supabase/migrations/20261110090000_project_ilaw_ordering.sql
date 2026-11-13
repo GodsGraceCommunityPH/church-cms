@@ -791,6 +791,7 @@ set search_path = ''
 as $$
 declare
   target public.project_ilaw_orders%rowtype;
+  settings public.project_ilaw_settings%rowtype;
   recipient uuid;
   clean_reference text := btrim(coalesce(p_reference, ''));
   digits text := regexp_replace(coalesce(p_mobile, ''), '[^0-9]', '', 'g');
@@ -799,6 +800,17 @@ declare
 begin
   if clean_reference = '' or digits = '' or p_payment_token is null then
     raise exception 'Order reference, mobile number, and payment token are required' using errcode = '22023';
+  end if;
+
+  -- Payment collection is a separate switch from order intake. While payments
+  -- are disabled the confirmed QR and instructions are hidden, and evidence
+  -- must not be accepted as though collection were active.
+  select * into settings
+  from public.project_ilaw_settings
+  where id;
+
+  if not found or not settings.payments_enabled then
+    raise exception 'Project Ilaw payment collection is not open yet' using errcode = 'P0001';
   end if;
   if char_length(clean_payment_reference) < 4
      or char_length(clean_payment_reference) > 120 then
@@ -993,6 +1005,16 @@ begin
     raise exception 'A cancelled order cannot be confirmed as paid' using errcode = 'P0001';
   end if;
 
+  -- Confirmation is a manual review step: evidence and a transaction
+  -- reference must already have been submitted and be awaiting verification.
+  if target.payment_status <> 'payment_verification' then
+    raise exception 'Only a payment awaiting verification can be confirmed' using errcode = 'P0001';
+  end if;
+  if target.payment_evidence_path is null
+     or btrim(target.payment_evidence_path) = '' then
+    raise exception 'Payment evidence is required before confirming' using errcode = 'P0001';
+  end if;
+
   previous_status := target.payment_status;
 
   update public.project_ilaw_orders
@@ -1063,7 +1085,10 @@ begin
   if p_order_id is null then
     raise exception 'Order is required' using errcode = '22023';
   end if;
-  if clean_reason is not null and char_length(clean_reason) > 1000 then
+  if clean_reason is null or char_length(clean_reason) < 5 then
+    raise exception 'Enter a rejection reason of at least 5 characters' using errcode = '22023';
+  end if;
+  if char_length(clean_reason) > 1000 then
     raise exception 'Rejection reason must be at most 1000 characters' using errcode = '22023';
   end if;
 
@@ -1648,8 +1673,6 @@ declare
   clean_bank_account_name text := nullif(btrim(coalesce(p_bank_account_name, '')), '');
   clean_bank_account_number text := nullif(btrim(coalesce(p_bank_account_number, '')), '');
   clean_instructions text := nullif(btrim(coalesce(p_payment_instructions, '')), '');
-  gcash_complete boolean;
-  bank_complete boolean;
   settings public.project_ilaw_settings%rowtype;
 begin
   if not public.has_permission('project_ilaw.orders.manage') then
@@ -1671,14 +1694,10 @@ begin
     raise exception 'Provide the bank account name and number with the bank name' using errcode = '22023';
   end if;
 
-  gcash_complete := clean_gcash_name is not null and clean_gcash_number is not null;
-  bank_complete := clean_bank_name is not null
-    and clean_bank_account_name is not null
-    and clean_bank_account_number is not null;
-
-  if p_payments_enabled and not (gcash_complete or bank_complete) then
-    raise exception 'Configure at least one complete GCash or bank account before enabling payments' using errcode = '22023';
-  end if;
+  -- The confirmed GCash InstaPay QR is a fixed public asset in the storefront.
+  -- It is always shown when payments are enabled, so payment collection can be
+  -- opened without additional text account details. Any details that are
+  -- supplied are optional supporting information and are validated above.
 
   update public.project_ilaw_settings
   set orders_enabled = coalesce(p_orders_enabled, false),
@@ -1726,7 +1745,16 @@ as $$
 declare
   parts text[];
   target public.project_ilaw_orders%rowtype;
+  settings public.project_ilaw_settings%rowtype;
 begin
+  select * into settings
+  from public.project_ilaw_settings
+  where id;
+
+  if not found or not settings.payments_enabled then
+    return false;
+  end if;
+
   parts := string_to_array(coalesce(p_name, ''), '/');
   if array_length(parts, 1) is distinct from 4
      or parts[1] <> 'orders'

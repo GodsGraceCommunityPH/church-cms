@@ -3,6 +3,7 @@ import Modal from "../Modal";
 import OrderLineItemsEditor from "./OrderLineItemsEditor";
 import { createProjectIlawOrder } from "../../features/fundraising/orderService";
 import {
+  ORDER_FULFILMENT,
   calculateDraftTotals,
   createDraftItem,
   createRequestId,
@@ -11,6 +12,7 @@ import {
   validateOrderDraft,
   type CreatedProjectIlawOrder,
   type OrderDraft,
+  type OrderDraftValidation,
 } from "../../features/fundraising/projectIlaw";
 
 const EMPTY_DRAFT: OrderDraft = {
@@ -28,6 +30,7 @@ export default function OrderForm() {
   const [errors, setErrors] = useState<string[]>([]);
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [review, setReview] = useState<OrderDraftValidation | null>(null);
   const [confirmation, setConfirmation] =
     useState<CreatedProjectIlawOrder | null>(null);
   const requestIdRef = useRef(createRequestId());
@@ -39,8 +42,11 @@ export default function OrderForm() {
   };
 
   const closeConfirmation = () => setConfirmation(null);
+  const closeReview = () => {
+    if (!submitting) setReview(null);
+  };
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting) return;
 
@@ -53,17 +59,24 @@ export default function OrderForm() {
 
     setErrors([]);
     setFormError("");
+    setReview(validation);
+  }
+
+  async function confirmOrder() {
+    if (!review || submitting) return;
+
     setSubmitting(true);
 
     try {
       const created = await createProjectIlawOrder({
         requestId: requestIdRef.current,
-        customerName: validation.customerName,
-        mobile: validation.mobile,
-        notes: validation.notes,
-        items: validation.items,
+        customerName: review.customerName,
+        mobile: review.mobile,
+        notes: review.notes,
+        items: review.items,
       });
 
+      setReview(null);
       setConfirmation(created);
       setDraft({ ...EMPTY_DRAFT, items: [createDraftItem()] });
       requestIdRef.current = createRequestId();
@@ -72,6 +85,7 @@ export default function OrderForm() {
         error && typeof error === "object" && "message" in error
           ? String((error as { message?: unknown }).message)
           : "";
+      setReview(null);
       if (/not open/i.test(message)) {
         setFormError(
           "Project Ilaw ordering is not open yet. Your order was not saved.",
@@ -219,14 +233,119 @@ export default function OrderForm() {
 
         <div className="order-form-submit">
           <p>
-            Your order is saved with a reference number. Keep it so you can
-            return to the payment section and submit your transaction details.
+            You will review your details before the order is saved. Orders are
+            for pickup at church, and payment is completed separately after your
+            order reference is issued.
           </p>
           <button type="submit" className="ilaw-primary" disabled={submitting}>
-            {submitting ? "Saving order..." : "Submit order"}
+            Review order
           </button>
         </div>
       </form>
+
+      <Modal
+        open={Boolean(review)}
+        title="Review your order"
+        onClose={closeReview}
+      >
+        {review && (
+          <div className="order-review">
+            <p>
+              Please check everything before submitting. Nothing is charged at
+              this step.
+            </p>
+
+            <div className="order-review-section">
+              <h4>Your details</h4>
+              <dl className="order-review-details">
+                <div>
+                  <dt>Customer name</dt>
+                  <dd>{review.customerName}</dd>
+                </div>
+                <div>
+                  <dt>Mobile number</dt>
+                  <dd>{review.mobile}</dd>
+                </div>
+                {review.notes && (
+                  <div>
+                    <dt>Order notes</dt>
+                    <dd>{review.notes}</dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+
+            <div className="order-review-section">
+              <h4>Items</h4>
+              <div className="order-review-table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th scope="col">Product</th>
+                      <th scope="col">Colour</th>
+                      <th scope="col">Size</th>
+                      <th scope="col">Qty</th>
+                      <th scope="col">Unit price</th>
+                      <th scope="col">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {review.items.map((item) => {
+                      const product = getShopItem(item.productId);
+                      const price = product?.price ?? 499;
+                      return (
+                        <tr key={`${item.productId}-${item.size}-${item.color}`}>
+                          <td>{product?.name ?? "—"}</td>
+                          <td>{item.color}</td>
+                          <td>
+                            {product?.id === "project-ilaw-eco-bag"
+                              ? "—"
+                              : item.size}
+                          </td>
+                          <td>{item.quantity}</td>
+                          <td>{formatPeso(price)}</td>
+                          <td>{formatPeso(price * item.quantity)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="order-review-total">
+                <span>Total quantity: {review.totalQuantity}</span>
+                <strong>Total: {formatPeso(review.totalAmount)}</strong>
+              </div>
+            </div>
+
+            <div className="order-review-section">
+              <h4>{ORDER_FULFILMENT.label}</h4>
+              <p>
+                <strong>{ORDER_FULFILMENT.method}</strong>
+              </p>
+              <p>{ORDER_FULFILMENT.note}</p>
+            </div>
+
+            <div className="order-confirmation-actions">
+              <button
+                type="button"
+                className="ilaw-primary"
+                onClick={() => void confirmOrder()}
+                disabled={submitting}
+              >
+                {submitting ? "Submitting order..." : "Confirm and submit order"}
+              </button>
+              <button
+                type="button"
+                className="ilaw-secondary"
+                onClick={closeReview}
+                disabled={submitting}
+              >
+                Go back and edit
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <Modal
         open={Boolean(confirmation)}
@@ -270,8 +389,9 @@ export default function OrderForm() {
               </button>
             </div>
             <p className="order-confirmation-hint">
-              Payment instructions appear once the church has configured the
-              official GCash or bank account details.
+              Keep your reference. Payment is completed separately. Payment
+              instructions, including the GCash InstaPay QR, appear once the
+              church enables payments. Orders are collected at church.
             </p>
           </div>
         )}

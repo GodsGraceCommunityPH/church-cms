@@ -226,6 +226,16 @@ test("payment confirmation is manual, permission-checked, and never automatic", 
   assert.match(confirm, /actor_type/);
   assert.match(confirm, /A cancelled order cannot be confirmed as paid/);
 
+  // A payment can only be confirmed after the customer has submitted a
+  // transaction reference and evidence for manual review.
+  assert.match(
+    confirm,
+    /target\.payment_status <> 'payment_verification'/,
+  );
+  assert.match(confirm, /Only a payment awaiting verification can be confirmed/);
+  assert.match(confirm, /Payment evidence is required before confirming/);
+  assert.match(confirm, /target\.payment_evidence_path is null/);
+
   // No trigger, default, or submission path can confirm payment.
   const submit = functionBody(
     source,
@@ -272,6 +282,17 @@ test("payment evidence submission is token-scoped and cannot confirm payment", a
   assert.doesNotMatch(submit, /set payment_status = 'paid'/);
   assert.doesNotMatch(submit, /has_permission/);
 
+  // Payments are a separate switch: while disabled, no evidence is accepted
+  // even if the caller knows the reference, mobile number, and token.
+  assert.match(submit, /select \* into settings\s+from public\.project_ilaw_settings/);
+  assert.match(submit, /not settings\.payments_enabled/);
+  assert.match(submit, /Project Ilaw payment collection is not open yet/);
+  assert.ok(
+    submit.indexOf("payments_enabled") <
+      submit.indexOf("update public.project_ilaw_orders"),
+    "the payment gate must run before the order update",
+  );
+
   const uploadCheck = functionBody(
     source,
     "create or replace function public.project_ilaw_can_upload_payment_evidence(",
@@ -281,6 +302,8 @@ test("payment evidence submission is token-scoped and cannot confirm payment", a
   assert.match(uploadCheck, /target\.payment_token::text <> parts\[3\]/);
   assert.match(uploadCheck, /target\.payment_status = 'paid'/);
   assert.match(uploadCheck, /target\.fulfillment_status = 'cancelled'/);
+  assert.match(uploadCheck, /select \* into settings\s+from public\.project_ilaw_settings/);
+  assert.match(uploadCheck, /not settings\.payments_enabled/);
 });
 
 test("payment evidence lives in a private bucket with scoped storage policies", async () => {
@@ -315,6 +338,10 @@ test("rejecting a payment returns the order to awaiting payment without deleting
   assert.match(reject, /payment_rejected_at = now\(\)/);
   assert.match(reject, /'payment_rejected'/);
   assert.doesNotMatch(reject, /delete from/);
+
+  // A meaningful reason is required so the customer can correct the submission.
+  assert.match(reject, /clean_reason is null or char_length\(clean_reason\) < 5/);
+  assert.match(reject, /Enter a rejection reason of at least 5 characters/);
 });
 
 test("fulfilment changes and amendments require project_ilaw.orders.manage", async () => {
@@ -373,8 +400,16 @@ test("settings can only be changed with project_ilaw.orders.manage", async () =>
 
   assert.match(update, /public\.has_permission\('project_ilaw\.orders\.manage'\)/);
   assert.match(update, /actor uuid := auth\.uid\(\)/);
-  assert.match(update, /before enabling payments/);
   assert.match(update, /updated_by = actor/);
+
+  // The confirmed QR is shipped with the storefront, so payments can be opened
+  // without inventing text account details. Supplied details are still
+  // validated as complete pairs when present.
+  assert.doesNotMatch(
+    update,
+    /not \(gcash_complete or bank_complete\)/,
+  );
+  assert.match(update, /confirmed GCash InstaPay QR/);
 });
 
 test("activity history is append-only and requires view permission to read", async () => {
@@ -451,6 +486,17 @@ test("the order dashboard and detail page expose no direct table writes", async 
   assert.match(list, /hasPermission\(\s*"project_ilaw\.orders\.export"/);
   assert.match(settings, /hasPermission\(\s*"project_ilaw\.orders\.manage"/);
   assert.match(production, /hasPermission\(\s*"project_ilaw\.orders\.export"/);
+
+  // Staff can confirm only after evidence is under verification, and a
+  // rejection cannot be submitted without a meaningful reason.
+  assert.match(detail, /Rejection reason \(required\)/);
+  assert.match(
+    detail,
+    /Enter a rejection reason of at least 5 characters/,
+  );
+  assert.match(detail, /rejectReason\.trim\(\)\.length < 5/);
+  assert.match(detail, /awaitingVerification && \(\s*<Button/s);
+  assert.match(detail, /disabled=\{Boolean\(busy\) \|\| !evidencePath\}/);
 
   // Evidence is opened through a short-lived signed URL, never a public URL.
   assert.match(detail, /getPaymentEvidenceUrl/);
@@ -730,12 +776,64 @@ integration(
 
     // Payment evidence upload is restricted to the order's token-scoped path.
     const evidencePath = `orders/${orderId}/${submitted.data.payment_token}/evidence.png`;
+
+    // Payments are still disabled even though ordering is open. The correct
+    // token-scoped path must still be rejected, and the payment RPC must not
+    // accept evidence as though collection were active.
+    const disabledUpload = await anon.storage
+      .from("project-ilaw-payment-evidence")
+      .upload(evidencePath, new Blob(["x"]), { contentType: "image/png" });
+    assert.ok(
+      disabledUpload.error,
+      "evidence uploads stay closed while payments are disabled",
+    );
+
+    const disabledPayment = await anon.rpc("submit_project_ilaw_payment", {
+      p_reference: submitted.data.reference,
+      p_mobile: "09171234567",
+      p_payment_token: submitted.data.payment_token,
+      p_payment_reference: "GC-DISABLED-001",
+      p_evidence_path: evidencePath,
+    });
+    assert.ok(
+      disabledPayment.error,
+      "payment evidence is rejected while payments are disabled",
+    );
+    assert.match(disabledPayment.error.message, /payment collection is not open/i);
+
+    // A manager opens payments with a test-only receiving account in the
+    // disposable project. Ordering and payments are separate switches.
+    const paymentsOpened = await manager.rpc("update_project_ilaw_settings", {
+      p_orders_enabled: true,
+      p_payments_enabled: true,
+      p_gcash_account_name: "Integration Test",
+      p_gcash_account_number: "09170000000",
+      p_bank_name: null,
+      p_bank_account_name: null,
+      p_bank_account_number: null,
+      p_payment_instructions: null,
+      p_production_cutoff: null,
+    });
+    assert.ifError(paymentsOpened.error);
+    assert.equal(paymentsOpened.data.orders_enabled, true);
+    assert.equal(paymentsOpened.data.payments_enabled, true);
+
     const wrongPathUpload = await anon.storage
       .from("project-ilaw-payment-evidence")
       .upload(`orders/${orderId}/${crypto.randomUUID()}/evidence.png`, new Blob(["x"]), {
         contentType: "image/png",
       });
     assert.ok(wrongPathUpload.error, "evidence upload needs the order token");
+
+    // Confirmation is impossible until the customer submits evidence.
+    const prematureConfirm = await confirmer.rpc(
+      "confirm_project_ilaw_payment",
+      { p_order_id: orderId, p_note: null },
+    );
+    assert.ok(
+      prematureConfirm.error,
+      "payment cannot be confirmed before evidence is submitted",
+    );
 
     const payment = await anon.rpc("submit_project_ilaw_payment", {
       p_reference: submitted.data.reference,
@@ -762,12 +860,30 @@ integration(
       .createSignedUrl(evidencePath, 60);
     assert.ok(outsiderEvidence.error, "outsiders cannot read evidence");
 
+    // A rejection must carry a meaningful reason.
+    const shortReject = await confirmer.rpc("reject_project_ilaw_payment", {
+      p_order_id: orderId,
+      p_reason: "no",
+    });
+    assert.ok(shortReject.error, "rejections require a real reason");
+
     const reject = await confirmer.rpc("reject_project_ilaw_payment", {
       p_order_id: orderId,
       p_reason: "integration rejection",
     });
     assert.ifError(reject.error);
     assert.equal(reject.data.payment_status, "awaiting_payment");
+
+    // The customer resubmits after the rejection, then staff confirm manually.
+    const resubmitted = await anon.rpc("submit_project_ilaw_payment", {
+      p_reference: submitted.data.reference,
+      p_mobile: "09171234567",
+      p_payment_token: submitted.data.payment_token,
+      p_payment_reference: "GC-INTEGRATION-002",
+      p_evidence_path: evidencePath,
+    });
+    assert.ifError(resubmitted.error);
+    assert.equal(resubmitted.data.payment_status, "payment_verification");
 
     const confirm = await confirmer.rpc("confirm_project_ilaw_payment", {
       p_order_id: orderId,

@@ -1,6 +1,10 @@
 import { useState, type FormEvent } from "react";
+import Modal from "../Modal";
 import {
-  PAYMENT_STATUS_LABELS,
+  CUSTOMER_FULFILLMENT_STATUS_LABELS,
+  CUSTOMER_PAYMENT_STATUS_LABELS,
+  ORDER_FULFILMENT,
+  PAYMENT_QR,
   formatPeso,
   type ProjectIlawPaymentContext,
 } from "../../features/fundraising/projectIlaw";
@@ -27,6 +31,7 @@ export default function PaymentPanel() {
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState("");
+  const [qrOpen, setQrOpen] = useState(false);
 
   async function lookup(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
@@ -172,7 +177,15 @@ export default function PaymentPanel() {
             </div>
             <div>
               <span>Payment status</span>
-              <strong>{PAYMENT_STATUS_LABELS[context.paymentStatus]}</strong>
+              <strong>
+                {CUSTOMER_PAYMENT_STATUS_LABELS[context.paymentStatus]}
+              </strong>
+            </div>
+            <div>
+              <span>{ORDER_FULFILMENT.label}</span>
+              <strong>
+                {CUSTOMER_FULFILLMENT_STATUS_LABELS[context.fulfillmentStatus]}
+              </strong>
             </div>
           </div>
 
@@ -220,7 +233,64 @@ export default function PaymentPanel() {
 
               {instructions?.enabled ? (
                 <div className="payment-instructions">
-                  <h4>Official payment details</h4>
+                  <h4>Pay the exact amount</h4>
+                  <div className="payment-due">
+                    <div>
+                      <span>Amount due</span>
+                      <strong>{formatPeso(context.totalAmount)}</strong>
+                    </div>
+                    <div>
+                      <span>Order reference</span>
+                      <strong>{context.reference}</strong>
+                    </div>
+                  </div>
+
+                  <figure className="payment-qr">
+                    <figcaption>
+                      <strong>{PAYMENT_QR.label}</strong>
+                      <span>{PAYMENT_QR.notice}</span>
+                    </figcaption>
+                    <img
+                      src={PAYMENT_QR.src}
+                      alt={PAYMENT_QR.alt}
+                      width={657}
+                      height={989}
+                    />
+                    <button
+                      type="button"
+                      className="ilaw-secondary payment-qr-enlarge"
+                      onClick={() => setQrOpen(true)}
+                    >
+                      View larger QR
+                    </button>
+                  </figure>
+
+                  <ol className="payment-steps">
+                    <li>
+                      Open GCash or any InstaPay-enabled banking app and scan
+                      the QR code above.
+                    </li>
+                    <li>
+                      Enter the exact amount of{" "}
+                      <strong>{formatPeso(context.totalAmount)}</strong>. If the
+                      app asks for a reference or note, use{" "}
+                      <strong>{context.reference}</strong>.
+                    </li>
+                    <li>
+                      Keep the receipt, then submit the transaction reference
+                      and a screenshot or PDF below.
+                    </li>
+                    <li>
+                      The Project Ilaw team checks the actual transaction and
+                      confirms your payment manually. Uploading a receipt does
+                      not mark the order as paid.
+                    </li>
+                  </ol>
+
+                  <p className="payment-instruction-note">
+                    {ORDER_FULFILMENT.method}. {ORDER_FULFILMENT.note}
+                  </p>
+
                   {instructions.gcashAccountName && (
                     <div className="payment-instruction-row">
                       <span>GCash account name</span>
@@ -256,20 +326,16 @@ export default function PaymentPanel() {
                       {instructions.paymentInstructions}
                     </p>
                   )}
-                  <p className="payment-instruction-note">
-                    Pay the exact order total ({formatPeso(context.totalAmount)})
-                    and keep your receipt. After paying, submit the transaction
-                    reference and a screenshot below.
-                  </p>
                 </div>
               ) : (
                 <div className="payment-note" role="status">
-                  <strong>Payment instructions are not available yet.</strong>
+                  <strong>Payment collection is not open yet.</strong>
                   <p>
-                    The church has not published the official GCash or bank
-                    account details. Keep your order reference and check this
-                    page again later. Do not send payment to details from any
-                    other source.
+                    The church has not published its official payment
+                    instructions. No GCash QR code is shown and payment evidence
+                    cannot be submitted yet. Keep your order reference and check
+                    this page again later. Do not send payment to details from
+                    any other source.
                   </p>
                 </div>
               )}
@@ -328,6 +394,17 @@ export default function PaymentPanel() {
           )}
         </div>
       )}
+
+      <Modal
+        open={qrOpen}
+        title={PAYMENT_QR.label}
+        onClose={() => setQrOpen(false)}
+      >
+        <div className="payment-qr-modal">
+          <img src={PAYMENT_QR.src} alt={PAYMENT_QR.alt} />
+          <p>{PAYMENT_QR.notice}</p>
+        </div>
+      </Modal>
     </div>
   );
 }

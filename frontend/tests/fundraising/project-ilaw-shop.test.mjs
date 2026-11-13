@@ -1,12 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 
 import {
+  CUSTOMER_FULFILLMENT_STATUS_LABELS,
+  CUSTOMER_PAYMENT_STATUS_LABELS,
   ECO_BAG_COLORS,
   FULFILLMENT_STATUS_LABELS,
   FULFILLMENT_TRANSITIONS,
+  ORDER_FULFILMENT,
   ORDER_STEPS,
+  PAYMENT_QR,
   PAYMENT_STATUS_LABELS,
   PROJECT_ILAW,
   SHOP_ITEMS,
@@ -23,6 +27,15 @@ import {
 } from "../../src/features/fundraising/projectIlaw.ts";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
+
+const fileExists = async (url) => {
+  try {
+    await access(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 test("Project Ilaw describes the lighting work without invented figures", () => {
   assert.match(PROJECT_ILAW.summary, /repairs and improvements/i);
@@ -140,9 +153,6 @@ test("public ordering is closed by default and gated by the server setting", asy
   const card = await read(
     "../../src/components/fundraising/MerchandiseCard.tsx",
   );
-  const preview = await read(
-    "../../src/components/fundraising/ShopPreviewSection.tsx",
-  );
 
   assert.equal(SHOP_STATUS.defaultOrdersEnabled, false);
   assert.match(SHOP_STATUS.closedNotice, /not open/i);
@@ -155,11 +165,9 @@ test("public ordering is closed by default and gated by the server setting", asy
   assert.match(SHOP_STATUS.availabilityLabel, /available/i);
   assert.equal(SHOP_STATUS.closedLabel, "Ordering not open yet");
 
-  // Product cards and the homepage preview also reflect the closed default.
+  // Product cards reflect the closed default.
   assert.match(card, /ordersEnabled = false/);
   assert.match(card, /SHOP_STATUS\.closedLabel/);
-  assert.match(preview, /SHOP_STATUS\.closedCatalogNotice/);
-  assert.doesNotMatch(preview, /SHOP_STATUS\.catalogNotice/);
 
   // The public page reads the server switch and renders the order form only
   // when ordering is open. The database still rejects submissions if the switch
@@ -347,6 +355,47 @@ test("status labels and transitions match the documented order workflow", () => 
   assert.equal(canCancelOrder("ready_for_pickup"), true);
   assert.equal(canCancelOrder("completed"), false);
   assert.equal(canCancelOrder("cancelled"), false);
+
+  // Customers see plain-language statuses while staff keep the internal model.
+  assert.deepEqual(CUSTOMER_PAYMENT_STATUS_LABELS, {
+    awaiting_payment: "Awaiting Payment",
+    payment_verification: "Payment Submitted",
+    paid: "Payment Confirmed",
+  });
+  assert.deepEqual(CUSTOMER_FULFILLMENT_STATUS_LABELS, {
+    not_started: "Order received",
+    in_production: "Preparing",
+    ready_for_pickup: "Ready for pickup",
+    completed: "Completed",
+    cancelled: "Cancelled",
+  });
+
+  assert.match(ORDER_FULFILMENT.method, /Pickup/i);
+  assert.match(ORDER_FULFILMENT.method, /God's Grace Community Covenant Church/);
+});
+
+test("the order form requires an explicit review before saving", async () => {
+  const form = await read("../../src/components/fundraising/OrderForm.tsx");
+
+  assert.match(form, /Review order/);
+  assert.match(form, /title="Review your order"/);
+  assert.match(form, /setReview\(validation\)/);
+  assert.match(form, /confirmOrder/);
+  assert.match(form, /Confirm and submit order/);
+  assert.match(form, /Go back and edit/);
+  assert.match(form, /review\.customerName/);
+  assert.match(form, /review\.mobile/);
+  assert.match(form, /review\.totalAmount/);
+  assert.match(form, /ORDER_FULFILMENT\.method/);
+  assert.match(form, /Nothing is charged at\s+this step/);
+
+  // Submission only happens after the customer confirms the review; the form
+  // submit handler itself does not call the create RPC.
+  const submitHandler = form.slice(
+    form.indexOf("function handleSubmit"),
+    form.indexOf("async function confirmOrder"),
+  );
+  assert.doesNotMatch(submitHandler, /createProjectIlawOrder/);
 });
 
 test("the confirmation dialog only appears after a successful save and routes to payment", async () => {
@@ -399,6 +448,67 @@ test("the public order form captures colours and the payment section is present"
   assert.match(panel, /submitProjectIlawPayment/);
   assert.match(panel, /Payment awaiting verification/);
   assert.match(panel, /never marked paid automatically|never confirms payment automatically/i);
+
+  // The panel shows the confirmed QR and plain-language statuses only when
+  // payment collection is enabled.
+  assert.match(panel, /PAYMENT_QR\.src/);
+  assert.match(panel, /PAYMENT_QR\.label/);
+  assert.match(panel, /PAYMENT_QR\.notice/);
+  assert.match(panel, /View larger QR/);
+  assert.match(panel, /CUSTOMER_PAYMENT_STATUS_LABELS/);
+  assert.match(panel, /CUSTOMER_FULFILLMENT_STATUS_LABELS/);
+  assert.match(panel, /ORDER_FULFILMENT\.method/);
+  assert.match(panel, /Payment collection is not open yet/);
+});
+
+test("the confirmed GCash InstaPay QR is a public, unchanged asset", async () => {
+  assert.equal(
+    PAYMENT_QR.src,
+    "/images/fundraising/gcash-instapay-qr.jpg",
+  );
+  assert.equal(PAYMENT_QR.label, "GCash (InstaPay QR)");
+  assert.equal(PAYMENT_QR.notice, "Transfer fees may apply.");
+  assert.ok(PAYMENT_QR.alt);
+
+  const image = await readFile(
+    new URL("../../public/images/fundraising/gcash-instapay-qr.jpg", import.meta.url),
+  );
+  // The supplied image is a JPEG; preserve it byte-for-byte rather than
+  // regenerating or re-encoding the QR.
+  assert.deepEqual([...image.subarray(0, 4)], [0xff, 0xd8, 0xff, 0xe0]);
+
+  let offset = 2;
+  let width = 0;
+  let height = 0;
+  while (offset < image.length) {
+    if (image[offset] !== 0xff) {
+      offset += 1;
+      continue;
+    }
+    const marker = image[offset + 1];
+    if (
+      marker >= 0xc0 &&
+      marker <= 0xcf &&
+      marker !== 0xc4 &&
+      marker !== 0xc8 &&
+      marker !== 0xcc
+    ) {
+      height = image.readUInt16BE(offset + 5);
+      width = image.readUInt16BE(offset + 7);
+      break;
+    }
+    offset += 2 + image.readUInt16BE(offset + 2);
+  }
+  assert.equal(width, 657);
+  assert.equal(height, 989);
+
+  // The QR lives in the public asset tree, never in payment evidence storage.
+  assert.doesNotMatch(PAYMENT_QR.src, /payment-evidence/i);
+
+  const give = await read("../../src/pages/GivePage.tsx");
+  assert.match(give, /\/images\/fundraising\/gcash-instapay-qr\.jpg/);
+  assert.doesNotMatch(give, /assets\/instapay-qr\.png/);
+  assert.match(give, /GCash/);
 });
 
 test("the shop route is public and uses the existing public layout", async () => {
@@ -418,24 +528,59 @@ test("the shop route is public and uses the existing public layout", async () =>
   assert.match(app, /import ShopPage from "\.\/pages\/ShopPage"/);
 });
 
-test("the homepage places the shop preview directly below Project Ilaw", async () => {
+test("the homepage keeps Project Ilaw but no longer duplicates the shop mockups", async () => {
   const homepage = await read("../../src/pages/HomePage.tsx");
 
   const ilaw = homepage.indexOf("<ProjectIlawSection />");
-  const shopPreview = homepage.indexOf("<ShopPreviewSection />");
   const gallery = homepage.indexOf("<CommunityGallery />");
 
   assert.notEqual(ilaw, -1);
-  assert.notEqual(shopPreview, -1);
   assert.notEqual(gallery, -1);
-  assert.ok(ilaw < shopPreview, "shop preview must follow Project Ilaw");
-  assert.ok(shopPreview < gallery, "shop preview must stay on the homepage");
+  assert.ok(ilaw < gallery, "Project Ilaw stays on the homepage");
+
+  // The old merchandise preview was removed; the real catalogue lives at /shop.
+  assert.doesNotMatch(homepage, /ShopPreviewSection/);
+  assert.equal(
+    await fileExists(
+      new URL(
+        "../../src/components/fundraising/ShopPreviewSection.tsx",
+        import.meta.url,
+      ),
+    ),
+    false,
+  );
 
   const section = await read(
     "../../src/components/fundraising/ProjectIlawSection.tsx",
   );
   assert.match(section, /id="project-ilaw"/);
   assert.match(section, /to="\/shop"/);
+
+  const content = await read("../../src/features/fundraising/projectIlaw.ts");
+  assert.doesNotMatch(content, /SHOP_PREVIEW/);
+
+  const css = await read("../../src/features/fundraising/Fundraising.css");
+  assert.doesNotMatch(css, /\.shop-preview-/);
+});
+
+test("the landing page copy no longer sends customers to Messenger", async () => {
+  const files = [
+    "../../src/pages/HomePage.tsx",
+    "../../src/components/fundraising/ProjectIlawSection.tsx",
+    "../../src/features/fundraising/projectIlaw.ts",
+    "../../src/pages/ShopPage.tsx",
+  ];
+
+  for (const file of files) {
+    const content = await read(file);
+    assert.doesNotMatch(content, /messenger/i, `${file} must not use Messenger`);
+    assert.doesNotMatch(content, /bryan castro/i, `${file} must not name Bryan Castro`);
+    assert.doesNotMatch(
+      content,
+      /Two ways to support Project Ilaw/i,
+      `${file} must not show the old banner`,
+    );
+  }
 });
 
 test("public navigation links to Project Ilaw and Shop on desktop and mobile", async () => {

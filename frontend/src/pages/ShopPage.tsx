@@ -95,7 +95,8 @@ export default function ShopPage() {
         <div className="public-section-heading">
           <h2 id="shop-catalog-title">Merchandise</h2>
           <p>
-            Two ways to support Project Ilaw. Choose a T-shirt or an eco bag.
+            Choose a T-shirt or an eco bag, then review your order before it is
+            submitted.
           </p>
         </div>
         <p className="shop-notice" role="note">

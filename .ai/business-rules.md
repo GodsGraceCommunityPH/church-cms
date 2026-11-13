@@ -411,20 +411,34 @@ Two products are sold at ₱499 each: the Project Ilaw T-shirt (sizes XS–3XL;
 colours Black, White, Maroon, Green, Blue) and the Project Ilaw Eco Bag (One
 Size; handle colours Maroon, Green, Blue).
 
-Payment happens through the website. After submitting an order, the customer
-receives an order reference and total, views the official payment instructions
-once they are configured, pays through the configured GCash or bank account,
-then submits a transaction reference and payment screenshot through the website.
-Payment account details and the production cutoff are configuration, not code.
-They start empty and unset, and must not be invented or activated before the
-church confirms them.
+Payment happens through the website. The customer reviews products, quantities,
+unit prices, total, contact details, and the pickup arrangement before
+explicitly submitting the order. After submission the customer receives an order
+reference and total. When payments are enabled, the customer sees the confirmed
+**GCash (InstaPay QR)** destination, the exact amount due, the reference, and the
+“Transfer fees may apply.” notice; the QR may be enlarged for scanning. The
+customer pays the exact total, then submits a transaction reference and payment
+screenshot or PDF through the website. Fulfilment is pickup at God's Grace
+Community Covenant Church; no delivery option is invented.
+
+`orders_enabled` and `payments_enabled` are independent. While payments are
+disabled, no QR or active payment instructions are shown, and the database
+rejects payment evidence even when the caller has a valid reference, mobile
+number, and payment token. The confirmed QR is a public payment-destination
+asset and is never stored in the private evidence bucket; because it is the
+confirmed destination, payments can be enabled without inventing text account
+details. Supporting account details and the production cutoff are configuration,
+not code. They start empty and unset, and must not be invented or activated
+before the church confirms them.
 
 Payment screenshots are supporting evidence only. A payment is never confirmed
-automatically. An authorized staff member reviews the evidence, verifies the
-actual transaction in the receiving account, and manually confirms the payment.
-The confirmation records the administrator, the confirmation time, and the
-audit history. Rejecting a submission returns the order to Awaiting Payment
-without deleting its history.
+automatically. A payment may be confirmed only while it is awaiting verification
+and evidence has actually been submitted. An authorized staff member reviews the
+evidence, verifies the actual transaction in the receiving account, and manually
+confirms the payment. The confirmation records the administrator, the
+confirmation time, and the audit history. Rejecting a submission requires a
+meaningful reason of at least 5 characters, returns the order to Awaiting
+Payment, and preserves the rejection and its reason without deleting history.
 
 Payment evidence is stored privately. An order reference alone never authorizes
 access to sensitive order information or payment evidence: customers look up
@@ -434,9 +448,15 @@ and reading evidence requires the order-view permission.
 Payment status and fulfillment status are separate. Payment status is
 `awaiting_payment`, `payment_verification`, or `paid`. Fulfillment status is
 `not_started`, `in_production`, `ready_for_pickup`, `completed`, or `cancelled`.
-Fulfillment follows controlled transitions: `not_started` to `in_production` or
-`ready_for_pickup`; `in_production` to `ready_for_pickup`; `ready_for_pickup` to
-`completed`; and cancellation from any not-completed state.
+Customer-facing labels translate these internal values (for example, Payment
+Submitted, Payment Confirmed, Preparing, Ready for pickup) without changing the
+stored model. Fulfillment follows controlled transitions: `not_started` to
+`in_production` or `ready_for_pickup`; `in_production` to `ready_for_pickup`;
+`ready_for_pickup` to `completed`; and cancellation from any not-completed state.
+
+The homepage must not duplicate or mock up the merchandise catalogue. The Project
+Ilaw landing section keeps the mission and links to the real `/shop`; product
+photos, prices, availability, and ordering live in the shop and ordering flow.
 
 Order handling is append-only. Created orders, submitted payments, confirmed or
 rejected payments, fulfillment changes, amendments, and cancellations record who

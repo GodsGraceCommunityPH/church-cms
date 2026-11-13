@@ -12,10 +12,13 @@ submission function rejects every order until an authorized administrator opens
 ordering. Payment details also stay disabled by default and are a separate
 switch from order intake.
 
-Phase 1 (the public fundraising page and catalog) is unchanged. Phase 2 adds
-multi-item ordering with colours, a website payment workflow with manual
-verification, made-to-order production reporting, fulfilment tracking, an
-append-only activity history, permission-scoped CMS management, and CSV export.
+Phase 1 (the public fundraising page and catalog) remains, with the confirmed
+GCash InstaPay QR and the real `/shop` catalogue. The old homepage merchandise
+mockup section was removed so the landing page stays focused on the Project Ilaw
+mission. Phase 2 adds multi-item ordering with colours, a review-before-submit
+step, the confirmed QR in the payment workflow, manual verification,
+made-to-order production reporting, fulfilment tracking, an append-only activity
+history, permission-scoped CMS management, and CSV export.
 
 ---
 
@@ -44,25 +47,48 @@ presentation aid; the database gate is authoritative.
 2. The customer can add, edit, or remove multiple line items. Quantities must be
    positive whole numbers from 1 to 99.
 3. The customer enters a required name and mobile number plus optional notes.
-4. `submit_project_ilaw_order` saves the order header and every line item in one
+4. Before anything is saved, the customer reviews the full order: products,
+   colours, sizes, quantities, unit prices, subtotals, total, customer details,
+   and the pickup arrangement. The order is submitted only after the customer
+   explicitly confirms the review.
+5. `submit_project_ilaw_order` saves the order header and every line item in one
    transaction. The reference uses `PI-YYYYMMDD-NNNNNN` in Asia/Manila time and
    is unique.
-5. Only after a successful save does the confirmation dialog appear:
+6. Only after a successful save does the confirmation dialog appear:
    - “Orders Received!”
    - “Thank you for supporting Project Ilaw!”
    - The order reference and the server-calculated total.
    - A “Go to payment” button that scrolls to the payment section.
-6. In the payment section the customer enters the order reference **and** the
+7. In the payment section the customer enters the order reference **and** the
    mobile number used at submission. `get_project_ilaw_payment_context` returns
    the order summary, its payment status, and the official payment instructions
-   when payments are configured.
-7. Once the official GCash or bank details are published, the customer pays the
-   exact order total and keeps the receipt.
-8. The customer submits the transaction reference and a screenshot or PDF of the
-   payment. The order moves to `payment_verification`.
-9. The Project Ilaw team verifies the actual transaction in the receiving
-   account and manually confirms the payment. A screenshot never confirms a
-   payment automatically.
+   when payments are enabled.
+8. When payments are enabled, the payment section shows the confirmed
+   **GCash (InstaPay QR)** image, the exact amount due, the order reference, the
+   “Transfer fees may apply.” notice, and a button to enlarge the QR. The QR is
+   the payment destination only; it never proves or confirms a payment.
+9. The customer pays the exact order total, keeps the receipt, and submits the
+   transaction reference plus a screenshot or PDF of the payment. The order moves
+   to `payment_verification`.
+10. The Project Ilaw team verifies the actual transaction in the receiving
+    account and manually confirms the payment. A screenshot never confirms a
+    payment automatically.
+
+Fulfilment is pickup only: **Pickup at God's Grace Community Covenant Church**.
+No delivery option or delivery address is invented.
+
+Customer-facing status labels translate the internal model:
+
+| Internal status | Customer label |
+| --- | --- |
+| `awaiting_payment` | Awaiting Payment |
+| `payment_verification` | Payment Submitted |
+| `paid` | Payment Confirmed |
+| fulfilment `not_started` | Order received |
+| fulfilment `in_production` | Preparing |
+| fulfilment `ready_for_pickup` | Ready for pickup |
+| fulfilment `completed` | Completed |
+| fulfilment `cancelled` | Cancelled |
 
 The Eco Bag is one size, so neither the product card nor the line-item editor
 asks for a size. The server still stores `One Size` for reporting integrity.
@@ -81,27 +107,36 @@ Two independent switches live in the `project_ilaw_settings` singleton:
 - `orders_enabled` — controls whether `submit_project_ilaw_order` accepts new
   orders. It starts `false` and can only be changed with
   `project_ilaw.orders.manage`.
-- `payments_enabled` — controls whether official payment details are shown and
-  whether customers can submit payment evidence. It starts `false`.
+- `payments_enabled` — controls whether official payment details and the
+  confirmed QR are shown and whether customers can submit payment evidence. It
+  starts `false` and is enforced inside both `submit_project_ilaw_payment` and
+  the storage upload helper.
 
 Disabling payment instructions does **not** open or close order intake, and
 opening order intake does **not** enable payment collection. The public Shop
 reads both switches through `get_project_ilaw_public_settings`, which returns
-only the two booleans.
+only the two booleans. While payments are disabled, no QR or active payment
+instructions are shown, and evidence is rejected server-side rather than merely
+hidden.
 
-Payment account details are configuration, not code. They start empty. No GCash
-or bank details are shown to customers until authorized staff save the official
-account information in the Admin Portal and enable payments. The migration never
-invents an account or a cutoff date.
+Payment account details are configuration, not code. They start empty. The
+confirmed GCash InstaPay QR is a public, committed asset at
+`frontend/public/images/fundraising/gcash-instapay-qr.jpg`; it is shown only
+when payments are enabled and is never stored in the private evidence bucket.
+Because the confirmed QR is the payment destination, payments can be opened
+without inventing text account details; any GCash or bank text is optional
+supporting information. The migration never invents an account number or a
+cutoff date.
 
 ### Payment evidence
 
 Payment evidence is stored in the private `project-ilaw-payment-evidence`
 bucket. Anonymous uploads are limited to
-`orders/<order_id>/<payment_token>/<filename>` and are rejected once an order is
-paid or cancelled. Reading evidence requires `project_ilaw.orders.view`, and the
-admin UI opens it through a short-lived signed URL. An order reference alone
-never authorizes access to order data or evidence.
+`orders/<order_id>/<payment_token>/<filename>` and are rejected while payments
+are disabled or once an order is paid or cancelled. Reading evidence requires
+`project_ilaw.orders.view`, and the admin UI opens it through a short-lived
+signed URL. An order reference alone never authorizes access to order data or
+evidence.
 
 ---
 
@@ -154,8 +189,14 @@ and an optional reason. A paid order that is later cancelled is **not** treated
 as a refund automatically.
 
 Rejecting a payment submission returns the order to `awaiting_payment` with a
-rejection timestamp and optional reason, so the customer can submit again. The
-rejection is preserved in the activity history.
+rejection timestamp and a **required** reason of at least 5 characters, so the
+customer can correct the submission. The rejection and reason are preserved in
+the activity history.
+
+A payment can be confirmed only while it is in `payment_verification` and a
+non-empty evidence path exists. Staff cannot confirm an order that has not
+submitted evidence, and no upload, trigger, or client action marks an order paid
+automatically.
 
 ---
 
@@ -313,8 +354,16 @@ only read and mark their own notifications.
 - Public order intake is enforced inside `submit_project_ilaw_order`, not only in
   the Shop UI. While `orders_enabled` is false, no order row or line item is
   created.
+- Payment collection is enforced separately inside `submit_project_ilaw_payment`
+  and `project_ilaw_can_upload_payment_evidence`. While `payments_enabled` is
+  false, no evidence is accepted even with a valid reference, mobile number, and
+  payment token.
+- Payment confirmation requires `payment_verification` and a non-empty evidence
+  path; rejection requires a reason of at least 5 characters.
 - Payment evidence is private and token-scoped for uploads; staff reads require
   `project_ilaw.orders.view`.
+- The confirmed QR is a public payment-destination asset. It is never used as
+  proof of payment and is never written to the private evidence bucket.
 
 ---
 
@@ -328,12 +377,15 @@ npm run test:security
 ```
 
 - `tests/fundraising/project-ilaw-shop.test.mjs` — catalog, colours, one-size
-  Eco Bag, validation, totals, statuses, payment steps, confirmation modal.
+  Eco Bag, validation, totals, statuses, payment steps, review-before-submit,
+  confirmation modal, confirmed QR asset, and removal of the old homepage
+  merchandise preview.
 - `tests/fundraising/project-ilaw-accounting.test.mjs` — accounting rules,
   production aggregation, filters, CSV escaping.
 - `tests/security/project-ilaw-order-contract.test.mjs` — migration contract,
-  RLS, payment evidence storage, permission checks, append-only activity, plus an
-  optional live integration test.
+  RLS, payment evidence storage, ordering/payment switch enforcement, required
+  rejection reason, confirmation prerequisites, permission checks, append-only
+  activity, plus an optional live integration test.
 - `tests/navigation/sidebar-groups.test.mjs` — CMS navigation.
 
 The live integration test is skipped unless a disposable Supabase fixture is
@@ -375,13 +427,16 @@ integration test intentionally leaves its test order in the disposable database.
 5. Only after explicit church authorization, open ordering in the Admin Portal
    with the “Accept public orders” setting. This is a separate action from
    enabling payment details.
-6. In the Admin Portal, enter the official GCash or bank account details and
-   enable payments only after the church confirms the receiving account. Leave
-   the production cutoff unset until leadership decides the date.
-7. Redeploy the frontend and smoke-test `/shop`, the closed-ordering notice,
-   payment lookup, evidence upload, manual payment confirmation/rejection,
-   fulfilment changes, production report, and CSV export.
-8. When ordering is authorized, smoke-test order submission as well, then confirm
+6. In the Admin Portal, confirm the published **GCash (InstaPay QR)** asset,
+   enter any supporting account details, and enable payments only after the
+   church confirms the receiving account. Leave the production cutoff unset
+   until leadership decides the date.
+7. Confirm the QR remains legible and scannable on a phone, and that
+   “Transfer fees may apply.” is visible.
+8. Redeploy the frontend and smoke-test `/`, `/shop`, `/give`, the closed-ordering
+   notice, payment lookup, evidence upload, manual payment confirmation and
+   rejection, fulfilment changes, production report, and CSV export.
+9. When ordering is authorized, smoke-test order submission as well, then confirm
    the production deployment succeeded before declaring the work complete.
 
 ---
@@ -391,7 +446,7 @@ integration test intentionally leaves its test order in the disposable database.
 - The migration and role assignment have not been applied to production.
 - Public ordering is disabled by default and must be opened explicitly by an
   authorized administrator.
-- Official GCash and bank account details have not been supplied, so payments
-  remain disabled and no account details are shown on the shop.
+- The confirmed GCash InstaPay QR is committed, but supporting account text
+  details have not been supplied and payments remain disabled.
 - The production cutoff has not been decided, so it remains unset.
 - Notifications are in-app only; no email or chat automation is configured.

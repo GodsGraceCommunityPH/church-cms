@@ -251,13 +251,6 @@ export const PROJECT_ILAW = {
   processCta: "See how ordering will work",
 } as const;
 
-export const SHOP_PREVIEW = {
-  title: "Project Ilaw Shop",
-  description:
-    "Two Project Ilaw pieces, ₱499 each, made to help light our church home.",
-  cta: "Shop Now",
-} as const;
-
 export const SHOP_STATUS = {
   defaultOrdersEnabled: false,
   openNotice:
@@ -344,6 +337,42 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   payment_verification: "Payment Verification",
   paid: "Paid",
 };
+
+// Customer-facing wording keeps the same status model without exposing the
+// internal review terminology used by staff.
+export const CUSTOMER_PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  awaiting_payment: "Awaiting Payment",
+  payment_verification: "Payment Submitted",
+  paid: "Payment Confirmed",
+};
+
+export const CUSTOMER_FULFILLMENT_STATUS_LABELS: Record<
+  FulfillmentStatus,
+  string
+> = {
+  not_started: "Order received",
+  in_production: "Preparing",
+  ready_for_pickup: "Ready for pickup",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+
+// Project Ilaw merchandise is made to order and collected at the church.
+// There is no delivery option in the current design.
+export const ORDER_FULFILMENT = {
+  label: "Fulfilment",
+  method: "Pickup at God's Grace Community Covenant Church",
+  note: "We will contact you when your order is ready for pickup.",
+} as const;
+
+// The confirmed GCash InstaPay QR is a public asset. It is the payment
+// destination only; it never confirms a payment automatically.
+export const PAYMENT_QR = {
+  src: "/images/fundraising/gcash-instapay-qr.jpg",
+  label: "GCash (InstaPay QR)",
+  notice: "Transfer fees may apply.",
+  alt: "GCash InstaPay QR code for Project Ilaw payments",
+} as const;
 
 export const FULFILLMENT_STATUS_LABELS: Record<FulfillmentStatus, string> = {
   not_started: "Not Started",

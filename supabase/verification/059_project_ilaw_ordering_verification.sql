@@ -294,6 +294,17 @@ begin
   end if;
 
   if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'project_ilaw_settings'
+      and column_name = 'payments_enabled'
+      and is_nullable = 'NO'
+      and column_default = 'false'
+  ) then
+    raise exception 'project_ilaw_settings.payments_enabled is missing, nullable, or not defaulting to false';
+  end if;
+
+  if not exists (
     select 1 from pg_constraint
     where conname = 'project_ilaw_orders_payment_status_check'
       and pg_get_constraintdef(oid) like '%payment_verification%'
@@ -341,6 +352,67 @@ begin
         raise;
       end if;
   end;
+
+  -- Payments are an independent switch. Evidence must be rejected server-side
+  -- while payments are closed, not just hidden in the interface.
+  begin
+    perform public.submit_project_ilaw_payment(
+      'VERIFICATION-REF',
+      '09171234567',
+      gen_random_uuid(),
+      'VERIFICATION-TXN',
+      'orders/00000000-0000-0000-0000-000000000000/00000000-0000-0000-0000-000000000000/evidence.png'
+    );
+    raise exception 'Payment evidence was accepted while payments are disabled';
+  exception
+    when others then
+      if sqlerrm not like '%payment collection is not open yet%' then
+        raise;
+      end if;
+  end;
+
+  if public.project_ilaw_can_upload_payment_evidence(
+    'orders/00000000-0000-0000-0000-000000000000/00000000-0000-0000-0000-000000000000/evidence.png'
+  ) then
+    raise exception 'Storage uploads are allowed while payments are disabled';
+  end if;
+
+  if position(
+    'payments_enabled' in pg_get_functiondef(
+      'public.submit_project_ilaw_payment(text,text,uuid,text,text)'::regprocedure
+    )
+  ) = 0 then
+    raise exception 'submit_project_ilaw_payment does not enforce payments_enabled';
+  end if;
+
+  if position(
+    'payments_enabled' in pg_get_functiondef(
+      'public.project_ilaw_can_upload_payment_evidence(text)'::regprocedure
+    )
+  ) = 0 then
+    raise exception 'project_ilaw_can_upload_payment_evidence does not enforce payments_enabled';
+  end if;
+
+  if position(
+    'char_length(clean_reason) < 5' in pg_get_functiondef(
+      'public.reject_project_ilaw_payment(uuid,text)'::regprocedure
+    )
+  ) = 0 then
+    raise exception 'reject_project_ilaw_payment does not require a meaningful reason';
+  end if;
+
+  if position(
+    'payment_verification' in pg_get_functiondef(
+      'public.confirm_project_ilaw_payment(uuid,text)'::regprocedure
+    )
+  ) = 0
+  or position(
+    'Payment evidence is required before confirming' in pg_get_functiondef(
+      'public.confirm_project_ilaw_payment(uuid,text)'::regprocedure
+    )
+  ) = 0 then
+    raise exception 'confirm_project_ilaw_payment does not require submitted evidence';
+  end if;
 
   if not exists (
     select 1 from storage.buckets buckets
