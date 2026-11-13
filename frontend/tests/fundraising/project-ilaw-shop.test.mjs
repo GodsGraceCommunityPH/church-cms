@@ -461,6 +461,78 @@ test("the public order form captures colours and the payment section is present"
   assert.match(panel, /Payment collection is not open yet/);
 });
 
+test("payment lookup shows the QR and evidence upload only while collection is enabled", async () => {
+  const panel = await read("../../src/components/fundraising/PaymentPanel.tsx");
+  const service = await read("../../src/features/fundraising/orderService.ts");
+
+  // The server owns the switch: the panel never enables payment collection by
+  // itself, and a missing flag is treated as disabled.
+  assert.match(service, /rpc\(\s*"get_project_ilaw_payment_context"/);
+  assert.match(service, /enabled: row\?\.enabled === true/);
+
+  assert.match(
+    panel,
+    /context\?\.paymentStatus === "awaiting_payment"[\s\S]{0,160}?instructions\?\.enabled === true/,
+  );
+
+  // Everything between the enabled test and the closed notice is the paid path.
+  const enabledStart = panel.indexOf("instructions?.enabled ?");
+  const closedStart = panel.indexOf("Payment collection is not open yet");
+  assert.ok(enabledStart !== -1, "the panel must branch on the enabled flag");
+  assert.ok(
+    closedStart > enabledStart,
+    "the closed notice must be the disabled branch",
+  );
+
+  const enabledBranch = panel.slice(enabledStart, closedStart);
+  assert.match(enabledBranch, /PAYMENT_QR\.src/);
+  assert.match(enabledBranch, /PAYMENT_QR\.label/);
+  assert.match(enabledBranch, /PAYMENT_QR\.notice/);
+  assert.match(enabledBranch, /View larger QR/);
+  assert.match(enabledBranch, /<figcaption>/);
+
+  // The disabled branch explains the state and offers neither QR nor upload.
+  const submitStart = panel.indexOf("canSubmitPayment &&");
+  assert.ok(submitStart > closedStart, "the upload form needs its own guard");
+
+  const disabledBranch = panel.slice(closedStart, submitStart);
+  assert.doesNotMatch(disabledBranch, /PAYMENT_QR/);
+  assert.doesNotMatch(disabledBranch, /type="file"/);
+  assert.match(disabledBranch, /payment evidence[\s\S]{0,40}cannot be submitted yet/);
+
+  // The upload form only appears for an enabled, unpaid, uncancelled order.
+  const submitBranch = panel.slice(submitStart);
+  assert.match(submitBranch, /type="file"/);
+  assert.match(submitBranch, /ACCEPTED_EVIDENCE/);
+  assert.match(submitBranch, /Submit payment details/);
+  assert.match(panel, /MAX_EVIDENCE_BYTES = 5 \* 1024 \* 1024/);
+  assert.match(
+    panel,
+    /image\/jpeg,image\/png,image\/webp,application\/pdf/,
+  );
+});
+
+test("authorized staff can enable payment collection from the admin settings panel", async () => {
+  const panel = await read(
+    "../../src/components/fundraising/ProjectIlawSettingsPanel.tsx",
+  );
+  const page = await read("../../src/pages/admin/ProjectIlawOrders.tsx");
+
+  // Only administrators (manage) may open payment collection.
+  assert.match(panel, /hasPermission\("project_ilaw\.orders\.manage"\)/);
+  assert.match(panel, /checked=\{settings\.paymentsEnabled\}/);
+  assert.match(panel, /update\(\{ paymentsEnabled: event\.target\.checked \}\)/);
+  assert.match(panel, /paymentsEnabled: settings\.paymentsEnabled/);
+
+  // Order intake and payment collection stay separate controls.
+  assert.match(panel, /Accept public orders/);
+  assert.match(panel, /This does not\s+enable payment collection/);
+  assert.match(panel, /Show payment details to customers/);
+  assert.match(panel, /confirmed GCash InstaPay QR is\s+shown/);
+
+  assert.match(page, /<ProjectIlawSettingsPanel/);
+});
+
 test("every order item renders its own colour selector from the product configuration", async () => {
   const editor = await read(
     "../../src/components/fundraising/OrderLineItemsEditor.tsx",
