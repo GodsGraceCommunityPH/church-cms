@@ -1426,3 +1426,75 @@
     width: 100%;
   }
 }
+
+/* Mobile order summary cards */
+.order-summary-mobile {
+  display: none;
+}
+.order-summary-mobile-row {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+}
+.order-summary-mobile-field {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+.order-summary-mobile-field span {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.order-summary-mobile-field strong {
+  color: #243813;
+  font-size: 0.95rem;
+  text-align: right;
+}
+
+/* Responsive order form */
+@media (max-width: 720px) {
+  .order-line-grid {
+    grid-template-columns: 1fr;
+  }
+  .order-summary-table-wrap {
+    display: none;
+  }
+  .order-summary-mobile {
+    display: block;
+  }
+  .order-line-items-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .order-add-item {
+    width: 100%;
+  }
+}
+
+/* Box sizing safety for order form */
+.order-form,
+.order-form *,
+.order-line-items,
+.order-line-items *,
+.order-summary,
+.order-summary * {
+  box-sizing: border-box;
+}
+.order-form {
+  max-width: 100%;
+  width: 100%;
+}
+.order-line-item {
+  max-width: 100%;
+}
+.order-line-grid select,
+.order-line-grid input {
+  max-width: 100%;
+  width: 100%;
+}
