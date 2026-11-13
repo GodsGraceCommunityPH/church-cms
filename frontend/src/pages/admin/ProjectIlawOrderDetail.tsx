@@ -31,6 +31,7 @@ import {
   amendProjectIlawOrder,
   confirmProjectIlawPayment,
   getPaymentEvidenceUrl,
+  recordProjectIlawCashPayment,
   getProjectIlawOrder,
   getProjectIlawOrderActivity,
   rejectProjectIlawPayment,
@@ -106,6 +107,9 @@ export default function ProjectIlawOrderDetail() {
   const [busy, setBusy] = useState("");
 
   const [paymentNote, setPaymentNote] = useState("");
+  const [cashAmount, setCashAmount] = useState("");
+  const [cashConfirmed, setCashConfirmed] = useState(false);
+  const [cashNote, setCashNote] = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [statusNote, setStatusNote] = useState("");
   const [showAmend, setShowAmend] = useState(false);
@@ -199,6 +203,45 @@ export default function ProjectIlawOrderDetail() {
       setNotice(
         "Payment confirmed. Only now does this order count toward production quantities.",
       );
+      await load();
+    });
+  }
+
+  async function handleRecordCashPayment() {
+    if (!order) return;
+    const amount = Number(cashAmount);
+    if (!cashConfirmed) {
+      setActionError(
+        "Confirm that you physically received the cash before recording it.",
+      );
+      return;
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setActionError("Enter the amount received.");
+      return;
+    }
+    if (amount !== order.totalAmount) {
+      setActionError("The amount received must match the order total.");
+      return;
+    }
+    if (
+      !window.confirm(
+        "Record this order as paid in cash? This cannot be undone.",
+      )
+    ) {
+      return;
+    }
+    await runAction("cash", async () => {
+      await recordProjectIlawCashPayment(
+        order.id,
+        amount,
+        cashNote,
+        cashConfirmed,
+      );
+      setCashAmount("");
+      setCashConfirmed(false);
+      setCashNote("");
+      setNotice("Cash payment recorded. The order is now paid.");
       await load();
     });
   }
@@ -580,6 +623,22 @@ export default function ProjectIlawOrderDetail() {
                   <dt>Submitted</dt>
                   <dd>{formatOrderDateTime(order.paymentSubmittedAt)}</dd>
                 </div>
+                {order.paymentMethod && (
+                  <div>
+                    <dt>Payment method</dt>
+                    <dd>
+                      {order.paymentMethod === "cash"
+                        ? "Cash"
+                        : "GCash (InstaPay QR)"}
+                    </dd>
+                  </div>
+                )}
+                {order.paymentAmountReceived != null && (
+                  <div>
+                    <dt>Amount received</dt>
+                    <dd>{formatPeso(order.paymentAmountReceived)}</dd>
+                  </div>
+                )}
               </dl>
 
               {order.paymentRejectedAt && !awaitingVerification && !paid && (
@@ -707,6 +766,61 @@ export default function ProjectIlawOrderDetail() {
                   payments.
                 </p>
               )}
+            </section>
+          )}
+
+          {!cancelled && canConfirmPayment && !paid && (
+            <section
+              className="pilaw-detail-card"
+              aria-labelledby="cash-payment-title"
+            >
+              <h2 id="cash-payment-title">Record cash payment</h2>
+              <p className="pilaw-detail-note" style={{ marginTop: 0 }}>
+                Use this only when the cash has been physically received. No
+                receipt or transaction reference is required. The amount must
+                match the order total.
+              </p>
+              <div className="pilaw-embedded-form">
+                <label>
+                  Amount received (pesos)
+                  <Input
+                    type="number"
+                    min={order.totalAmount}
+                    max={order.totalAmount}
+                    value={cashAmount || String(order.totalAmount)}
+                    onChange={(event) => setCashAmount(event.target.value)}
+                    disabled={Boolean(busy)}
+                  />
+                </label>
+                <label>
+                  Staff note (optional)
+                  <Input
+                    value={cashNote}
+                    maxLength={1000}
+                    placeholder="e.g. Received at the church office"
+                    onChange={(event) => setCashNote(event.target.value)}
+                    disabled={Boolean(busy)}
+                  />
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <input
+                    type="checkbox"
+                    checked={cashConfirmed}
+                    onChange={(event) => setCashConfirmed(event.target.checked)}
+                    disabled={Boolean(busy)}
+                  />
+                  <span>I have physically received the cash for this order.</span>
+                </label>
+                <div className="pilaw-embedded-form-actions">
+                  <Button
+                    onClick={() => void handleRecordCashPayment()}
+                    disabled={Boolean(busy) || !cashConfirmed}
+                  >
+                    <ShieldCheck size={16} aria-hidden="true" />
+                    {busy === "cash" ? "Recording..." : "Record cash payment"}
+                  </Button>
+                </div>
+              </div>
             </section>
           )}
 

@@ -530,7 +530,9 @@ test("authorized staff can enable payment collection from the admin settings pan
   assert.match(panel, /Show payment details to customers/);
   assert.match(panel, /confirmed GCash InstaPay QR is\s+shown/);
 
-  assert.match(page, /<ProjectIlawSettingsPanel/);
+  // The settings panel is intentionally no longer rendered on Order Management.
+  assert.doesNotMatch(page, /<ProjectIlawSettingsPanel/);
+  assert.doesNotMatch(page, /ProjectIlawSettingsPanel/);
 });
 
 test("every order item renders its own colour selector from the product configuration", async () => {
@@ -797,4 +799,29 @@ test("the Give page keeps its details and uses the requested responsive layout",
     css,
     /@media \(max-width: 560px\) \{[\s\S]*\.giving-grid > \.qr-card \{ grid-template-columns: 1fr; padding: 23px 20px; text-align: center; \}/s,
   );
+});
+test("order management puts search before summary cards and keeps the report", async () => {
+  const page = await read("../../src/pages/admin/ProjectIlawOrders.tsx");
+
+  const searchIndex = page.indexOf('aria-label="Order search"');
+  const summaryIndex = page.indexOf('aria-label="Order summary"');
+  const reportIndex = page.indexOf("<ProductionReportPanel");
+
+  assert.ok(searchIndex !== -1, "prominent search panel is required");
+  assert.ok(summaryIndex !== -1, "summary cards are required");
+  assert.ok(reportIndex !== -1, "production report is required");
+  assert.ok(searchIndex < summaryIndex, "search must precede summary cards");
+  assert.ok(summaryIndex < reportIndex, "production report stays last");
+});
+
+test("order detail offers a cash recording action with an explicit receipt confirmation", async () => {
+  const detail = await read("../../src/pages/admin/ProjectIlawOrderDetail.tsx");
+  const service = await read("../../src/features/fundraising/orderService.ts");
+
+  assert.match(detail, /Record cash payment/);
+  assert.match(detail, /recordProjectIlawCashPayment/);
+  assert.match(service, /recordProjectIlawCashPayment/);
+  assert.match(detail, /I have physically received the cash for this order/);
+  assert.match(detail, /type="checkbox"/);
+  assert.match(detail, /Amount received/);
 });

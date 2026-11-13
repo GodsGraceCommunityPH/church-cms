@@ -11,7 +11,6 @@ import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Select from "../../components/ui/Select";
 import ProductionReportPanel from "../../components/fundraising/ProductionReportPanel";
-import ProjectIlawSettingsPanel from "../../components/fundraising/ProjectIlawSettingsPanel";
 import { useAuth } from "../../features/auth/auth";
 import {
   ECO_BAG_COLORS,
@@ -138,7 +137,7 @@ export default function ProjectIlawOrders() {
       <header className="pilaw-orders-header">
         <div>
           <p className="pilaw-eyebrow">Project Ilaw</p>
-          <h1>Project Ilaw Orders</h1>
+          <h1>Project Ilaw — Order Management</h1>
           <p>
             Review orders and payment evidence, manually confirm payments, and
             track fulfilment and made-to-order production quantities.
@@ -163,6 +162,22 @@ export default function ProjectIlawOrders() {
           {notice}
         </p>
       )}
+
+      <section className="pilaw-search-panel" aria-label="Order search">
+        <label className="pilaw-filter-search pilaw-search-prominent">
+          <span>Search orders</span>
+          <div className="pilaw-search-field">
+            <Search size={18} aria-hidden="true" />
+            <Input
+              type="search"
+              value={search}
+              placeholder="Reference, customer name, mobile number, or payment reference"
+              onChange={(event) => setSearch(event.target.value)}
+              autoFocus
+            />
+          </div>
+        </label>
+      </section>
 
       <section className="pilaw-summary" aria-label="Order summary">
         <article>
@@ -288,24 +303,8 @@ export default function ProjectIlawOrders() {
         </div>
       </section>
 
-      <ProductionReportPanel />
-
-      <ProjectIlawSettingsPanel />
-
       <section className="pilaw-panel" aria-label="Order management">
         <div className="pilaw-filters">
-          <label className="pilaw-filter-search">
-            <span>Search</span>
-            <div className="pilaw-search-field">
-              <Search size={16} aria-hidden="true" />
-              <Input
-                type="search"
-                value={search}
-                placeholder="Reference, name, mobile, or payment reference"
-                onChange={(event) => setSearch(event.target.value)}
-              />
-            </div>
-          </label>
           <label>
             <span>From date</span>
             <Input
@@ -459,6 +458,8 @@ export default function ProjectIlawOrders() {
           </div>
         )}
       </section>
+
+      <ProductionReportPanel />
 
       <p className="pilaw-accounting-footnote">
         Expected sales exclude cancelled orders. Confirmed collections include

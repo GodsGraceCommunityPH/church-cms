@@ -10,6 +10,13 @@ const MIGRATION =
 const LOOKUP_MIGRATION =
   "../../../supabase/migrations/20261113120000_project_ilaw_customer_lookup.sql";
 
+const CASH_MIGRATION =
+  "../../../supabase/migrations/20261114090000_project_ilaw_cash_payment.sql";
+
+async function cashMigrationSource() {
+  return read(CASH_MIGRATION);
+}
+
 async function lookupMigrationSource() {
   return read(LOOKUP_MIGRATION);
 }
@@ -1072,4 +1079,57 @@ test("the customer payment panel uses name plus mobile lookup", async () => {
   assert.doesNotMatch(panel, /id="payment-reference"/);
   assert.match(panel, /required/);
   assert.match(panel, /openOrder/);
+});
+test("cash payment recording is a secure, separate path that still marks orders paid", async () => {
+  const source = await cashMigrationSource();
+  const fn = functionBody(
+    source,
+    "create or replace function public.record_project_ilaw_cash_payment(",
+  );
+
+  assert.match(fn, /public\.has_permission\('project_ilaw\.orders\.confirm_payment'\)/);
+  assert.match(fn, /actor uuid := auth\.uid\(\)/);
+  assert.match(fn, /if actor is null then/);
+  assert.match(fn, /if not coalesce\(p_confirmed_received, false\) then/);
+  assert.match(fn, /Confirm that the cash was physically received/);
+  assert.match(fn, /if p_amount <> target\.total_amount then/);
+  assert.match(fn, /The amount received must match the order total/);
+  assert.match(fn, /if target\.payment_status = 'paid' then/);
+  assert.match(fn, /Payment is already confirmed/);
+  assert.match(fn, /if target\.fulfillment_status = 'cancelled' then/);
+  assert.match(fn, /payment_method = 'cash'/);
+  assert.match(fn, /payment_amount_received = p_amount/);
+  assert.match(fn, /'payment_confirmed'/);
+
+  // Cash must not require evidence; GCash confirmation still does.
+  const confirm = functionBody(
+    source,
+    "create or replace function public.confirm_project_ilaw_payment(",
+  );
+  assert.match(confirm, /payment_evidence_path is null/);
+  assert.match(confirm, /Payment evidence is required before confirming/);
+  assert.match(confirm, /payment_method = 'gcash'/);
+});
+
+test("cash payment adds columns without removing existing payment data", async () => {
+  const source = await cashMigrationSource();
+
+  assert.match(source, /add column if not exists payment_method text/);
+  assert.match(source, /add column if not exists payment_amount_received integer/);
+  assert.match(source, /payment_method is null or payment_method in \('gcash', 'cash'\)/);
+  assert.match(
+    source,
+    /revoke all on function public\.record_project_ilaw_cash_payment/,
+  );
+  assert.match(
+    source,
+    /grant execute on function public\.record_project_ilaw_cash_payment\(uuid, integer, boolean, text\) to authenticated/,
+  );
+});
+
+test("the order management page no longer renders the settings panel", async () => {
+  const page = await read("../../src/pages/admin/ProjectIlawOrders.tsx");
+
+  assert.doesNotMatch(page, /ProjectIlawSettingsPanel/);
+  assert.match(page, /ProductionReportPanel/);
 });
