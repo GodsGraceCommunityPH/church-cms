@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   BadgeCheck,
   ClipboardList,
@@ -34,9 +34,21 @@ export default function ShopPage() {
     SHOP_STATUS.defaultOrdersEnabled,
   );
   const location = useLocation();
+  const navigate = useNavigate();
   const paymentSeed =
     (location.state as { projectIlawPayment?: ProjectIlawPaymentSeed } | null)
       ?.projectIlawPayment ?? null;
+
+  useEffect(() => {
+    if (!paymentSeed) return;
+    // Consume the one-time checkout handoff. Without this, React Router keeps
+    // location.state in browser history, so refreshing reopens the previous
+    // order and pre-fills the payment lookup again.
+    navigate(`${location.pathname}${location.search}${location.hash}`, {
+      replace: true,
+      state: null,
+    });
+  }, [location.hash, location.pathname, location.search, navigate, paymentSeed]);
 
   useEffect(() => {
     let active = true;
