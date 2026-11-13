@@ -2,11 +2,11 @@ import { useRef, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import Modal from "../Modal";
 import OrderLineItemsEditor from "./OrderLineItemsEditor";
+import MerchandiseCard from "./MerchandiseCard";
 import { createProjectIlawOrder } from "../../features/fundraising/orderService";
 import {
   ORDER_FULFILMENT,
-  calculateDraftTotals,
-  createDraftItem,
+  SHOP_ITEMS,
   createRequestId,
   formatPeso,
   getShopItem,
@@ -21,13 +21,13 @@ const EMPTY_DRAFT: OrderDraft = {
   customerName: "",
   mobile: "",
   notes: "",
-  items: [createDraftItem()],
+  items: [],
 };
 
-export default function OrderForm() {
+export default function OrderForm({ ordersEnabled = true }: { ordersEnabled?: boolean }) {
   const [draft, setDraft] = useState<OrderDraft>(() => ({
     ...EMPTY_DRAFT,
-    items: [createDraftItem()],
+    items: [],
   }));
   const [errors, setErrors] = useState<string[]>([]);
   const [formError, setFormError] = useState("");
@@ -40,8 +40,6 @@ export default function OrderForm() {
   );
   const navigate = useNavigate();
   const requestIdRef = useRef(createRequestId());
-
-  const totals = calculateDraftTotals(draft.items);
 
   const updateDraft = (patch: Partial<OrderDraft>) => {
     setDraft((current) => ({ ...current, ...patch }));
@@ -89,7 +87,7 @@ export default function OrderForm() {
         customerName: review.customerName,
         mobile: review.mobile,
       });
-      setDraft({ ...EMPTY_DRAFT, items: [createDraftItem()] });
+      setDraft({ ...EMPTY_DRAFT, items: [] });
       requestIdRef.current = createRequestId();
     } catch (error) {
       const message =
@@ -114,6 +112,24 @@ export default function OrderForm() {
   return (
     <>
       <form className="order-form" onSubmit={handleSubmit} noValidate>
+        <section className="order-form-section" aria-labelledby="merchandise-title">
+          <div className="order-form-section-heading">
+            <h3 id="merchandise-title">Merchandise</h3>
+            <p>Choose the product, colour, size and quantity right here. Add each selection to your order.</p>
+          </div>
+          <div className="merch-grid">
+            {SHOP_ITEMS.map((item) => (
+              <MerchandiseCard
+                item={item}
+                key={item.id}
+                ordersEnabled={ordersEnabled}
+                disabled={!ordersEnabled || submitting || draft.items.length >= 20}
+                onAddItem={(newItem) => updateDraft({ items: [...draft.items, newItem] })}
+              />
+            ))}
+          </div>
+          {draft.items.length >= 20 && <p className="order-form-error" role="status">An order can contain at most 20 line items.</p>}
+        </section>
         <div className="order-form-section">
           <div className="order-form-section-heading">
             <h3>Your details</h3>
@@ -128,6 +144,7 @@ export default function OrderForm() {
                 autoComplete="name"
                 maxLength={120}
                 required
+                disabled={!ordersEnabled}
                 value={draft.customerName}
                 onChange={(event) =>
                   updateDraft({ customerName: event.target.value })
@@ -143,6 +160,7 @@ export default function OrderForm() {
                 autoComplete="tel"
                 maxLength={32}
                 required
+                disabled={!ordersEnabled}
                 placeholder="09XX XXX XXXX"
                 value={draft.mobile}
                 onChange={(event) => updateDraft({ mobile: event.target.value })}
@@ -154,6 +172,7 @@ export default function OrderForm() {
                 id="order-notes"
                 rows={3}
                 maxLength={1000}
+                disabled={!ordersEnabled}
                 placeholder="Anything we should know about your order?"
                 value={draft.notes}
                 onChange={(event) => updateDraft({ notes: event.target.value })}
@@ -166,110 +185,8 @@ export default function OrderForm() {
           idPrefix="public-order"
           items={draft.items}
           onChange={(items) => updateDraft({ items })}
-          disabled={submitting}
+          disabled={!ordersEnabled || submitting}
         />
-
-        <div className="order-summary" aria-labelledby="order-summary-title">
-          <h3 id="order-summary-title">Order summary</h3>
-          <div className="order-summary-mobile">
-            {draft.items.map((item) => {
-              const product = getShopItem(item.productId);
-              const quantity = Number(item.quantity);
-              const validQuantity =
-                Number.isInteger(quantity) && quantity > 0;
-              return (
-                <div className="order-summary-mobile-row" key={item.key}>
-                  <div className="order-summary-mobile-field">
-                    <span>Product</span>
-                    <strong>{product?.name ?? "—"}</strong>
-                  </div>
-                  <div className="order-summary-mobile-field">
-                    <span>Colour</span>
-                    <strong>{item.color || "—"}</strong>
-                  </div>
-                  <div className="order-summary-mobile-field">
-                    <span>Size</span>
-                    <strong>
-                      {product
-                        ? product.id === "project-ilaw-eco-bag"
-                          ? "—"
-                          : item.size || "—"
-                        : "—"}
-                    </strong>
-                  </div>
-                  <div className="order-summary-mobile-field">
-                    <span>Quantity</span>
-                    <strong>{validQuantity ? quantity : "—"}</strong>
-                  </div>
-                  <div className="order-summary-mobile-field">
-                    <span>Unit price</span>
-                    <strong>{formatPeso(product?.price ?? 499)}</strong>
-                  </div>
-                  <div className="order-summary-mobile-field">
-                    <span>Line total</span>
-                    <strong>
-                      {validQuantity
-                        ? formatPeso((product?.price ?? 499) * quantity)
-                        : "—"}
-                    </strong>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div className="order-summary-table-wrap">
-            <table className="order-summary-table">
-              <thead>
-                <tr>
-                  <th scope="col">Product</th>
-                  <th scope="col">Colour</th>
-                  <th scope="col">Size</th>
-                  <th scope="col">Qty</th>
-                  <th scope="col">Unit price</th>
-                  <th scope="col">Line total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {draft.items.map((item) => {
-                  const product = getShopItem(item.productId);
-                  const quantity = Number(item.quantity);
-                  const validQuantity =
-                    Number.isInteger(quantity) && quantity > 0;
-                  return (
-                    <tr key={item.key}>
-                      <td>{product?.name ?? "—"}</td>
-                      <td>{item.color || "—"}</td>
-                      <td>
-                        {product
-                          ? product.id === "project-ilaw-eco-bag"
-                            ? "—"
-                            : item.size || "—"
-                          : "—"}
-                      </td>
-                      <td>{validQuantity ? quantity : "—"}</td>
-                      <td>{formatPeso(product?.price ?? 499)}</td>
-                      <td>
-                        {validQuantity
-                          ? formatPeso((product?.price ?? 499) * quantity)
-                          : "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <div className="order-summary-totals">
-            <div>
-              <span>Total quantity</span>
-              <strong>{totals.totalQuantity}</strong>
-            </div>
-            <div>
-              <span>Order total</span>
-              <strong>{formatPeso(totals.totalAmount)}</strong>
-            </div>
-          </div>
-        </div>
 
         {errors.length > 0 && (
           <div className="order-form-errors" role="alert">
@@ -294,7 +211,7 @@ export default function OrderForm() {
             for pickup at church, and payment is completed separately after your
             order reference is issued.
           </p>
-          <button type="submit" className="ilaw-primary" disabled={submitting}>
+          <button type="submit" className="ilaw-primary" disabled={!ordersEnabled || submitting}>
             Review order
           </button>
         </div>

@@ -10,13 +10,11 @@ import {
   Wallet,
 } from "lucide-react";
 import PublicPage from "../components/PublicPage";
-import MerchandiseCard from "../components/fundraising/MerchandiseCard";
 import OrderForm from "../components/fundraising/OrderForm";
 import PaymentPanel from "../components/fundraising/PaymentPanel";
 import {
   ORDER_STEPS,
   PROJECT_ILAW,
-  SHOP_ITEMS,
   SHOP_STATUS,
   type ProjectIlawPaymentSeed,
 } from "../features/fundraising/projectIlaw";
@@ -95,34 +93,6 @@ export default function ShopPage() {
 
       <section
         className="public-section"
-        id="shop-catalog"
-        aria-labelledby="shop-catalog-title"
-      >
-        <div className="public-section-heading">
-          <h2 id="shop-catalog-title">Merchandise</h2>
-          <p>
-            Choose a T-shirt or an eco bag, then review your order before it is
-            submitted.
-          </p>
-        </div>
-        <p className="shop-notice" role="note">
-          {ordersEnabled
-            ? SHOP_STATUS.openCatalogNotice
-            : SHOP_STATUS.closedCatalogNotice}
-        </p>
-        <div className="merch-grid">
-          {SHOP_ITEMS.map((item) => (
-            <MerchandiseCard
-              item={item}
-              key={item.id}
-              ordersEnabled={ordersEnabled}
-            />
-          ))}
-        </div>
-      </section>
-
-      <section
-        className="public-section"
         id="how-to-order"
         aria-labelledby="how-to-order-title"
       >
@@ -166,29 +136,14 @@ export default function ShopPage() {
         aria-labelledby="order-form-title"
       >
         <div className="public-section-heading">
-          <h2 id="order-form-title">Place your order</h2>
+          <h2 id="order-form-title">Shop and Order</h2>
           <p>
             {ordersEnabled
-              ? "Add every item you need, then submit once. You will receive an order reference to use in the payment section."
-              : "This section opens only when the church authorizes Project Ilaw order intake."}
+              ? "Choose your merchandise and options, add items to your order, then enter your details below."
+              : "The merchandise is shown for preview. Ordering is currently closed."}
           </p>
         </div>
-        {ordersEnabled ? (
-          <OrderForm />
-        ) : (
-          <div className="order-closed" role="note">
-            <Clock size={30} aria-hidden="true" />
-            <h3>Ordering is not open yet</h3>
-            <p>
-              The church has not opened Project Ilaw order intake. No orders are
-              being accepted, and nothing can be submitted from this page until
-              ordering opens.
-            </p>
-            <p className="order-closed-note">
-              Please check back after the church announces the opening date.
-            </p>
-          </div>
-        )}
+        <OrderForm ordersEnabled={ordersEnabled} />
       </section>
 
       <section
