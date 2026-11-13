@@ -53,6 +53,8 @@ import UserManagement from "./pages/admin/UserManagement";
 import MemberRegistrationReviews from "./pages/admin/MemberRegistrationReviews";
 import ResourceForm from "./pages/admin/ResourceForm";
 import ResourceDetail from "./pages/admin/ResourceDetail";
+import ProjectIlawOrders from "./pages/admin/ProjectIlawOrders";
+import ProjectIlawOrderDetail from "./pages/admin/ProjectIlawOrderDetail";
 import {
   PermissionRoute,
   ProtectedRoute,
@@ -109,7 +111,22 @@ function App() {
         <Route path="/admin/members" element={<Members />} />
         <Route path="/admin/members/:id" element={<MemberProfile />} />
         <Route path="/admin/member-registration-reviews" element={<MemberRegistrationReviews />} />
-        <Route path="/admin/notifications" element={<Notifications />} />
+        </Route>
+        <Route
+          element={
+            <PermissionRoute
+              anyOf={["members.view", "project_ilaw.orders.view"]}
+            />
+          }
+        >
+          <Route path="/admin/notifications" element={<Notifications />} />
+        </Route>
+        <Route element={<PermissionRoute permission="project_ilaw.orders.view" />}>
+          <Route path="/admin/project-ilaw-orders" element={<ProjectIlawOrders />} />
+          <Route
+            path="/admin/project-ilaw-orders/:id"
+            element={<ProjectIlawOrderDetail />}
+          />
         </Route>
         <Route element={<PermissionRoute permission="evangelism.view" />}>
           <Route path="/admin/evangelism" element={<Evangelism />} />

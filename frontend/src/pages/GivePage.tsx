@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Check, Copy, HandCoins, Heart, Landmark, Wallet } from "lucide-react";
-import instapayQr from "../assets/instapay-qr.png";
 import PublicPage from "../components/PublicPage";
+
+const instapayQr = "/images/fundraising/gcash-instapay-qr.jpg";
 
 const accountName = "Gods Grace Community Church";
 const accountNumber = "3143314461925";
@@ -29,7 +30,7 @@ export default function GivePage() {
             <div className="bank-row"><span>Account Name</span><div className="bank-value"><strong>{accountName}</strong><button className="public-copy" type="button" aria-label="Copy bank account name" onClick={() => copyValue("name", accountName)}>{copiedField === "name" ? <Check size={19} /> : <Copy size={19} />}</button></div></div>
             <div className="bank-row"><span>Account Number</span><div className="bank-value"><strong>{accountNumber}</strong><button className="public-copy" type="button" aria-label="Copy bank account number" onClick={() => copyValue("number", accountNumber)}>{copiedField === "number" ? <Check size={19} /> : <Copy size={19} />}</button></div></div>
           </div></article>
-          <article className="public-card giving-card qr-card"><img src={instapayQr} alt="InstaPay QR code for giving to God's Grace Community Church" /><div><Wallet className="giving-icon" size={42} aria-hidden="true" /><h3>Scan to Give</h3><p>Scan using GCash, Maya, or any InstaPay-enabled banking app.</p></div></article>
+          <article className="public-card giving-card qr-card"><img src={instapayQr} alt="InstaPay QR code for giving to God's Grace Community Church" /><div className="qr-card-text"><Wallet className="giving-icon" size={42} aria-hidden="true" /><h3>Scan to Give</h3><p>Scan using GCash, Maya, or any InstaPay-enabled banking app.</p></div></article>
         </div>
       </section>
 

@@ -1,27 +1,54 @@
+import { useEffect, useState } from "react";
 import {
   BadgeCheck,
   ClipboardList,
   Clock,
-  Lightbulb,
+  ShieldCheck,
   ShoppingBag,
   Upload,
   Wallet,
 } from "lucide-react";
 import PublicPage from "../components/PublicPage";
 import MerchandiseCard from "../components/fundraising/MerchandiseCard";
-import OrderFormPreview from "../components/fundraising/OrderFormPreview";
+import OrderForm from "../components/fundraising/OrderForm";
+import PaymentPanel from "../components/fundraising/PaymentPanel";
 import {
-  ORDER_FORM_NOTE,
   ORDER_STEPS,
   PROJECT_ILAW,
   SHOP_ITEMS,
   SHOP_STATUS,
 } from "../features/fundraising/projectIlaw";
+import { getProjectIlawPublicSettings } from "../features/fundraising/orderService";
 import "../features/fundraising/Fundraising.css";
 
-const STEP_ICONS = [ShoppingBag, ClipboardList, Wallet, Upload, Clock];
+const STEP_ICONS = [
+  ShoppingBag,
+  ClipboardList,
+  Wallet,
+  Upload,
+  BadgeCheck,
+];
 
 export default function ShopPage() {
+  const [ordersEnabled, setOrdersEnabled] = useState<boolean>(
+    SHOP_STATUS.defaultOrdersEnabled,
+  );
+
+  useEffect(() => {
+    let active = true;
+    getProjectIlawPublicSettings()
+      .then((settings) => {
+        if (active) setOrdersEnabled(settings.ordersEnabled);
+      })
+      .catch(() => {
+        // Fail closed: if the status cannot be read, keep ordering closed.
+        if (active) setOrdersEnabled(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <PublicPage
       eyebrow="Project Ilaw"
@@ -34,42 +61,71 @@ export default function ShopPage() {
           <h2 id="shop-intro-title">Light for our church home</h2>
           <p>{PROJECT_ILAW.summary}</p>
           <p>
-            The shop is one way the church family can take part. The T-shirt and
-            eco bag are both ₱499. Ordering has not opened yet, so the catalog
-            and form below are previews.
+            The shop is one way the church family can take part. Both items are
+            ₱499 each. Orders are placed here when ordering is open, then paid
+            through the official payment details published on this page once
+            they are available.
           </p>
         </div>
-        <aside className="shop-status-card" aria-labelledby="shop-status-title">
-          <BadgeCheck size={38} strokeWidth={1.6} aria-hidden="true" />
-          <strong id="shop-status-title">Ordering is not yet open</strong>
+        <aside
+          className={`shop-status-card${
+            ordersEnabled ? "" : " shop-status-card-closed"
+          }`}
+          aria-labelledby="shop-status-title"
+        >
+          {ordersEnabled ? (
+            <BadgeCheck size={38} strokeWidth={1.6} aria-hidden="true" />
+          ) : (
+            <Clock size={38} strokeWidth={1.6} aria-hidden="true" />
+          )}
+          <strong id="shop-status-title">
+            {ordersEnabled ? "Ordering is open" : "Ordering is not open yet"}
+          </strong>
           <p>
-            Watch this page for the official launch. When ordering opens, the
-            payment method and the order form will be posted here.
+            {ordersEnabled ? SHOP_STATUS.openNotice : SHOP_STATUS.closedNotice}
           </p>
         </aside>
       </section>
 
-      <section className="public-section" id="shop-catalog" aria-labelledby="shop-catalog-title">
+      <section
+        className="public-section"
+        id="shop-catalog"
+        aria-labelledby="shop-catalog-title"
+      >
         <div className="public-section-heading">
           <h2 id="shop-catalog-title">Merchandise</h2>
           <p>
-            Two ways to support Project Ilaw. Choose a T-shirt or an eco bag.
+            Choose a T-shirt or an eco bag, then review your order before it is
+            submitted.
           </p>
         </div>
-        <p className="shop-notice" role="note">{SHOP_STATUS.catalogNotice}</p>
+        <p className="shop-notice" role="note">
+          {ordersEnabled
+            ? SHOP_STATUS.openCatalogNotice
+            : SHOP_STATUS.closedCatalogNotice}
+        </p>
         <div className="merch-grid">
           {SHOP_ITEMS.map((item) => (
-            <MerchandiseCard item={item} key={item.id} />
+            <MerchandiseCard
+              item={item}
+              key={item.id}
+              ordersEnabled={ordersEnabled}
+            />
           ))}
         </div>
       </section>
 
-      <section className="public-section" id="how-to-order" aria-labelledby="how-to-order-title">
+      <section
+        className="public-section"
+        id="how-to-order"
+        aria-labelledby="how-to-order-title"
+      >
         <div className="public-section-heading">
           <h2 id="how-to-order-title">How to Order</h2>
           <p>
-            This is the planned process once ordering opens. No orders can be
-            placed yet.
+            Orders are saved here first. Payment is completed through the
+            website using the official GCash or bank details once they are
+            published.
           </p>
         </div>
         <ol className="shop-order-steps">
@@ -90,23 +146,57 @@ export default function ShopPage() {
           })}
         </ol>
         <p className="shop-payment-note">
-          <Lightbulb size={18} aria-hidden="true" />
-          Payment details will be announced once ordering opens. Do not send
-          payment yet.
+          <ShieldCheck size={18} aria-hidden="true" />
+          Only use the payment details shown in the payment section of this
+          page. Payment is never confirmed automatically, and an order reference
+          alone does not expose your payment evidence.
         </p>
       </section>
 
       <section
         className="public-section"
-        id="order-form-preview"
-        aria-labelledby="order-preview-title"
+        id="order-form"
+        aria-labelledby="order-form-title"
       >
         <div className="public-section-heading">
-          <h2 id="order-preview-title">Order form preview</h2>
-          <p id="order-form-preview-note">{ORDER_FORM_NOTE}</p>
+          <h2 id="order-form-title">Place your order</h2>
+          <p>
+            {ordersEnabled
+              ? "Add every item you need, then submit once. You will receive an order reference to use in the payment section."
+              : "This section opens only when the church authorizes Project Ilaw order intake."}
+          </p>
         </div>
-        <p className="shop-notice" role="note">{SHOP_STATUS.previewOnlyNotice}</p>
-        <OrderFormPreview />
+        {ordersEnabled ? (
+          <OrderForm />
+        ) : (
+          <div className="order-closed" role="note">
+            <Clock size={30} aria-hidden="true" />
+            <h3>Ordering is not open yet</h3>
+            <p>
+              The church has not opened Project Ilaw order intake. No orders are
+              being accepted, and nothing can be submitted from this page until
+              ordering opens.
+            </p>
+            <p className="order-closed-note">
+              Please check back after the church announces the opening date.
+            </p>
+          </div>
+        )}
+      </section>
+
+      <section
+        className="public-section"
+        id="payment"
+        aria-labelledby="payment-title"
+      >
+        <div className="public-section-heading">
+          <h2 id="payment-title">Payment</h2>
+          <p>
+            Find your order with your reference and mobile number, then pay and
+            submit your transaction details.
+          </p>
+        </div>
+        <PaymentPanel />
       </section>
     </PublicPage>
   );

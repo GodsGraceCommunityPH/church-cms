@@ -28,9 +28,19 @@ export function ProtectedRoute() {
   return <Outlet />;
 }
 
-export function PermissionRoute({ permission }: { permission: string }) {
+export function PermissionRoute({
+  permission,
+  anyOf,
+}: {
+  permission?: string;
+  anyOf?: string[];
+}) {
   const { hasPermission } = useAuth();
-  if (!hasPermission(permission)) {
+  const allowed = permission
+    ? hasPermission(permission)
+    : (anyOf ?? []).some((code) => hasPermission(code));
+
+  if (!allowed) {
     return (
       <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
         <h1 className="text-2xl font-bold">Access denied</h1>

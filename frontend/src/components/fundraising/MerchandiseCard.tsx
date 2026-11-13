@@ -6,9 +6,13 @@ import {
 
 interface MerchandiseCardProps {
   item: ShopItem;
+  ordersEnabled?: boolean;
 }
 
-export default function MerchandiseCard({ item }: MerchandiseCardProps) {
+export default function MerchandiseCard({
+  item,
+  ordersEnabled = false,
+}: MerchandiseCardProps) {
   return (
     <article className="merch-card">
       <div className="merch-art">
@@ -43,8 +47,14 @@ export default function MerchandiseCard({ item }: MerchandiseCardProps) {
           </ul>
         </div>
         <div className="merch-meta">
-          <span className="merch-availability">
-            {SHOP_STATUS.availabilityLabel}
+          <span
+            className={`merch-availability${
+              ordersEnabled ? "" : " merch-availability-closed"
+            }`}
+          >
+            {ordersEnabled
+              ? SHOP_STATUS.availabilityLabel
+              : SHOP_STATUS.closedLabel}
           </span>
         </div>
       </div>

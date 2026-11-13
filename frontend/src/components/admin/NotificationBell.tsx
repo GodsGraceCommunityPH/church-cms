@@ -60,7 +60,8 @@ export default function NotificationBell() {
       try { await markNotificationRead(item.id); } catch { /* realtime or next refresh reconciles */ }
     }
     setOpen(false);
-    navigate(item.related_member_id ? `/admin/members/${item.related_member_id}` : "/admin/notifications");
+    if (item.related_order_id) navigate(`/admin/project-ilaw-orders/${item.related_order_id}`);
+    else navigate(item.related_member_id ? `/admin/members/${item.related_member_id}` : "/admin/notifications");
   }
 
   return <div ref={rootRef} className="notification-bell-root" style={{ position: "relative" }}>

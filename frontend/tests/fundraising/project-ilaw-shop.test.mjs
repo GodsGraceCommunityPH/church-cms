@@ -1,18 +1,41 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 
 import {
-  formatPeso,
-  ORDER_FORM_FIELDS,
+  CUSTOMER_FULFILLMENT_STATUS_LABELS,
+  CUSTOMER_PAYMENT_STATUS_LABELS,
+  ECO_BAG_COLORS,
+  FULFILLMENT_STATUS_LABELS,
+  FULFILLMENT_TRANSITIONS,
+  ORDER_FULFILMENT,
   ORDER_STEPS,
+  PAYMENT_QR,
+  PAYMENT_STATUS_LABELS,
   PROJECT_ILAW,
   SHOP_ITEMS,
   SHOP_STATUS,
+  T_SHIRT_COLORS,
   T_SHIRT_SIZES,
+  canCancelOrder,
+  calculateDraftTotals,
+  createDraftItem,
+  defaultColorForProduct,
+  defaultSizeForProduct,
+  formatPeso,
+  validateOrderDraft,
 } from "../../src/features/fundraising/projectIlaw.ts";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
+
+const fileExists = async (url) => {
+  try {
+    await access(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
 
 test("Project Ilaw describes the lighting work without invented figures", () => {
   assert.match(PROJECT_ILAW.summary, /repairs and improvements/i);
@@ -21,7 +44,7 @@ test("Project Ilaw describes the lighting work without invented figures", () => 
   assert.equal(PROJECT_ILAW.goals.length, 2);
 
   const content = JSON.stringify({ PROJECT_ILAW, SHOP_STATUS });
-  assert.doesNotMatch(content, /GCash|account number/i);
+  assert.doesNotMatch(content, /GCash|bank account|account number/i);
   assert.doesNotMatch(content, /\b\d{2,3}%/);
   assert.doesNotMatch(content, /raised so far|fundraising target/i);
 });
@@ -45,7 +68,7 @@ test("the catalog offers only the T-shirt and eco bag at ₱499 each", () => {
   }
 });
 
-test("the T-shirt lists XS through 3XL and shows the mockup colours", () => {
+test("the T-shirt lists XS through 3XL and the five documented colours", () => {
   const shirt = SHOP_ITEMS.find((item) => item.id === "project-ilaw-t-shirt");
 
   assert.ok(shirt);
@@ -53,20 +76,37 @@ test("the T-shirt lists XS through 3XL and shows the mockup colours", () => {
   assert.deepEqual(shirt.sizes, T_SHIRT_SIZES);
   assert.equal(shirt.sizeLabel, "Sizes");
   assert.deepEqual(shirt.colors, ["Black", "White", "Maroon", "Green", "Blue"]);
+  assert.deepEqual(shirt.colors, T_SHIRT_COLORS);
+  assert.equal(shirt.colorLabel, "Shirt colours");
   assert.match(shirt.description, /front/i);
   assert.match(shirt.description, /Let His Light Shine, Let His Glory Rise/);
   assert.match(shirt.description, /Haggai 2:9/);
 });
 
-test("the eco bag is one size with maroon, green, and blue handles", () => {
+test("the eco bag is one size with maroon, green, and blue handles", async () => {
   const bag = SHOP_ITEMS.find((item) => item.id === "project-ilaw-eco-bag");
 
   assert.ok(bag);
   assert.deepEqual(bag.sizes, ["One Size"]);
   assert.equal(bag.sizeLabel, "Size");
   assert.deepEqual(bag.colors, ["Maroon", "Green", "Blue"]);
+  assert.deepEqual(bag.colors, ECO_BAG_COLORS);
   assert.equal(bag.colorLabel, "Handle colours");
   assert.match(bag.description, /Let His Light Shine, Let His Glory Rise/);
+
+  // The public product card shows the single "One Size" chip from the
+  // showcase release; the order editor still skips the redundant selector.
+  const card = await read(
+    "../../src/components/fundraising/MerchandiseCard.tsx",
+  );
+  assert.match(card, /merch-chips/);
+  assert.match(card, /item\.sizes\.map/);
+
+  const editor = await read(
+    "../../src/components/fundraising/OrderLineItemsEditor.tsx",
+  );
+  assert.doesNotMatch(editor, /One Size/);
+  assert.match(editor, /isEcoBag\(item\.productId\)/);
 });
 
 test("the catalog renders the supplied mockup images without distortion", async () => {
@@ -107,99 +147,525 @@ test("the catalog renders the supplied mockup images without distortion", async 
   assert.match(css, /\.merch-art img \{[^}]*object-fit: contain/s);
 });
 
-test("ordering remains closed everywhere", async () => {
-  assert.equal(SHOP_STATUS.orderingOpen, false);
-  assert.match(SHOP_STATUS.availabilityLabel, /not yet open/i);
-  assert.match(SHOP_STATUS.catalogNotice, /₱499/);
-  assert.match(SHOP_STATUS.catalogNotice, /not yet open/i);
-
-  const preview = await read(
-    "../../src/components/fundraising/ShopPreviewSection.tsx",
-  );
-  assert.match(preview, /SHOP_STATUS\.catalogNotice/);
-
+test("public ordering is closed by default and gated by the server setting", async () => {
   const page = await read("../../src/pages/ShopPage.tsx");
-  assert.match(page, /Ordering is not yet open/);
-  assert.doesNotMatch(page, /placeholder/i);
+  const form = await read("../../src/components/fundraising/OrderForm.tsx");
+  const card = await read(
+    "../../src/components/fundraising/MerchandiseCard.tsx",
+  );
+
+  assert.equal(SHOP_STATUS.defaultOrdersEnabled, false);
+  assert.match(SHOP_STATUS.closedNotice, /not open/i);
+  assert.match(SHOP_STATUS.closedNotice, /preview only/i);
+  assert.match(SHOP_STATUS.openNotice, /payment instructions/i);
+  assert.doesNotMatch(SHOP_STATUS.openNotice, /messenger/i);
+  assert.match(SHOP_STATUS.openCatalogNotice, /₱499/);
+  assert.match(SHOP_STATUS.openCatalogNotice, /colour/i);
+  assert.match(SHOP_STATUS.closedCatalogNotice, /₱499/);
+  assert.match(SHOP_STATUS.availabilityLabel, /available/i);
+  assert.equal(SHOP_STATUS.closedLabel, "Ordering not open yet");
+
+  // Product cards reflect the closed default.
+  assert.match(card, /ordersEnabled = false/);
+  assert.match(card, /SHOP_STATUS\.closedLabel/);
+
+  // The public page reads the server switch and renders the order form only
+  // when ordering is open. The database still rejects submissions if the switch
+  // is off, so hiding the form is not the only control.
+  assert.match(page, /getProjectIlawPublicSettings/);
+  assert.match(page, /setOrdersEnabled\(settings\.ordersEnabled\)/);
+  assert.match(page, /ordersEnabled \? \(\s*<OrderForm \/>/s);
+  assert.match(page, /Ordering is not open yet/);
+  assert.match(form, /not open/i);
+  assert.match(form, /Your order was not saved/);
 });
 
-test("the planned ordering process keeps the five required steps in order", () => {
+test("the ordering process keeps the website payment steps in order", () => {
   assert.deepEqual(
     ORDER_STEPS.map((step) => step.title),
     [
-      "Select merchandise",
-      "Fill out order details",
-      "Pay using the designated payment method",
-      "Submit proof of payment",
-      "Wait for payment verification",
+      "Choose your items",
+      "Submit your order",
+      "Pay through the website",
+      "Submit your payment details",
+      "Wait for verification",
     ],
   );
+
+  const content = JSON.stringify(ORDER_STEPS);
+  assert.doesNotMatch(content, /messenger|bryan/i);
+  assert.match(content, /transaction reference/i);
+  assert.match(content, /never marked paid automatically/i);
 });
 
-test("the order form preview covers the required fields and cannot submit", async () => {
-  assert.deepEqual(
-    ORDER_FORM_FIELDS.map((field) => field.label),
-    ["Customer name", "Mobile number", "Product", "Size", "Quantity", "Notes"],
-  );
+test("draft validation enforces required fields, quantities, sizes, and colours", () => {
+  const base = {
+    customerName: "",
+    mobile: "",
+    notes: "",
+    items: [createDraftItem()],
+  };
 
-  const productField = ORDER_FORM_FIELDS.find((field) => field.id === "product");
-  const sizeField = ORDER_FORM_FIELDS.find((field) => field.id === "size");
+  const missing = validateOrderDraft(base);
+  assert.equal(missing.ok, false);
+  assert.ok(missing.errors.some((error) => /customer name/i.test(error)));
+  assert.ok(missing.errors.some((error) => /mobile number/i.test(error)));
 
-  assert.deepEqual(
-    productField.options,
-    SHOP_ITEMS.map((item) => item.name),
-  );
-  assert.deepEqual(sizeField.options, [
-    "XS",
-    "S",
-    "M",
-    "L",
-    "XL",
-    "2XL",
-    "3XL",
-    "One Size",
+  const shirt = createDraftItem("project-ilaw-t-shirt");
+  const noSize = validateOrderDraft({
+    ...base,
+    customerName: "Grace Member",
+    mobile: "09171234567",
+    items: [shirt],
+  });
+  assert.equal(noSize.ok, false);
+  assert.ok(noSize.errors.some((error) => /T-shirt size/i.test(error)));
+
+  const noColour = validateOrderDraft({
+    ...base,
+    customerName: "Grace Member",
+    mobile: "09171234567",
+    items: [{ ...shirt, size: "M" }],
+  });
+  assert.equal(noColour.ok, false);
+  assert.ok(noColour.errors.some((error) => /shirt colour/i.test(error)));
+
+  const badBagColour = validateOrderDraft({
+    ...base,
+    customerName: "Grace Member",
+    mobile: "09171234567",
+    items: [{ ...createDraftItem("project-ilaw-eco-bag"), color: "Black" }],
+  });
+  assert.equal(badBagColour.ok, false);
+  assert.ok(badBagColour.errors.some((error) => /handle colour/i.test(error)));
+
+  const fractional = validateOrderDraft({
+    ...base,
+    customerName: "Grace Member",
+    mobile: "09171234567",
+    items: [{ ...shirt, size: "M", color: "Black", quantity: "1.5" }],
+  });
+  assert.equal(fractional.ok, false);
+
+  const valid = validateOrderDraft({
+    ...base,
+    customerName: "  Grace Member  ",
+    mobile: "0917 123 4567",
+    notes: "  Please prepare two  ",
+    items: [
+      { ...shirt, size: "M", color: "Black", quantity: "2" },
+      { ...createDraftItem("project-ilaw-eco-bag"), color: "Green", quantity: 1 },
+    ],
+  });
+  assert.equal(valid.ok, true);
+  assert.equal(valid.customerName, "Grace Member");
+  assert.equal(valid.notes, "Please prepare two");
+  assert.equal(valid.totalQuantity, 3);
+  assert.equal(valid.totalAmount, 1497);
+  assert.deepEqual(valid.items, [
+    {
+      productId: "project-ilaw-t-shirt",
+      size: "M",
+      color: "Black",
+      quantity: 2,
+    },
+    {
+      productId: "project-ilaw-eco-bag",
+      size: "One Size",
+      color: "Green",
+      quantity: 1,
+    },
   ]);
-  assert.match(sizeField.note, /Eco bag: One Size only/);
-
-  const component = await read(
-    "../../src/components/fundraising/OrderFormPreview.tsx",
-  );
-  assert.match(component, /<fieldset/);
-  assert.match(component, /\bdisabled\b/);
-  assert.doesNotMatch(component, /<form\b/);
-  assert.doesNotMatch(component, /onSubmit/);
-  assert.doesNotMatch(component, /supabase|fetch\(/);
 });
 
-test("the homepage places the shop preview directly below Project Ilaw", async () => {
-  const homepage = await read("../../src/pages/HomePage.tsx");
+test("the eco bag is always normalized to One Size and needs a handle colour", () => {
+  assert.equal(defaultSizeForProduct("project-ilaw-eco-bag"), "One Size");
+  assert.equal(defaultSizeForProduct("project-ilaw-t-shirt"), "");
+  assert.equal(defaultColorForProduct("project-ilaw-eco-bag"), "");
+  assert.equal(defaultColorForProduct("project-ilaw-t-shirt"), "");
 
-  const ilaw = homepage.indexOf("<ProjectIlawSection />");
-  const shopPreview = homepage.indexOf("<ShopPreviewSection />");
-  const gallery = homepage.indexOf("<CommunityGallery />");
+  const bag = createDraftItem("project-ilaw-eco-bag");
+  assert.equal(bag.size, "One Size");
 
-  assert.notEqual(ilaw, -1);
-  assert.notEqual(shopPreview, -1);
-  assert.ok(ilaw < shopPreview, "shop preview must follow Project Ilaw");
-  assert.ok(shopPreview < gallery, "shop preview must stay on the homepage");
-
-  const section = await read(
-    "../../src/components/fundraising/ProjectIlawSection.tsx",
-  );
-  assert.match(section, /id="project-ilaw"/);
-  assert.match(section, /to="\/shop"/);
+  const validation = validateOrderDraft({
+    customerName: "Grace Member",
+    mobile: "09171234567",
+    notes: "",
+    items: [{ ...bag, size: "", color: "Blue" }],
+  });
+  assert.equal(validation.ok, true);
+  assert.equal(validation.items[0].size, "One Size");
 });
 
-test("public navigation links to Project Ilaw and Shop on desktop and mobile", async () => {
-  const navbar = await read("../../src/components/Navbar.tsx");
+test("draft totals only count valid quantities at ₱499 each", () => {
+  const items = [
+    {
+      key: "a",
+      productId: "project-ilaw-t-shirt",
+      size: "S",
+      color: "Black",
+      quantity: 2,
+    },
+    {
+      key: "b",
+      productId: "project-ilaw-eco-bag",
+      size: "One Size",
+      color: "Maroon",
+      quantity: 3,
+    },
+    {
+      key: "c",
+      productId: "project-ilaw-t-shirt",
+      size: "M",
+      color: "White",
+      quantity: "0",
+    },
+  ];
+  assert.deepEqual(calculateDraftTotals(items), {
+    totalQuantity: 5,
+    totalAmount: 2495,
+  });
+});
 
-  const anchorLinks = navbar.match(/to="\/#project-ilaw"/g) ?? [];
-  const shopLinks = navbar.match(/to="\/shop"/g) ?? [];
+test("status labels and transitions match the documented order workflow", () => {
+  assert.deepEqual(PAYMENT_STATUS_LABELS, {
+    awaiting_payment: "Awaiting Payment",
+    payment_verification: "Payment Verification",
+    paid: "Paid",
+  });
+  assert.deepEqual(FULFILLMENT_STATUS_LABELS, {
+    not_started: "Not Started",
+    in_production: "In Production",
+    ready_for_pickup: "Ready for Pickup",
+    completed: "Completed",
+    cancelled: "Cancelled",
+  });
 
-  assert.equal(anchorLinks.length, 2, "desktop and mobile need Project Ilaw");
-  assert.equal(shopLinks.length, 2, "desktop and mobile need Shop");
-  assert.match(navbar, /Lightbulb/);
-  assert.match(navbar, /ShoppingBag/);
+  assert.deepEqual(FULFILLMENT_TRANSITIONS.not_started, [
+    "in_production",
+    "ready_for_pickup",
+  ]);
+  assert.deepEqual(FULFILLMENT_TRANSITIONS.in_production, ["ready_for_pickup"]);
+  assert.deepEqual(FULFILLMENT_TRANSITIONS.ready_for_pickup, ["completed"]);
+  assert.deepEqual(FULFILLMENT_TRANSITIONS.completed, []);
+  assert.deepEqual(FULFILLMENT_TRANSITIONS.cancelled, []);
+
+  assert.equal(canCancelOrder("not_started"), true);
+  assert.equal(canCancelOrder("in_production"), true);
+  assert.equal(canCancelOrder("ready_for_pickup"), true);
+  assert.equal(canCancelOrder("completed"), false);
+  assert.equal(canCancelOrder("cancelled"), false);
+
+  // Customers see plain-language statuses while staff keep the internal model.
+  assert.deepEqual(CUSTOMER_PAYMENT_STATUS_LABELS, {
+    awaiting_payment: "Awaiting Payment",
+    payment_verification: "Payment Submitted",
+    paid: "Payment Confirmed",
+  });
+  assert.deepEqual(CUSTOMER_FULFILLMENT_STATUS_LABELS, {
+    not_started: "Order received",
+    in_production: "Preparing",
+    ready_for_pickup: "Ready for pickup",
+    completed: "Completed",
+    cancelled: "Cancelled",
+  });
+
+  assert.match(ORDER_FULFILMENT.method, /Pickup/i);
+  assert.match(ORDER_FULFILMENT.method, /God's Grace Community Covenant Church/);
+});
+
+test("the order form requires an explicit review before saving", async () => {
+  const form = await read("../../src/components/fundraising/OrderForm.tsx");
+
+  assert.match(form, /Review order/);
+  assert.match(form, /title="Review your order"/);
+  assert.match(form, /setReview\(validation\)/);
+  assert.match(form, /confirmOrder/);
+  assert.match(form, /Confirm and submit order/);
+  assert.match(form, /Go back and edit/);
+  assert.match(form, /review\.customerName/);
+  assert.match(form, /review\.mobile/);
+  assert.match(form, /review\.totalAmount/);
+  assert.match(form, /ORDER_FULFILMENT\.method/);
+  assert.match(form, /Nothing is charged at\s+this step/);
+
+  // Submission only happens after the customer confirms the review; the form
+  // submit handler itself does not call the create RPC.
+  const submitHandler = form.slice(
+    form.indexOf("function handleSubmit"),
+    form.indexOf("async function confirmOrder"),
+  );
+  assert.doesNotMatch(submitHandler, /createProjectIlawOrder/);
+});
+
+test("the confirmation dialog only appears after a successful save and routes to payment", async () => {
+  const form = await read("../../src/components/fundraising/OrderForm.tsx");
+
+  assert.match(form, /setConfirmation\(created\)/);
+  assert.match(form, /title="Orders Received!"/);
+  assert.match(form, /Thank you for supporting Project Ilaw!/);
+  assert.match(form, /confirmation\.reference/);
+  assert.match(form, /confirmation\.totalAmount/);
+  assert.match(form, /Go to payment/);
+  assert.match(form, /"pay-order"/);
+  assert.match(form, /requestIdRef/);
+  assert.match(form, /submitting/);
+  assert.doesNotMatch(form, /messenger/i);
+  assert.doesNotMatch(form, /bryan/i);
+});
+
+test("the public order form captures colours and the payment section is present", async () => {
+  const form = await read("../../src/components/fundraising/OrderForm.tsx");
+  const editor = await read(
+    "../../src/components/fundraising/OrderLineItemsEditor.tsx",
+  );
+  const page = await read("../../src/pages/ShopPage.tsx");
+  const panel = await read("../../src/components/fundraising/PaymentPanel.tsx");
+
+  assert.match(form, /Customer name/);
+  assert.match(form, /Mobile number/);
+  assert.match(form, /Order notes \(optional\)/);
+  assert.match(form, /<OrderLineItemsEditor/);
+  assert.match(editor, /Add another item/);
+  assert.match(editor, /Remove/);
+  assert.match(editor, /type="number"/);
+  assert.match(editor, /min=\{1\}/);
+  assert.match(editor, /max=\{99\}/);
+  assert.match(editor, /Unit price/);
+  assert.match(editor, /Line total/);
+  assert.match(editor, /product\.colorLabel/);
+  assert.match(editor, /defaultColorForProduct/);
+
+  assert.match(page, /Place your order/);
+  assert.match(page, /id="order-form"/);
+  assert.match(page, /<PaymentPanel/);
+  assert.match(page, /id="payment"/);
+  assert.doesNotMatch(page, /messenger/i);
+
+  assert.match(panel, /id="pay-order"/);
+  assert.match(panel, /getProjectIlawPaymentContext/);
+  assert.match(panel, /uploadProjectIlawPaymentEvidence/);
+  assert.match(panel, /submitProjectIlawPayment/);
+  assert.match(panel, /Payment awaiting verification/);
+  assert.match(panel, /never marked paid automatically|never confirms payment automatically/i);
+
+  // The panel shows the confirmed QR and plain-language statuses only when
+  // payment collection is enabled.
+  assert.match(panel, /PAYMENT_QR\.src/);
+  assert.match(panel, /PAYMENT_QR\.label/);
+  assert.match(panel, /PAYMENT_QR\.notice/);
+  assert.match(panel, /View larger QR/);
+  assert.match(panel, /CUSTOMER_PAYMENT_STATUS_LABELS/);
+  assert.match(panel, /CUSTOMER_FULFILLMENT_STATUS_LABELS/);
+  assert.match(panel, /ORDER_FULFILMENT\.method/);
+  assert.match(panel, /Payment collection is not open yet/);
+});
+
+test("payment lookup shows the QR and evidence upload only while collection is enabled", async () => {
+  const panel = await read("../../src/components/fundraising/PaymentPanel.tsx");
+  const service = await read("../../src/features/fundraising/orderService.ts");
+
+  // The server owns the switch: the panel never enables payment collection by
+  // itself, and a missing flag is treated as disabled.
+  assert.match(service, /rpc\(\s*"get_project_ilaw_payment_context"/);
+  assert.match(service, /enabled: row\?\.enabled === true/);
+
+  assert.match(
+    panel,
+    /context\?\.paymentStatus === "awaiting_payment"[\s\S]{0,160}?instructions\?\.enabled === true/,
+  );
+
+  // Everything between the enabled test and the closed notice is the paid path.
+  const enabledStart = panel.indexOf("instructions?.enabled ?");
+  const closedStart = panel.indexOf("Payment collection is not open yet");
+  assert.ok(enabledStart !== -1, "the panel must branch on the enabled flag");
+  assert.ok(
+    closedStart > enabledStart,
+    "the closed notice must be the disabled branch",
+  );
+
+  const enabledBranch = panel.slice(enabledStart, closedStart);
+  assert.match(enabledBranch, /PAYMENT_QR\.src/);
+  assert.match(enabledBranch, /PAYMENT_QR\.label/);
+  assert.match(enabledBranch, /PAYMENT_QR\.notice/);
+  assert.match(enabledBranch, /View larger QR/);
+  assert.match(enabledBranch, /<figcaption>/);
+
+  // The disabled branch explains the state and offers neither QR nor upload.
+  const submitStart = panel.indexOf("canSubmitPayment &&");
+  assert.ok(submitStart > closedStart, "the upload form needs its own guard");
+
+  const disabledBranch = panel.slice(closedStart, submitStart);
+  assert.doesNotMatch(disabledBranch, /PAYMENT_QR/);
+  assert.doesNotMatch(disabledBranch, /type="file"/);
+  assert.match(disabledBranch, /payment evidence[\s\S]{0,40}cannot be submitted yet/);
+
+  // The upload form only appears for an enabled, unpaid, uncancelled order.
+  const submitBranch = panel.slice(submitStart);
+  assert.match(submitBranch, /type="file"/);
+  assert.match(submitBranch, /ACCEPTED_EVIDENCE/);
+  assert.match(submitBranch, /Submit payment details/);
+  assert.match(panel, /MAX_EVIDENCE_BYTES = 5 \* 1024 \* 1024/);
+  assert.match(
+    panel,
+    /image\/jpeg,image\/png,image\/webp,application\/pdf/,
+  );
+});
+
+test("authorized staff can enable payment collection from the admin settings panel", async () => {
+  const panel = await read(
+    "../../src/components/fundraising/ProjectIlawSettingsPanel.tsx",
+  );
+  const page = await read("../../src/pages/admin/ProjectIlawOrders.tsx");
+
+  // Only administrators (manage) may open payment collection.
+  assert.match(panel, /hasPermission\("project_ilaw\.orders\.manage"\)/);
+  assert.match(panel, /checked=\{settings\.paymentsEnabled\}/);
+  assert.match(panel, /update\(\{ paymentsEnabled: event\.target\.checked \}\)/);
+  assert.match(panel, /paymentsEnabled: settings\.paymentsEnabled/);
+
+  // Order intake and payment collection stay separate controls.
+  assert.match(panel, /Accept public orders/);
+  assert.match(panel, /This does not\s+enable payment collection/);
+  assert.match(panel, /Show payment details to customers/);
+  assert.match(panel, /confirmed GCash InstaPay QR is\s+shown/);
+
+  assert.match(page, /<ProjectIlawSettingsPanel/);
+});
+
+test("every order item renders its own colour selector from the product configuration", async () => {
+  const editor = await read(
+    "../../src/components/fundraising/OrderLineItemsEditor.tsx",
+  );
+
+  // Each product must publish both a label and its allowed colours, otherwise
+  // the editor would render an empty or missing colour dropdown.
+  for (const item of SHOP_ITEMS) {
+    assert.ok(item.colors.length > 0, `${item.id} needs at least one colour`);
+    assert.equal(
+      new Set(item.colors).size,
+      item.colors.length,
+      `${item.id} colours must be unique`,
+    );
+    assert.ok(item.colorLabel.trim().length > 0, `${item.id} needs a colour label`);
+  }
+
+  assert.deepEqual(
+    SHOP_ITEMS.find((item) => item.id === "project-ilaw-t-shirt")?.colors,
+    ["Black", "White", "Maroon", "Green", "Blue"],
+  );
+  assert.deepEqual(
+    SHOP_ITEMS.find((item) => item.id === "project-ilaw-eco-bag")?.colors,
+    ["Maroon", "Green", "Blue"],
+  );
+
+  // The selector is rendered per line item, keyed to that item so each row
+  // keeps an independent selection.
+  assert.match(editor, /id=\{`\$\{idPrefix\}-color-\$\{item\.key\}`\}/);
+  assert.match(editor, /value=\{item\.color\}/);
+  assert.match(
+    editor,
+    /updateItem\(item\.key, \{ color: event\.target\.value \}\)/,
+  );
+  assert.match(editor, /product\.colors\.map/);
+  assert.match(editor, /Select a colour/);
+  assert.match(editor, /product\.colorLabel/);
+
+  // A T-shirt shows the colour field between Product and Size; the eco bag
+  // keeps its handle-colour field and hides the redundant size selector.
+  const productIndex = editor.indexOf("-product-${item.key}");
+  const colourIndex = editor.indexOf("-color-${item.key}");
+  const sizeIndex = editor.indexOf("-size-${item.key}");
+  assert.ok(productIndex < colourIndex, "colour follows the product selector");
+  assert.ok(colourIndex < sizeIndex, "colour precedes the size selector");
+  assert.match(editor, /isEcoBag\(item\.productId\)/);
+
+  // Colour state lives in the draft item, never in shared component state.
+  assert.doesNotMatch(editor, /useState/);
+});
+
+test("the chosen colour reaches the review, the summary, and the submitted order", async () => {
+  const form = await read("../../src/components/fundraising/OrderForm.tsx");
+  const service = await read("../../src/features/fundraising/orderService.ts");
+
+  // Validation keeps each line item's own colour and passes it through.
+  const validation = validateOrderDraft({
+    customerName: "Grace Member",
+    mobile: "09171234567",
+    notes: "",
+    items: [
+      { ...createDraftItem(), size: "M", color: "Black", quantity: 1 },
+      {
+        ...createDraftItem("project-ilaw-eco-bag"),
+        color: "Green",
+        quantity: 2,
+      },
+    ],
+  });
+  assert.equal(validation.ok, true);
+  assert.deepEqual(
+    validation.items.map((item) => item.color),
+    ["Black", "Green"],
+  );
+
+  // The live summary and the pre-submit review both show the Colour column.
+  assert.match(form, /<th scope="col">Colour<\/th>/);
+  assert.match(form, /<td>\{item\.color \|\| "—"\}<\/td>/);
+  assert.match(form, /<td>\{item\.color\}<\/td>/);
+
+  // The reviewed items, including colour, are what gets submitted.
+  assert.match(form, /items: review\.items/);
+  assert.match(service, /p_items: input\.items/);
+});
+
+test("the confirmed GCash InstaPay QR is a public, unchanged asset", async () => {
+  assert.equal(
+    PAYMENT_QR.src,
+    "/images/fundraising/gcash-instapay-qr.jpg",
+  );
+  assert.equal(PAYMENT_QR.label, "GCash (InstaPay QR)");
+  assert.equal(PAYMENT_QR.notice, "Transfer fees may apply.");
+  assert.ok(PAYMENT_QR.alt);
+
+  const image = await readFile(
+    new URL("../../public/images/fundraising/gcash-instapay-qr.jpg", import.meta.url),
+  );
+  // The supplied image is a JPEG; preserve it byte-for-byte rather than
+  // regenerating or re-encoding the QR.
+  assert.deepEqual([...image.subarray(0, 4)], [0xff, 0xd8, 0xff, 0xe0]);
+
+  let offset = 2;
+  let width = 0;
+  let height = 0;
+  while (offset < image.length) {
+    if (image[offset] !== 0xff) {
+      offset += 1;
+      continue;
+    }
+    const marker = image[offset + 1];
+    if (
+      marker >= 0xc0 &&
+      marker <= 0xcf &&
+      marker !== 0xc4 &&
+      marker !== 0xc8 &&
+      marker !== 0xcc
+    ) {
+      height = image.readUInt16BE(offset + 5);
+      width = image.readUInt16BE(offset + 7);
+      break;
+    }
+    offset += 2 + image.readUInt16BE(offset + 2);
+  }
+  assert.equal(width, 657);
+  assert.equal(height, 989);
+
+  // The QR lives in the public asset tree, never in payment evidence storage.
+  assert.doesNotMatch(PAYMENT_QR.src, /payment-evidence/i);
+
+  const give = await read("../../src/pages/GivePage.tsx");
+  assert.match(give, /\/images\/fundraising\/gcash-instapay-qr\.jpg/);
+  assert.doesNotMatch(give, /assets\/instapay-qr\.png/);
+  assert.match(give, /GCash/);
 });
 
 test("the shop route is public and uses the existing public layout", async () => {
@@ -219,14 +685,79 @@ test("the shop route is public and uses the existing public layout", async () =>
   assert.match(app, /import ShopPage from "\.\/pages\/ShopPage"/);
 });
 
-test("the shop page states that ordering is not open and shows every step", async () => {
-  const page = await read("../../src/pages/ShopPage.tsx");
+test("the homepage keeps Project Ilaw but no longer duplicates the shop mockups", async () => {
+  const homepage = await read("../../src/pages/HomePage.tsx");
 
-  assert.match(page, /Ordering is not yet open/);
-  assert.match(page, /id="how-to-order"/);
-  assert.match(page, /id="order-form-preview"/);
-  assert.match(page, /Payment details will be announced/);
-  assert.doesNotMatch(page, /<form\b/);
+  const ilaw = homepage.indexOf("<ProjectIlawSection />");
+  const gallery = homepage.indexOf("<CommunityGallery />");
+
+  assert.notEqual(ilaw, -1);
+  assert.notEqual(gallery, -1);
+  assert.ok(ilaw < gallery, "Project Ilaw stays on the homepage");
+
+  // The old merchandise preview was removed; the real catalogue lives at /shop.
+  assert.doesNotMatch(homepage, /ShopPreviewSection/);
+  assert.equal(
+    await fileExists(
+      new URL(
+        "../../src/components/fundraising/ShopPreviewSection.tsx",
+        import.meta.url,
+      ),
+    ),
+    false,
+  );
+
+  const section = await read(
+    "../../src/components/fundraising/ProjectIlawSection.tsx",
+  );
+  assert.match(section, /id="project-ilaw"/);
+  assert.match(section, /to="\/shop"/);
+
+  const content = await read("../../src/features/fundraising/projectIlaw.ts");
+  assert.doesNotMatch(content, /SHOP_PREVIEW/);
+
+  const css = await read("../../src/features/fundraising/Fundraising.css");
+  assert.doesNotMatch(css, /\.shop-preview-/);
+});
+
+test("the landing page copy no longer sends customers to Messenger", async () => {
+  const files = [
+    "../../src/pages/HomePage.tsx",
+    "../../src/components/fundraising/ProjectIlawSection.tsx",
+    "../../src/features/fundraising/projectIlaw.ts",
+    "../../src/pages/ShopPage.tsx",
+  ];
+
+  for (const file of files) {
+    const content = await read(file);
+    assert.doesNotMatch(content, /messenger/i, `${file} must not use Messenger`);
+    assert.doesNotMatch(content, /bryan castro/i, `${file} must not name Bryan Castro`);
+    assert.doesNotMatch(
+      content,
+      /Two ways to support Project Ilaw/i,
+      `${file} must not show the old banner`,
+    );
+  }
+});
+
+test("public navigation links to Project Ilaw and Shop on desktop and mobile", async () => {
+  const navbar = await read("../../src/components/Navbar.tsx");
+
+  const anchorLinks = navbar.match(/to="\/#project-ilaw"/g) ?? [];
+  const shopLinks = navbar.match(/to="\/shop"/g) ?? [];
+
+  assert.equal(anchorLinks.length, 2, "desktop and mobile need Project Ilaw");
+  assert.equal(shopLinks.length, 2, "desktop and mobile need Shop");
+  assert.match(navbar, /Lightbulb/);
+  assert.match(navbar, /ShoppingBag/);
+
+  // Repeated clicks on the homepage scroll directly, so an unchanged hash
+  // cannot swallow the navigation.
+  const handlers = navbar.match(/onClick=\{handleProjectIlawClick\}/g) ?? [];
+  assert.equal(handlers.length, 2, "desktop and mobile both need the handler");
+  assert.match(navbar, /pathname !== "\/"/);
+  assert.match(navbar, /scrollIntoView/);
+  assert.match(navbar, /closeMenu\(\)/);
 });
 
 test("hash navigation can reach the Project Ilaw section", async () => {
@@ -235,4 +766,35 @@ test("hash navigation can reach the Project Ilaw section", async () => {
   assert.match(scroll, /location|hash/);
   assert.match(scroll, /scrollIntoView/);
   assert.match(scroll, /decodeURIComponent/);
+});
+
+test("the Give page keeps its details and uses the requested responsive layout", async () => {
+  const page = await read("../../src/pages/GivePage.tsx");
+  const css = await read("../../src/components/PublicPage.css");
+
+  assert.match(page, /3143314461925/);
+  assert.match(page, /Gods Grace Community Church/);
+  assert.match(page, /navigator\.clipboard\.writeText/);
+  assert.match(page, /instapayQr/);
+  assert.match(page, /Scan to Give/);
+  assert.match(page, /qr-card-text/);
+
+  assert.match(css, /\.giving-grid \{[^}]*grid-template-columns: repeat\(2,/s);
+  assert.match(
+    css,
+    /\.giving-grid > \.qr-card \{[^}]*grid-column: 1 \/ -1;[^}]*text-align: left;[^}]*width: 100%; \}/s,
+  );
+  assert.match(css, /\.qr-card \{[^}]*grid-template-columns: minmax/s);
+  assert.match(
+    css,
+    /\.giving-grid > \.qr-card img \{[^}]*width: 320px/s,
+  );
+  assert.match(
+    css,
+    /@media \(max-width: 560px\) \{[\s\S]*\.giving-grid > \.qr-card img \{[^}]*width: min\(100%,280px\)/s,
+  );
+  assert.match(
+    css,
+    /@media \(max-width: 560px\) \{[\s\S]*\.giving-grid > \.qr-card \{ grid-template-columns: 1fr; padding: 23px 20px; text-align: center; \}/s,
+  );
 });

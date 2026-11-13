@@ -20,7 +20,7 @@ const GROUPS = [
   },
   {
     label: "Church Operations",
-    items: ["/admin/events", "/admin/equipment"],
+    items: ["/admin/events", "/admin/equipment", "/admin/project-ilaw-orders"],
   },
   {
     label: "Content & Resources",
@@ -58,6 +58,7 @@ test("sidebar preserves every existing navigation route", async () => {
     "/admin/ministries",
     "/admin/events",
     "/admin/equipment",
+    "/admin/project-ilaw-orders",
     "/admin/resources",
     "/admin/worship-messages",
     "/admin/church-life",
