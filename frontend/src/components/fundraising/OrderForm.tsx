@@ -160,8 +160,54 @@ export default function OrderForm() {
 
         <div className="order-summary" aria-labelledby="order-summary-title">
           <h3 id="order-summary-title">Order summary</h3>
+          <div className="order-summary-mobile">
+            {draft.items.map((item) => {
+              const product = getShopItem(item.productId);
+              const quantity = Number(item.quantity);
+              const validQuantity =
+                Number.isInteger(quantity) && quantity > 0;
+              return (
+                <div className="order-summary-mobile-row" key={item.key}>
+                  <div className="order-summary-mobile-field">
+                    <span>Product</span>
+                    <strong>{product?.name ?? "—"}</strong>
+                  </div>
+                  <div className="order-summary-mobile-field">
+                    <span>Colour</span>
+                    <strong>{item.color || "—"}</strong>
+                  </div>
+                  <div className="order-summary-mobile-field">
+                    <span>Size</span>
+                    <strong>
+                      {product
+                        ? product.id === "project-ilaw-eco-bag"
+                          ? "—"
+                          : item.size || "—"
+                        : "—"}
+                    </strong>
+                  </div>
+                  <div className="order-summary-mobile-field">
+                    <span>Quantity</span>
+                    <strong>{validQuantity ? quantity : "—"}</strong>
+                  </div>
+                  <div className="order-summary-mobile-field">
+                    <span>Unit price</span>
+                    <strong>{formatPeso(product?.price ?? 499)}</strong>
+                  </div>
+                  <div className="order-summary-mobile-field">
+                    <span>Line total</span>
+                    <strong>
+                      {validQuantity
+                        ? formatPeso((product?.price ?? 499) * quantity)
+                        : "—"}
+                    </strong>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
           <div className="order-summary-table-wrap">
-            <table>
+            <table className="order-summary-table">
               <thead>
                 <tr>
                   <th scope="col">Product</th>
