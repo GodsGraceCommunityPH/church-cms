@@ -1,12 +1,7 @@
 import {
-  T_SHIRT_SIZES,
   calculateDraftTotals,
-  createDraftItem,
-  defaultColorForProduct,
-  defaultSizeForProduct,
   formatPeso,
   getShopItem,
-  isEcoBag,
   type OrderDraftItem,
 } from "../../features/fundraising/projectIlaw";
 
@@ -17,186 +12,44 @@ interface OrderLineItemsEditorProps {
   idPrefix: string;
 }
 
-export default function OrderLineItemsEditor({
-  items,
-  onChange,
-  disabled = false,
-  idPrefix,
-}: OrderLineItemsEditorProps) {
-  const updateItem = (key: string, patch: Partial<OrderDraftItem>) => {
-    onChange(
-      items.map((item) => (item.key === key ? { ...item, ...patch } : item)),
-    );
-  };
-
-  const removeItem = (key: string) => {
-    if (items.length <= 1) return;
-    onChange(items.filter((item) => item.key !== key));
-  };
-
-  const addItem = () => {
-    onChange([...items, createDraftItem()]);
-  };
-
+export default function OrderLineItemsEditor({ items, onChange, disabled = false }: OrderLineItemsEditorProps) {
   const totals = calculateDraftTotals(items);
-
   return (
-    <fieldset className="order-line-items" disabled={disabled}>
-      <legend>Order items</legend>
-
-      <div className="order-line-items-list">
-        {items.map((item, index) => {
-          const product = getShopItem(item.productId);
-          const quantity = Number(item.quantity);
-          const lineTotal =
-            product && Number.isInteger(quantity) && quantity > 0
-              ? product.price * quantity
-              : 0;
-
-          return (
-            <div className="order-line-item" key={item.key}>
-              <div className="order-line-item-heading">
-                <span>Item {index + 1}</span>
-                <button
-                  type="button"
-                  className="order-line-remove"
-                  onClick={() => removeItem(item.key)}
-                  disabled={disabled || items.length <= 1}
-                >
-                  Remove
-                </button>
-              </div>
-
-              <div className="order-line-grid">
-                <div className="order-field">
-                  <label htmlFor={`${idPrefix}-product-${item.key}`}>
-                    Product
-                  </label>
-                  <select
-                    id={`${idPrefix}-product-${item.key}`}
-                    value={item.productId}
-                    onChange={(event) => {
-                      const productId = event.target.value;
-                      updateItem(item.key, {
-                        productId,
-                        size: defaultSizeForProduct(productId),
-                        color: defaultColorForProduct(productId),
-                      });
-                    }}
-                  >
-                    <option value="">Select a product</option>
-                    <option value="project-ilaw-t-shirt">
-                      Project Ilaw T-shirt
-                    </option>
-                    <option value="project-ilaw-eco-bag">
-                      Project Ilaw Eco Bag
-                    </option>
-                  </select>
+    <section className="order-line-items" aria-labelledby="order-items-title">
+      <h3 id="order-items-title">Your order</h3>
+      {items.length === 0 ? (
+        <p className="order-cart-empty">Choose a product above and add it to your order.</p>
+      ) : (
+        <div className="order-line-items-list">
+          {items.map((item, index) => {
+            const product = getShopItem(item.productId);
+            const quantity = Number(item.quantity);
+            const validQuantity = Number.isInteger(quantity) && quantity > 0 && quantity <= 99;
+            return (
+              <div className="order-line-item order-cart-item" key={item.key}>
+                <div className="order-line-item-heading">
+                  <span>Item {index + 1}</span>
+                  <button type="button" className="order-line-remove" onClick={() => onChange(items.filter((line) => line.key !== item.key))} disabled={disabled}>Remove</button>
                 </div>
-
-                {product ? (
-                  <div className="order-field">
-                    <label htmlFor={`${idPrefix}-color-${item.key}`}>
-                      {product.colorLabel}
-                    </label>
-                    <select
-                      id={`${idPrefix}-color-${item.key}`}
-                      value={item.color}
-                      onChange={(event) =>
-                        updateItem(item.key, { color: event.target.value })
-                      }
-                    >
-                      <option value="">Select a colour</option>
-                      {product.colors.map((color) => (
-                        <option key={color} value={color}>
-                          {color}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ) : (
-                  <div
-                    className="order-field order-size-placeholder"
-                    aria-hidden="true"
-                  />
-                )}
-
-                {isEcoBag(item.productId) ? (
-                  <div
-                    className="order-field order-size-placeholder"
-                    aria-hidden="true"
-                  />
-                ) : (
-                  <div className="order-field">
-                    <label htmlFor={`${idPrefix}-size-${item.key}`}>
-                      Size
-                    </label>
-                    <select
-                      id={`${idPrefix}-size-${item.key}`}
-                      value={item.size}
-                      onChange={(event) =>
-                        updateItem(item.key, { size: event.target.value })
-                      }
-                    >
-                      <option value="">Select a size</option>
-                      {T_SHIRT_SIZES.map((size) => (
-                        <option key={size} value={size}>
-                          {size}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                <div className="order-field order-quantity-field">
-                  <label htmlFor={`${idPrefix}-quantity-${item.key}`}>
-                    Quantity
-                  </label>
-                  <input
-                    id={`${idPrefix}-quantity-${item.key}`}
-                    type="number"
-                    inputMode="numeric"
-                    min={1}
-                    max={99}
-                    step={1}
-                    value={item.quantity}
-                    onChange={(event) =>
-                      updateItem(item.key, { quantity: event.target.value })
-                    }
-                  />
+                <div className="order-cart-item-details">
+                  <strong>{product?.name ?? "Unknown product"}</strong>
+                  <span>{item.color}{item.size && item.size !== "One Size" ? ` · ${item.size}` : ""}</span>
+                  <span>{formatPeso(product?.price ?? 0)} each</span>
                 </div>
-
-              </div>
-
-              <div className="order-line-pricing">
-                <div className="order-line-price-row">
-                  <span>Unit price</span>
-                  <strong>{formatPeso(product?.price ?? 499)}</strong>
-                </div>
-                <div className="order-line-price-row order-line-price-total">
-                  <span>Line total</span>
-                  <strong>{formatPeso(lineTotal)}</strong>
+                <div className="order-cart-item-footer">
+                  <label htmlFor={`cart-quantity-${item.key}`}>Quantity</label>
+                  <input id={`cart-quantity-${item.key}`} type="number" min="1" max="99" step="1" value={item.quantity} disabled={disabled} onChange={(event) => onChange(items.map((line) => line.key === item.key ? { ...line, quantity: event.target.value } : line))} />
+                  <strong>{validQuantity ? formatPeso((product?.price ?? 0) * quantity) : "Check quantity"}</strong>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
+      )}
+      <div className="order-summary-totals">
+        <div><span>Total quantity</span><strong>{totals.totalQuantity}</strong></div>
+        <div><span>Order total</span><strong>{formatPeso(totals.totalAmount)}</strong></div>
       </div>
-
-      <div className="order-line-items-footer">
-        <button
-          type="button"
-          className="order-add-item"
-          onClick={addItem}
-          disabled={disabled || items.length >= 20}
-        >
-          + Add another item
-        </button>
-        <span>
-          {totals.totalQuantity} total item
-          {totals.totalQuantity === 1 ? "" : "s"}
-        </span>
-      </div>
-    </fieldset>
+    </section>
   );
 }
