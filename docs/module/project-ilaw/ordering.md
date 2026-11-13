@@ -125,7 +125,7 @@ hidden.
 
 Payment account details are configuration, not code. They start empty. The
 confirmed GCash InstaPay QR is a public, committed asset at
-`frontend/public/images/fundraising/gcash-instapay-qr.jpg`; it is shown only
+`frontend/public/images/fundraising/gcash-instapay-qr.png`; it is shown only
 when payments are enabled and is never stored in the private evidence bucket.
 Because the confirmed QR is the payment destination, payments can be opened
 without inventing text account details; any GCash or bank text is optional

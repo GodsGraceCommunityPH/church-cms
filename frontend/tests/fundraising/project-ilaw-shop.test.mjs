@@ -621,49 +621,33 @@ test("the chosen colour reaches the review, the summary, and the submitted order
 test("the confirmed GCash InstaPay QR is a public, unchanged asset", async () => {
   assert.equal(
     PAYMENT_QR.src,
-    "/images/fundraising/gcash-instapay-qr.jpg",
+    "/images/fundraising/gcash-instapay-qr.png",
   );
   assert.equal(PAYMENT_QR.label, "GCash (InstaPay QR)");
   assert.equal(PAYMENT_QR.notice, "Transfer fees may apply.");
   assert.ok(PAYMENT_QR.alt);
 
   const image = await readFile(
-    new URL("../../public/images/fundraising/gcash-instapay-qr.jpg", import.meta.url),
+    new URL("../../public/images/fundraising/gcash-instapay-qr.png", import.meta.url),
   );
-  // The supplied image is a JPEG; preserve it byte-for-byte rather than
+  // The supplied image is a PNG; preserve it byte-for-byte rather than
   // regenerating or re-encoding the QR.
-  assert.deepEqual([...image.subarray(0, 4)], [0xff, 0xd8, 0xff, 0xe0]);
+  assert.deepEqual([...image.subarray(0, 8)], [
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+  ]);
 
-  let offset = 2;
-  let width = 0;
-  let height = 0;
-  while (offset < image.length) {
-    if (image[offset] !== 0xff) {
-      offset += 1;
-      continue;
-    }
-    const marker = image[offset + 1];
-    if (
-      marker >= 0xc0 &&
-      marker <= 0xcf &&
-      marker !== 0xc4 &&
-      marker !== 0xc8 &&
-      marker !== 0xcc
-    ) {
-      height = image.readUInt16BE(offset + 5);
-      width = image.readUInt16BE(offset + 7);
-      break;
-    }
-    offset += 2 + image.readUInt16BE(offset + 2);
-  }
-  assert.equal(width, 657);
-  assert.equal(height, 989);
+  // IHDR chunk: 4-byte length, 4-byte type "IHDR", then width and height.
+  const ihdrOffset = 8 + 4 + 4;
+  const width = image.readUInt32BE(ihdrOffset);
+  const height = image.readUInt32BE(ihdrOffset + 4);
+  assert.equal(width, 1064);
+  assert.equal(height, 2048);
 
   // The QR lives in the public asset tree, never in payment evidence storage.
   assert.doesNotMatch(PAYMENT_QR.src, /payment-evidence/i);
 
   const give = await read("../../src/pages/GivePage.tsx");
-  assert.match(give, /\/images\/fundraising\/gcash-instapay-qr\.jpg/);
+  assert.match(give, /\/images\/fundraising\/gcash-instapay-qr\.png/);
   assert.doesNotMatch(give, /assets\/instapay-qr\.png/);
   assert.match(give, /GCash/);
 });
