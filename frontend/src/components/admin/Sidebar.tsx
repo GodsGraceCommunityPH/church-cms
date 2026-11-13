@@ -23,6 +23,7 @@ import {
   Cog,
   Layers,
   ShoppingBag,
+  Settings2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -111,6 +112,12 @@ const NAV_GROUPS: NavGroup[] = [
         to: "/admin/project-ilaw-items",
         icon: Package,
         permission: "project_ilaw.production.view",
+      },
+      {
+        label: "Settings",
+        to: "/admin/project-ilaw-settings",
+        icon: Settings2,
+        permission: "project_ilaw.orders.manage",
       },
     ],
   },
