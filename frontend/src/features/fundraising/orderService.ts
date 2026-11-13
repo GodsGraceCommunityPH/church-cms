@@ -340,6 +340,84 @@ export async function recordProjectIlawCashPayment(
   return data;
 }
 
+export async function getProjectIlawProductionOverview() {
+  const { data, error } = await supabase.rpc("get_project_ilaw_production_overview");
+  if (error) throw error;
+  return data;
+}
+
+export async function getProjectIlawProductionVariants() {
+  const { data, error } = await supabase.rpc("get_project_ilaw_production_variants");
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
+}
+
+export async function getProjectIlawProductionQueue() {
+  const { data, error } = await supabase.rpc("get_project_ilaw_production_queue");
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
+}
+
+export async function getProjectIlawProductionHistory(limit = 50) {
+  const { data, error } = await supabase.rpc("get_project_ilaw_production_history", {
+    p_limit: limit,
+  });
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
+}
+
+export async function getProjectIlawProductionReviewFlags() {
+  const { data, error } = await supabase.rpc("get_project_ilaw_production_review_flags");
+  if (error) throw error;
+  return Array.isArray(data) ? data : [];
+}
+
+export async function moveProjectIlawProduction(
+  variantId: string,
+  quantity: number,
+  fromStage: string,
+  toStage: string,
+  reason: string | null,
+) {
+  const { data, error } = await supabase.rpc("move_project_ilaw_production", {
+    p_variant_id: variantId,
+    p_quantity: quantity,
+    p_from: fromStage,
+    p_to: toStage,
+    p_reason: reason,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function adjustProjectIlawProduction(
+  variantId: string,
+  delta: number,
+  reason: string,
+) {
+  const { data, error } = await supabase.rpc("adjust_project_ilaw_production", {
+    p_variant_id: variantId,
+    p_quantity_delta: delta,
+    p_reason: reason,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function resolveProjectIlawProductionReview(
+  flagId: string,
+  quantity: number,
+  note: string | null,
+) {
+  const { data, error } = await supabase.rpc("resolve_project_ilaw_production_review", {
+    p_flag_id: flagId,
+    p_quantity: quantity,
+    p_note: note,
+  });
+  if (error) throw error;
+  return data;
+}
+
 export async function rejectProjectIlawPayment(id: string, reason: string) {
   const { data, error } = await supabase.rpc("reject_project_ilaw_payment", {
     p_order_id: id,
