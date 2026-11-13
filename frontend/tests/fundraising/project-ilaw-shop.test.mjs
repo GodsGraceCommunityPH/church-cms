@@ -795,6 +795,12 @@ test("order management puts search before summary cards and hides production rep
   assert.ok(searchIndex < summaryIndex, "search must precede summary cards");
   assert.doesNotMatch(page, /<ProductionReportPanel/);
   assert.doesNotMatch(page, /pilaw-breakdown/);
+
+  // Action column is present with context-sensitive payment actions.
+  assert.match(page, /<th scope="col">Action<\/th>/);
+  assert.match(page, /Record cash payment/);
+  assert.match(page, /Review payment/);
+  assert.match(page, /pilaw-paid-indicator/);
 });
 
 test("order detail offers a cash recording action with an explicit receipt confirmation", async () => {
