@@ -95,6 +95,7 @@ export default function ProjectIlawOrders() {
   const canExport = hasPermission("project_ilaw.orders.export");
   const canConfirmPayment = hasPermission("project_ilaw.orders.confirm_payment");
   const canManage = hasPermission("project_ilaw.orders.manage");
+  const canCreateStaffOrder = hasPermission("project_ilaw.orders.create");
   const [orders, setOrders] = useState<ProjectIlawOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -550,7 +551,7 @@ export default function ProjectIlawOrders() {
           </p>
         </div>
         <div className="pilaw-orders-actions">
-          {canManage && (
+          {canCreateStaffOrder && (
             <Button onClick={openStaffOrderDialog}>
               <Plus size={16} aria-hidden="true" />
               Create Staff Order
