@@ -18,9 +18,8 @@ import {
 import "./ProjectIlawOrders.css";
 
 type Tab = "overview" | "products" | "queue" | "history";
-const STAGES = ["pending", "processing", "manufacturing", "completed"] as const;
+const STAGES = ["processing", "manufacturing", "completed"] as const;
 const STAGE_LABELS: Record<string, string> = {
-  pending: "Pending",
   processing: "Processing",
   manufacturing: "Printing / Manufacturing",
   completed: "Completed",
@@ -45,7 +44,6 @@ interface Variant {
   size: string;
   color: string;
   required_qty: number;
-  pending_qty: number;
   processing_qty: number;
   manufacturing_qty: number;
   completed_qty: number;
@@ -105,8 +103,8 @@ export default function ProjectIlawItems() {
   // Move dialog.
   const [moveVariant, setMoveVariant] = useState<Variant | null>(null);
   const [moveQty, setMoveQty] = useState("");
-  const [moveFrom, setMoveFrom] = useState<string>("pending");
-  const [moveTo, setMoveTo] = useState<string>("processing");
+  const [moveFrom, setMoveFrom] = useState<string>("processing");
+  const [moveTo, setMoveTo] = useState<string>("manufacturing");
   const [moveReason, setMoveReason] = useState("");
   const [moveBusy, setMoveBusy] = useState(false);
 
@@ -161,8 +159,7 @@ export default function ProjectIlawItems() {
       if (filterProduct !== "all" && v.product_type !== filterProduct) return false;
       if (filterSize !== "all" && v.size !== filterSize) return false;
       if (filterColor !== "all" && v.color !== filterColor) return false;
-      const stageQty = selectedStage === "pending" ? v.pending_qty
-        : selectedStage === "processing" ? v.processing_qty
+      const stageQty = selectedStage === "processing" ? v.processing_qty
         : selectedStage === "manufacturing" ? v.manufacturing_qty
         : v.completed_qty;
       return stageQty > 0;
@@ -195,11 +192,10 @@ export default function ProjectIlawItems() {
   }, [history, histProduct, histType, histFrom, histTo]);
 
   const productTotals = useMemo(() => {
-    const acc: Record<string, { required: number; pending: number; processing: number; manufacturing: number; completed: number }> = {};
+    const acc: Record<string, { required: number; processing: number; manufacturing: number; completed: number }> = {};
     for (const v of variants) {
-      if (!acc[v.product_type]) acc[v.product_type] = { required: 0, pending: 0, processing: 0, manufacturing: 0, completed: 0 };
+      if (!acc[v.product_type]) acc[v.product_type] = { required: 0, processing: 0, manufacturing: 0, completed: 0 };
       acc[v.product_type].required += v.required_qty;
-      acc[v.product_type].pending += v.pending_qty;
       acc[v.product_type].processing += v.processing_qty;
       acc[v.product_type].manufacturing += v.manufacturing_qty;
       acc[v.product_type].completed += v.completed_qty;
@@ -233,8 +229,7 @@ export default function ProjectIlawItems() {
       return;
     }
     const avail =
-      moveFrom === "pending" ? moveVariant.pending_qty
-      : moveFrom === "processing" ? moveVariant.processing_qty
+      moveFrom === "processing" ? moveVariant.processing_qty
       : moveFrom === "manufacturing" ? moveVariant.manufacturing_qty
       : moveVariant.completed_qty;
     if (qty > avail) {
@@ -311,8 +306,7 @@ export default function ProjectIlawItems() {
   }
 
   const availableSource = moveVariant
-    ? (moveFrom === "pending" ? moveVariant.pending_qty
-      : moveFrom === "processing" ? moveVariant.processing_qty
+    ? (moveFrom === "processing" ? moveVariant.processing_qty
       : moveFrom === "manufacturing" ? moveVariant.manufacturing_qty
       : moveVariant.completed_qty)
     : 0;
@@ -320,8 +314,7 @@ export default function ProjectIlawItems() {
   const resultingAfterMove = moveVariant
     ? {
         from: availableSource - (Number(moveQty) || 0),
-        to: (moveTo === "pending" ? moveVariant.pending_qty
-          : moveTo === "processing" ? moveVariant.processing_qty
+        to: (moveTo === "processing" ? moveVariant.processing_qty
           : moveTo === "manufacturing" ? moveVariant.manufacturing_qty
           : moveVariant.completed_qty) + (Number(moveQty) || 0),
       }
@@ -384,7 +377,6 @@ export default function ProjectIlawItems() {
                 {STAGES.map((stage) => {
                   const count = overview[stage === "manufacturing" ? "manufacturing" : stage];
                   const labels: Record<string, string> = {
-                    pending: "Awaiting production",
                     processing: "In progress",
                     manufacturing: "Being produced",
                     completed: "Finished units",
@@ -412,13 +404,13 @@ export default function ProjectIlawItems() {
               <section className="pilaw-panel" aria-label="Product summary">
                 <h2>Product-level summary</h2>
                 {["t_shirt", "eco_bag"].map((pt) => {
-                  const t = productTotals[pt] ?? { required: 0, pending: 0, processing: 0, manufacturing: 0, completed: 0 };
+                  const t = productTotals[pt] ?? { required: 0, processing: 0, manufacturing: 0, completed: 0 };
                   const pct = t.required > 0 ? Math.round((t.completed / t.required) * 100) : 0;
                   return (
                     <div key={pt} className="pilaw-breakdown-card" style={{ marginBottom: 12 }}>
                       <h3>{pt === "t_shirt" ? "Project Ilaw T-shirt" : "Project Ilaw Eco Bag"}</h3>
                       <p>
-                        Required {t.required} · Pending {t.pending} · Processing {t.processing} ·
+                        Required {t.required} · Processing {t.processing} ·
                         Manufacturing {t.manufacturing} · Completed {t.completed}
                       </p>
                       <div style={{ background: "#e5e7eb", borderRadius: 4, height: 8, marginTop: 8 }}>
@@ -575,7 +567,6 @@ export default function ProjectIlawItems() {
                         <th scope="col">Size</th>
                         <th scope="col">Colour</th>
                         <th scope="col">Required</th>
-                        <th scope="col">Pending</th>
                         <th scope="col">Processing</th>
                         <th scope="col">Manufacturing</th>
                         <th scope="col">Completed</th>
@@ -589,7 +580,6 @@ export default function ProjectIlawItems() {
                           <td>{v.size}</td>
                           <td>{v.color}</td>
                           <td>{v.required_qty}</td>
-                          <td>{v.pending_qty}</td>
                           <td>{v.processing_qty}</td>
                           <td>{v.manufacturing_qty}</td>
                           <td>{v.completed_qty}</td>
@@ -601,7 +591,7 @@ export default function ProjectIlawItems() {
                                 onClick={() => {
                                   setMoveVariant(v);
                                   setMoveQty("");
-                                  const sourceStage = selectedStage ?? "pending";
+                                  const sourceStage = selectedStage ?? (v.processing_qty > 0 ? "processing" : v.manufacturing_qty > 0 ? "manufacturing" : "completed");
                                   const sourceIndex = STAGES.indexOf(sourceStage);
                                   const destinationStage = sourceIndex < STAGES.length - 1 ? STAGES[sourceIndex + 1] : STAGES[sourceIndex - 1];
                                   setMoveFrom(sourceStage);
@@ -717,8 +707,7 @@ export default function ProjectIlawItems() {
               <strong>{productLabel(moveVariant.product_type)}</strong> · {moveVariant.size} · {moveVariant.color}
             </p>
             <p>
-              Pending {moveVariant.pending_qty} · Processing {moveVariant.processing_qty} · Manufacturing{" "}
-              {moveVariant.manufacturing_qty} · Completed {moveVariant.completed_qty}
+              Processing {moveVariant.processing_qty} · Manufacturing {moveVariant.manufacturing_qty} · Completed {moveVariant.completed_qty}
             </p>
             <label>
               Quantity
