@@ -24,6 +24,7 @@ import {
 } from "../../features/help/helpArticles";
 import type { HelpLanguage } from "../../features/help/helpTypes";
 import { useHelpLanguage } from "../../features/help/useHelpLanguage";
+import { useAuth } from "../../features/auth/auth";
 import "./HelpCenter.css";
 
 const categoryIcons = {
@@ -104,6 +105,14 @@ function LanguageSelection({
 
 export default function HelpCenter() {
   const { language, setLanguage } = useHelpLanguage();
+  const { hasPermission } = useAuth();
+  const projectIlawOnly =
+    (hasPermission("project_ilaw.orders.view") || hasPermission("project_ilaw.production.view")) &&
+    ![
+      "training.view", "members.view", "cell_groups.view", "finance.view",
+      "evangelism.view", "ministries.view", "events.view", "equipment.view",
+      "resources.view", "website_content.view", "admin.users",
+    ].some(hasPermission);
   const [query, setQuery] = useState("");
 
   const results = useMemo(
@@ -116,6 +125,47 @@ export default function HelpCenter() {
   }
 
   const text = copy[language];
+
+  if (projectIlawOnly) {
+    const guides = language === "tl" ? [
+      ["1. Order Management — Hanapin ang order", "Piliin ang Project Ilaw → Order Management. Gamitin ang Search orders para hanapin gamit ang order reference, customer name, mobile number, o payment reference. Puwede ring gumamit ng date, product, payment status, at fulfilment filters. Piliin ang order para makita ang customer details, items, total, payment status, at activity."],
+      ["2. Payment Review — I-check ang GCash receipt", "Kapag Payment Verification ang status, may na-submit na receipt na kailangang i-review. Buksan ang order at tingnan ang payment evidence at transaction reference. I-confirm lang kapag verified ang payment. Kung invalid o hindi tugma, i-reject at maglagay ng malinaw na reason. Babalik ang order sa Awaiting Payment. Hindi automatic na paid ang order dahil lang may uploaded receipt."],
+      ["3. Item Management — Production overview", "Piliin ang Project Ilaw → Item Management. Overview ang summary; Products ang quantities ayon sa product, size, at colour; Production Queue ang quantities sa bawat stage; History ang record ng movements. Ang stages ay Processing → Printing / Manufacturing → Completed. Paid at hindi cancelled na orders lang ang kasama sa confirmed production requirement."],
+      ["4. Move items — I-update ang production stage", "Sa Production Queue, piliin ang tamang product variant at gamitin ang move action. Ilagay ang quantity at source/destination stage. Magkatabing stages lang ang puwedeng paglipatan. Kailangan ng reason kapag paatras ang movement. I-check ang quantity at variant bago i-save, pagkatapos tingnan ang History kung tama ang record."],
+      ["5. Fulfilment — Pickup at Completed", "Buksan ang order details sa Order Management. Ang normal na progression ay Not Started → In Production → Ready for Pickup → Completed. I-mark as Completed lang kapag naibigay o na-deliver na talaga ang items sa customer. Nananatili sa system history ang cancelled orders; hindi sila deleted."],
+      ["6. Kapag may hindi gumana", "Kung walang action na lumalabas, maaaring wala sa role mo ang required permission o hindi pa eligible ang order sa status change. Huwag gumawa ng duplicate order o paulit-ulit na adjustment. I-note ang order reference, page, action na pinindot, at error; kumuha ng screenshot at i-report sa Project Ilaw administrator."]
+    ] : [
+      ["1. Order Management — Find an order", "Choose Project Ilaw → Order Management. Use Search orders to find an order by reference, customer name, mobile number, or payment reference. You can also filter by date, product, payment status, and fulfilment status. Select an order to review its customer details, items, total, payment status, and activity."],
+      ["2. Payment Review — Check a GCash receipt", "Payment Verification means a receipt was submitted and needs review. Open the order and check the payment evidence and transaction reference. Confirm only after the payment is verified. If the receipt is invalid or does not match, reject it with a clear reason. The order returns to Awaiting Payment. An uploaded receipt does not automatically mean the order is paid."],
+      ["3. Item Management — Production overview", "Choose Project Ilaw → Item Management. Overview shows the summary; Products shows quantities by product, size, and colour; Production Queue shows quantities at each stage; History records movements. The stages are Processing → Printing / Manufacturing → Completed. Only paid, non-cancelled orders count toward confirmed production requirements."],
+      ["4. Move items — Update a production stage", "In Production Queue, select the correct product variant and use the move action. Enter the quantity and source/destination stage. Only adjacent stages can be selected. A reason is required for a backward movement. Check the quantity and variant before saving, then review History to confirm the movement was recorded correctly."],
+      ["5. Fulfilment — Pickup and completion", "Open the order details from Order Management. The normal progression is Not Started → In Production → Ready for Pickup → Completed. Mark an order Completed only after the items have actually been handed over or delivered to the customer. Cancelled orders remain in system history; they are not deleted."],
+      ["6. If something does not work", "If an action is missing, your role may not have the required permission or the order may not be eligible for that status change. Do not create a duplicate order or repeat an adjustment. Note the order reference, page, action attempted, and error; take a screenshot and report it to the Project Ilaw administrator."]
+    ];
+
+    return (
+      <main className="help-page">
+        <header className="help-header">
+          <div>
+            <p className="help-eyebrow">Project Ilaw Staff Guide</p>
+            <h1>Project Ilaw How To's</h1>
+            <p>{language === "tl" ? "Simple step-by-step guides para sa orders, payments, production, at fulfilment." : "Simple step-by-step guides for orders, payments, production, and fulfilment."}</p>
+          </div>
+          <HelpLanguageSwitcher language={language} onChange={setLanguage} />
+        </header>
+        <section className="help-section">
+          <div className="help-guide-list">
+            {guides.map(([title, body]) => (
+              <details key={title} className="help-ilaw-guide">
+                <summary><strong>{title}</strong></summary>
+                <p>{body}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+      </main>
+    );
+  }
   const commonGuides = publishedHelpArticles.filter(
     (article) => article.commonTitles?.[language],
   );
