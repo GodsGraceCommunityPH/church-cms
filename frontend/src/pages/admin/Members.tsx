@@ -228,11 +228,18 @@ function Members() {
           />
         )}
       </section>
-      <Modal open={Boolean(assigningMember)} title="Assign to Your Cell Group" onClose={() => { if (!assigning) setAssigningMember(null); }}>
+      <Modal open={Boolean(assigningMember)} title="Assign to a Cell Group" onClose={() => { if (!assigning) setAssigningMember(null); }}>
         {assigningMember && <>
-          <p>Assign <strong>{assigningMember.firstName} {assigningMember.lastName}</strong> to your cell group?</p>
+          <p>Assign <strong>{assigningMember.firstName} {assigningMember.lastName}</strong> to a cell group you lead or oversee?</p>
           <p style={{ color: "#64748b" }}>This only updates the Cell Group assignment. Personal and other member details will remain unchanged.</p>
-          <p><strong>Cell Group:</strong> {selectedCellGroup?.name}</p>
+          {assignableCellGroups.length > 1 ? (
+            <label style={{ display: "block", margin: "12px 0" }}>
+              <span style={{ display: "block", marginBottom: 6 }}>Cell Group</span>
+              <Select aria-label="Choose cell group" value={selectedCellGroup?.id ?? ""} onChange={(event) => setAssigningCellGroupId(event.target.value)}>
+                {assignableCellGroups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+              </Select>
+            </label>
+          ) : <p><strong>Cell Group:</strong> {selectedCellGroup?.name}</p>}
           {assignError && <p role="alert" style={{ color: "#b91c1c" }}>{assignError}</p>}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
             <Button variant="secondary" disabled={assigning} onClick={() => setAssigningMember(null)}>Cancel</Button>
