@@ -10,10 +10,12 @@ import { getCellGroups } from "../../features/cellGroups/cellGroupService";
 import type { CellGroup } from "../../features/cellGroups/cellGroup";
 import { getUnviewedMemberIds } from "../../features/notifications/notificationService";
 import { useAuth } from "../../features/auth/auth";
+import Modal from "../../components/Modal";
+import { supabase } from "../../lib/supabase";
 
 function Members() {
   const navigate = useNavigate();
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { members, loading, error, loadMembers } = useMembers();
@@ -21,6 +23,11 @@ function Members() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [cellGroups, setCellGroups] = useState<CellGroup[]>([]);
   const [newMemberIds, setNewMemberIds] = useState<Set<string>>(new Set());
+  const [assigningMember, setAssigningMember] = useState<(typeof members)[number] | null>(null);
+  const [assigning, setAssigning] = useState(false);
+  const [assignError, setAssignError] = useState("");
+  const ledCellGroup = cellGroups.find((group) => group.leaderId === user?.id);
+  const canAssignUnassigned = hasPermission("cell_groups.assign_members") && Boolean(ledCellGroup);
   const [successMessage, setSuccessMessage] = useState(
     () => location.state?.successMessage ?? "",
   );
@@ -64,6 +71,23 @@ function Members() {
   const genderFilter = searchParams.get("gender") ?? "all";
   const cellGroupFilter = searchParams.get("cellGroup") ?? "all";
   const hasActiveFilters = sortOrder !== "asc" || genderFilter !== "all" || cellGroupFilter !== "all";
+
+  async function assignMemberToOwnCell() {
+    if (!assigningMember || !ledCellGroup || assigning) return;
+    setAssigning(true);
+    setAssignError("");
+    const { error } = await supabase.rpc("assign_unassigned_member_to_led_cell", {
+      p_member_id: assigningMember.id,
+      p_cell_group_id: ledCellGroup.id,
+    });
+    setAssigning(false);
+    if (error) {
+      setAssignError(error.message || "Unable to assign this member. Please try again.");
+      return;
+    }
+    setAssigningMember(null);
+    await loadMembers();
+  }
 
   function updateFilter(name: "gender" | "cellGroup", value: string) {
     const next = new URLSearchParams(searchParams);
@@ -179,13 +203,33 @@ function Members() {
           <MemberTable
             members={filteredMembers}
             canEdit={hasPermission("members.update")}
+            canEditMember={(member) => hasPermission("members.update") || (canAssignUnassigned && !member.cellGroupId)}
             newMemberIds={newMemberIds}
             onOpen={(id) => navigate(`/admin/members/${id}`)}
-            onEdit={(id) => navigate(`/admin/members/${id}/edit`)}
+            onEdit={(id) => {
+              const member = filteredMembers.find((item) => item.id === id);
+              if (member && !hasPermission("members.update") && canAssignUnassigned && !member.cellGroupId) {
+                setAssignError("");
+                setAssigningMember(member);
+                return;
+              }
+              navigate(`/admin/members/${id}/edit`);
+            }}
           />
         )}
       </section>
-
+      <Modal open={Boolean(assigningMember)} title="Assign to Your Cell Group" onClose={() => { if (!assigning) setAssigningMember(null); }}>
+        {assigningMember && <>
+          <p>Assign <strong>{assigningMember.firstName} {assigningMember.lastName}</strong> to your cell group?</p>
+          <p style={{ color: "#64748b" }}>This only updates the Cell Group assignment. Personal and other member details will remain unchanged.</p>
+          <p><strong>Cell Group:</strong> {ledCellGroup?.name}</p>
+          {assignError && <p role="alert" style={{ color: "#b91c1c" }}>{assignError}</p>}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <Button variant="secondary" disabled={assigning} onClick={() => setAssigningMember(null)}>Cancel</Button>
+            <Button disabled={assigning} onClick={() => void assignMemberToOwnCell()}>{assigning ? "Assigning..." : "Assign Member"}</Button>
+          </div>
+        </>}
+      </Modal>
     </div>
   );
 }
