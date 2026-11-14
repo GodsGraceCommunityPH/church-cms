@@ -7,9 +7,13 @@ import Select from "../../components/ui/Select";
 import Button from "../../components/ui/Button";
 import SearchableSelect from "../../components/ui/SearchableSelect";
 import { useParams } from "react-router-dom";
+import { useAuth } from "../../features/auth/auth";
 
 export default function CellGroupForm() {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const canManageGroups = hasPermission("cell_groups.manage");
+  const canCreateGroups = hasPermission("cell_groups.create");
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -51,10 +55,9 @@ export default function CellGroupForm() {
   }
 
   async function loadMembers() {
-    const { data, error } = await supabase
-      .from("members")
-      .select("id, first_name, last_name")
-      .order("first_name");
+    const { data, error } = isEdit || canManageGroups
+      ? await supabase.from("members").select("id, first_name, last_name").order("first_name")
+      : await supabase.rpc("get_cell_group_leader_candidates");
 
     if (error) {
       console.error(error);
@@ -70,30 +73,38 @@ export default function CellGroupForm() {
     let error;
 
     if (isEdit) {
-      ({ error } = await supabase
-        .from("cell_groups")
-        .update({
-          name,
-          description: description || null,
-          status,
-          leader_id: leaderMemberId || null,
-        })
-        .eq("id", id));
-    } else {
-      ({ error } = await supabase.from("cell_groups").insert({
-        name,
-        description: description || null,
-        status,
+      ({ error } = await supabase.from("cell_groups").update({
+        name, description: description || null, status,
         leader_id: leaderMemberId || null,
+        leader_member_id: leaderMemberId || null,
+      }).eq("id", id));
+    } else if (canManageGroups) {
+      ({ error } = await supabase.from("cell_groups").insert({
+        name, description: description || null, status,
+        leader_id: leaderMemberId || null,
+        leader_member_id: leaderMemberId || null,
       }));
+    } else if (canCreateGroups && hasPermission("cell_groups.assign_leaders")) {
+      const result = await supabase.rpc("create_cell_group_as_leader", {
+        p_name: name, p_description: description || null,
+        p_status: status, p_leader_member_id: leaderMemberId || null,
+      });
+      error = result.error;
+    } else {
+      error = new Error("You do not have permission to create cell groups.");
     }
 
     if (error) {
-      console.log(error);
+      console.error(error);
+      window.alert(error.message || "Unable to save the cell group. Please try again.");
       return;
     }
 
     navigate("/admin/cell-groups");
+  }
+
+  if (!isEdit && !canManageGroups && (!canCreateGroups || !hasPermission("cell_groups.assign_leaders"))) {
+    return <p>You do not have permission to create cell groups.</p>;
   }
 
   return (
@@ -123,11 +134,12 @@ export default function CellGroupForm() {
         </div>
 
         <div style={{ marginBottom: 16 }}>
-          <label style={{ display: "block", marginBottom: 8, fontSize: 14, fontWeight: 500, color: "#334155" }}>Leader</label>
+          <label style={{ display: "block", marginBottom: 8, fontSize: 14, fontWeight: 500, color: "#334155" }}>Cell Group Leader</label>
+          {!isEdit && !canManageGroups && <p style={{ margin: "0 0 8px", color: "#64748b", fontSize: 13 }}>You can choose any existing church member as the leader of this new group.</p>}
           <SearchableSelect
             value={leaderMemberId}
             onChange={setLeaderMemberId}
-            placeholder="Select a leader"
+            placeholder="Select any existing church member"
             options={members.map((member) => ({
               id: member.id,
               label: `${member.first_name} ${member.last_name}`,
