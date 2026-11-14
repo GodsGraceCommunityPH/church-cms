@@ -38,7 +38,8 @@ function getAge(birthday: string | null | undefined) {
 
 export default function CellGroupProfile() {
   const { id } = useParams();
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
+  const [currentMemberId, setCurrentMemberId] = useState<string | null>(null);
 
   const navigate = useNavigate();
 
@@ -58,6 +59,7 @@ export default function CellGroupProfile() {
 
   const [cellGroups, setCellGroups] = useState<any[]>([]);
   const canAssignExistingMembers = hasPermission("cell_groups.assign_members");
+  const canManageThisGroup = hasPermission("cell_groups.manage") || (hasPermission("cell_groups.assign_members") && (group?.leaderId === currentMemberId || group?.createdBy === user?.id));
   const [showAddExistingModal, setShowAddExistingModal] = useState(false);
   const [unassignedMembers, setUnassignedMembers] = useState<any[]>([]);
   const [unassignedSearch, setUnassignedSearch] = useState("");
@@ -82,6 +84,10 @@ export default function CellGroupProfile() {
     loadGroup();
     loadMembers();
     loadCellGroups();
+    if (user?.id) {
+      void supabase.from("users").select("member_id").eq("id", user.id).maybeSingle()
+        .then(({ data }) => setCurrentMemberId(data?.member_id ?? null));
+    }
   }, []);
 
   async function loadCellGroups() {
@@ -356,7 +362,7 @@ export default function CellGroupProfile() {
                 </div>
               </div>
 
-              {hasPermission("cell_groups.manage") && <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              {canManageThisGroup && <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                 <Button
                   type="button"
                   onClick={() => {
@@ -461,6 +467,7 @@ export default function CellGroupProfile() {
       <RemoveMemberModal
         open={showRemoveModal}
         member={selectedMember}
+        cellGroupId={id ?? ""}
         onClose={() => setShowRemoveModal(false)}
         onRemoved={() => {
           loadMembers();
