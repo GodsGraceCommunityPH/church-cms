@@ -6,6 +6,7 @@ interface MemberTableProps {
   onOpen: (id: string) => void;
   onEdit: (id: string) => void;
   newMemberIds?: Set<string>;
+  canEdit?: boolean;
 }
 
 export default function MemberTable({
@@ -13,6 +14,7 @@ export default function MemberTable({
   onOpen,
   onEdit,
   newMemberIds = new Set(),
+  canEdit = true,
 }: MemberTableProps) {
   return (
     <div className="w-full min-w-0 overflow-x-hidden">
@@ -34,6 +36,7 @@ export default function MemberTable({
               onOpen={onOpen}
               onEdit={onEdit}
               isNew={newMemberIds.has(member.id)}
+              canEdit={canEdit}
             />
           ))}
         </tbody>
