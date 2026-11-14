@@ -12,6 +12,7 @@ interface Member {
 interface Props {
   open: boolean;
   member: Member | null;
+  cellGroupId: string;
   onClose: () => void;
   onRemoved: () => void;
 }
@@ -19,6 +20,7 @@ interface Props {
 export default function RemoveMemberModal({
   open,
   member,
+  cellGroupId,
   onClose,
   onRemoved,
 }: Props) {
@@ -31,12 +33,10 @@ export default function RemoveMemberModal({
 
     setSaving(true);
 
-    const { error } = await supabase
-      .from("members")
-      .update({
-        cell_group_id: null,
-      })
-      .eq("id", member.id);
+    const { error } = await supabase.rpc("remove_member_from_led_cell", {
+      p_member_id: member.id,
+      p_cell_group_id: cellGroupId,
+    });
 
     setSaving(false);
 
@@ -50,7 +50,7 @@ export default function RemoveMemberModal({
   }
 
   return (
-    <Modal open={open} title="Transfer Member" onClose={onClose}>
+    <Modal open={open} title="Remove Member from Cell Group" onClose={onClose}>
       <h2>Remove Member</h2>
 
       <p>
