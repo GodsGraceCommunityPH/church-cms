@@ -1,7 +1,10 @@
+import { Menu } from "lucide-react";
 import NotificationBell from "./NotificationBell";
 import { useAuth } from "../../features/auth/auth";
 
-function Topbar() {
+type TopbarProps = { onMenuClick: () => void };
+
+function Topbar({ onMenuClick }: TopbarProps) {
   const { hasPermission } = useAuth();
   return (
     <header className="flex h-[70px] items-center justify-between border-b border-gray-200 bg-white px-4 md:px-8">
