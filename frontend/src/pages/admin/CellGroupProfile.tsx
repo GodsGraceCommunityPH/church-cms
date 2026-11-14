@@ -263,9 +263,11 @@ export default function CellGroupProfile() {
           </>}
         </div>
 
-        <p style={{ marginTop: 12, color: "#64748b", fontSize: 14 }}>
-          Share this registration link with members of this Cell Group so they can register their information.
-        </p>
+        {hasPermission("cell_groups.manage") && (
+          <p style={{ marginTop: 12, color: "#64748b", fontSize: 14 }}>
+            Share this registration link with members of this Cell Group so they can register their information.
+          </p>
+        )}
 
         {members.length > 0 && (
           <p
