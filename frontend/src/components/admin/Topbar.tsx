@@ -10,6 +10,15 @@ function Topbar({ onMenuClick }: TopbarProps) {
     <header className="flex h-[70px] items-center justify-between border-b border-gray-200 bg-white px-4 md:px-8">
       <div style={{ padding: "20px" }} className="topbar-content flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onMenuClick}
+          aria-label="Open navigation menu"
+          title="Open navigation menu"
+          className="rounded-md p-2 hover:bg-gray-100 md:hidden"
+        >
+          <Menu size={24} aria-hidden="true" />
+        </button>
         <h1 className="text-xl font-semibold">Admin Portal</h1>
         </div>
         {(hasPermission("members.view") ||
