@@ -9,9 +9,11 @@ import Select from "../../components/ui/Select";
 import { getCellGroups } from "../../features/cellGroups/cellGroupService";
 import type { CellGroup } from "../../features/cellGroups/cellGroup";
 import { getUnviewedMemberIds } from "../../features/notifications/notificationService";
+import { useAuth } from "../../features/auth/auth";
 
 function Members() {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const { members, loading, error, loadMembers } = useMembers();
@@ -99,12 +101,14 @@ function Members() {
             Manage people known by the church.
           </p>
         </div>
-        <PrimaryButton
-          to="/admin/members/new"
-          className="shrink-0"
-        >
-          Add Member
-        </PrimaryButton>
+        {hasPermission("members.create") && (
+          <PrimaryButton
+            to="/admin/members/new"
+            className="shrink-0"
+          >
+            Add Member
+          </PrimaryButton>
+        )}
       </div>
 
       <section
