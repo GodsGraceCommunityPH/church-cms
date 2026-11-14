@@ -635,13 +635,13 @@ export default function ProjectIlawOrders() {
           <small>{summary.activeUnits} active · {summary.cancelledUnits} cancelled</small>
           <em>View related orders <span aria-hidden="true">→</span></em>
         </button>
-        <button type="button" className="pilaw-summary-card" onClick={() => { setFilters({ ...EMPTY_FILTERS, payment: "awaiting_payment" }); setSearch(""); }}>
+        <button type="button" className="pilaw-summary-card" onClick={() => { setFilters({ ...EMPTY_FILTERS, payment: "awaiting_payment", fulfillment: "not_cancelled" }); setSearch(""); }}>
           <span>Awaiting payment</span>
           <strong>{summary.awaitingPaymentOrders}</strong>
           <small>Cancelled orders are excluded</small>
           <em>Review unpaid orders <span aria-hidden="true">→</span></em>
         </button>
-        <button type="button" className="pilaw-summary-card" onClick={() => { setFilters({ ...EMPTY_FILTERS, payment: "payment_verification" }); setSearch(""); }}>
+        <button type="button" className="pilaw-summary-card" onClick={() => { setFilters({ ...EMPTY_FILTERS, payment: "payment_verification", fulfillment: "not_cancelled" }); setSearch(""); }}>
           <span>Payment verification</span>
           <strong>{summary.paymentVerificationOrders}</strong>
           <small>Evidence submitted, awaiting manual review</small>
@@ -653,7 +653,7 @@ export default function ProjectIlawOrders() {
           <small>Manually confirmed by authorised staff</small>
           <em>View paid orders <span aria-hidden="true">→</span></em>
         </button>
-        <button type="button" className="pilaw-summary-card" onClick={() => { setFilters(EMPTY_FILTERS); setSearch(""); }}>
+        <button type="button" className="pilaw-summary-card" onClick={() => { setFilters({ ...EMPTY_FILTERS, fulfillment: "not_cancelled" }); setSearch(""); }}>
           <span>Total expected sales</span>
           <strong>{formatPeso(summary.expectedSales)}</strong>
           <small>Cancelled orders are excluded</small>
@@ -731,6 +731,7 @@ export default function ProjectIlawOrders() {
               }
             >
               <option value="">All fulfillment statuses</option>
+              <option value="not_cancelled">Active (not cancelled)</option>
               {Object.entries(FULFILLMENT_STATUS_LABELS).map(
                 ([value, label]) => (
                   <option key={value} value={value}>
