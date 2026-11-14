@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../features/auth/auth";
 import Modal from "../../components/Modal";
 import PrimaryButton from "../../components/PrimaryButton";
 import Button from "../../components/ui/Button";
@@ -14,6 +15,9 @@ import {
 
 export default function CellGroups() {
   const navigate = useNavigate();
+  const { hasPermission } = useAuth();
+  const canCreateGroups = hasPermission("cell_groups.create") && hasPermission("cell_groups.assign_leaders");
+  const canManageGroups = hasPermission("cell_groups.manage");
   const [cellGroups, setCellGroups] = useState<CellGroup[]>([]);
   const [search, setSearch] = useState("");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc" | "count-desc" | "count-asc">("asc");
@@ -99,9 +103,11 @@ export default function CellGroups() {
             Manage church cell groups.
           </p>
         </div>
-        <PrimaryButton to="/admin/cell-groups/new" className="shrink-0">
-          Add Cell Group
-        </PrimaryButton>
+        {(canCreateGroups || canManageGroups) && (
+          <PrimaryButton to="/admin/cell-groups/new" className="shrink-0">
+            Add Cell Group
+          </PrimaryButton>
+        )}
       </div>
 
       <section
@@ -246,7 +252,7 @@ export default function CellGroups() {
                   </p>
                 </div>
 
-                <Button
+                {canManageGroups && <Button
                   type="button"
                   variant="danger"
                   disabled={group.memberCount > 0}
@@ -262,7 +268,7 @@ export default function CellGroups() {
                   }}
                 >
                   Delete
-                </Button>
+                </Button>}
               </div>
             ))}
           </div>
