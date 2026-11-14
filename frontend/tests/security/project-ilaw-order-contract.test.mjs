@@ -487,14 +487,11 @@ test("order notifications are scoped to the correct permission holders", async (
 test("the order dashboard and detail page expose no direct table writes", async () => {
   const list = await read("../../src/pages/admin/ProjectIlawOrders.tsx");
   const detail = await read("../../src/pages/admin/ProjectIlawOrderDetail.tsx");
-  const settings = await read(
-    "../../src/components/fundraising/ProjectIlawSettingsPanel.tsx",
-  );
   const production = await read(
     "../../src/components/fundraising/ProductionReportPanel.tsx",
   );
 
-  for (const page of [list, detail, settings, production]) {
+  for (const page of [list, detail, production]) {
     assert.doesNotMatch(page, /\.from\("project_ilaw_orders"\)\s*\.(insert|update|delete)/);
     assert.doesNotMatch(page, /\.from\("project_ilaw_order_items"\)\s*\.(insert|update|delete)/);
     assert.doesNotMatch(page, /\.from\("project_ilaw_order_events"\)\s*\.(insert|update|delete)/);
@@ -505,7 +502,6 @@ test("the order dashboard and detail page expose no direct table writes", async 
   assert.match(detail, /hasPermission\(\s*"project_ilaw\.orders\.confirm_payment"/);
   assert.match(detail, /hasPermission\(\s*"project_ilaw\.orders\.manage"/);
   assert.match(list, /hasPermission\(\s*"project_ilaw\.orders\.export"/);
-  assert.match(settings, /hasPermission\(\s*"project_ilaw\.orders\.manage"/);
   assert.match(production, /hasPermission\(\s*"project_ilaw\.orders\.export"/);
 
   // Staff can confirm only after evidence is under verification, and a

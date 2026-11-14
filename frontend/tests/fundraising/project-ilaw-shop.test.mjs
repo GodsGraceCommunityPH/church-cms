@@ -547,27 +547,22 @@ test("payment lookup shows the QR and evidence upload only while collection is e
   );
 });
 
-test("authorized staff can enable payment collection from the admin settings panel", async () => {
-  const panel = await read(
-    "../../src/components/fundraising/ProjectIlawSettingsPanel.tsx",
-  );
-  const page = await read("../../src/pages/admin/ProjectIlawOrders.tsx");
+test("the admin Project Ilaw settings page is no longer exposed for manual enablement", async () => {
+  const app = await read("../../src/App.tsx");
+  const sidebar = await read("../../src/components/admin/Sidebar.tsx");
+  const orders = await read("../../src/pages/admin/ProjectIlawOrders.tsx");
 
-  // Only administrators (manage) may open payment collection.
-  assert.match(panel, /hasPermission\("project_ilaw\.orders\.manage"\)/);
-  assert.match(panel, /checked=\{settings\.paymentsEnabled\}/);
-  assert.match(panel, /update\(\{ paymentsEnabled: event\.target\.checked \}\)/);
-  assert.match(panel, /paymentsEnabled: settings\.paymentsEnabled/);
+  // Ordering and payment enablement are backend-controlled through the
+  // project_ilaw_settings table and the security-definer RPCs; the manual
+  // admin settings page is no longer mounted in the app.
+  assert.doesNotMatch(app, /admin\/project-ilaw-settings/);
+  assert.doesNotMatch(app, /ProjectIlawSettings/);
+  assert.doesNotMatch(sidebar, /admin\/project-ilaw-settings/);
 
-  // Order intake and payment collection stay separate controls.
-  assert.match(panel, /Accept public orders/);
-  assert.match(panel, /This does not\s+enable payment collection/);
-  assert.match(panel, /Show payment details to customers/);
-  assert.match(panel, /confirmed GCash InstaPay QR is\s+shown/);
-
-  // The settings panel is intentionally no longer rendered on Order Management.
-  assert.doesNotMatch(page, /<ProjectIlawSettingsPanel/);
-  assert.doesNotMatch(page, /ProjectIlawSettingsPanel/);
+  // Staff still see the payment gates on the order flow, driven by the server
+  // settings rather than a local toggle.
+  assert.match(orders, /getProjectIlawPublicSettings/);
+  assert.match(orders, /staffPaymentOptionState\(/);
 });
 
 test("every order item renders its own colour selector from the product configuration", async () => {
@@ -680,7 +675,9 @@ test("the confirmed GCash InstaPay QR is a public, unchanged asset", async () =>
   assert.doesNotMatch(PAYMENT_QR.src, /payment-evidence/i);
 
   const give = await read("../../src/pages/GivePage.tsx");
-  assert.match(give, /\/images\/fundraising\/gcash-instapay-qr\.png/);
+  // The Give page points at the approved Tom Dones InstaPay QR asset, while the
+  // Shop payment panel keeps its own original GCash InstaPay QR asset.
+  assert.match(give, /\/images\/fundraising\/tom-dones-instapay-qr\.png/);
   assert.doesNotMatch(give, /assets\/instapay-qr\.png/);
   assert.match(give, /GCash/);
 });
