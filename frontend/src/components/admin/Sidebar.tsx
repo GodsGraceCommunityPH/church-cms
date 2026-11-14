@@ -359,7 +359,7 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
                 onClick={onClose}
                 style={linkStyle}
                 title={collapsed ? (projectIlawOnly ? "Project Ilaw How To's" : "How To's") : undefined}
-                aria-label={collapsed ? "How To's" : undefined}
+                aria-label={collapsed ? (projectIlawOnly ? "Project Ilaw How To's" : "How To's") : undefined}
               >
                 <BookOpen size={18} aria-hidden="true" />
                 {!collapsed && (projectIlawOnly ? "Project Ilaw How To's" : "How To's")}
