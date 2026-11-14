@@ -305,3 +305,12 @@ test("Project Ilaw staff can move production quantities with a dedicated permiss
   assert.match(migration, /project_ilaw\.production\.move/);
   assert.match(migration, /move_project_ilaw_production/);
 });
+
+test("Project Ilaw overview stage cards open a stage-filtered production queue", async () => {
+  const source = await readSource("src/pages/admin/ProjectIlawItems.tsx");
+  assert.match(source, /className="pilaw-summary-stage"/);
+  assert.match(source, /setSelectedStage\(stage\)[\s\S]*?setTab\("queue"\)/);
+  assert.match(source, /const filteredStageVariants = useMemo/);
+  assert.match(source, /selectedStage \? filteredStageVariants : filteredQueue/);
+  assert.match(source, /const sourceStage = selectedStage \?\? "pending"/);
+});
