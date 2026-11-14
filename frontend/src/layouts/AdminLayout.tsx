@@ -8,9 +8,17 @@ import PersistentBackButton from "../components/PersistentBackButton";
 
 function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showFloatingMenu, setShowFloatingMenu] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     () => window.localStorage.getItem("ggccc-admin-sidebar-collapsed") === "true",
   );
+
+  useEffect(() => {
+    const updateScrollState = () => setShowFloatingMenu(window.scrollY > 140);
+    updateScrollState();
+    window.addEventListener("scroll", updateScrollState, { passive: true });
+    return () => window.removeEventListener("scroll", updateScrollState);
+  }, []);
 
   useEffect(() => {
     window.localStorage.setItem(
@@ -53,7 +61,7 @@ function AdminLayout() {
 
       {/* Main */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar />
+        <Topbar onMenuClick={() => setSidebarOpen(true)} />
         {!sidebarOpen && (
           <PersistentBackButton
             fallback="/admin/dashboard"
