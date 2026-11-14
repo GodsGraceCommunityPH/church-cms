@@ -70,6 +70,11 @@ export default function CellGroupForm() {
   async function saveCellGroup(e: React.FormEvent) {
     e.preventDefault();
 
+    if (!leaderMemberId) {
+      window.alert("Select a cell group leader before saving.");
+      return;
+    }
+
     let error;
 
     if (isEdit) {
