@@ -750,3 +750,28 @@ body {
 @media(max-width:700px){.res-header,.res-detail-header{flex-direction:column;align-items:stretch}.res-header>a,.res-detail-header>div:last-child>*{width:100%}.res-grid{grid-template-columns:1fr}.res-panel{padding:15px}.res-grid article>div{display:grid;grid-template-columns:1fr 1fr}.res-grid article>div>*:first-child{grid-column:1/-1}.res-actions{display:grid;grid-template-columns:1fr 1fr}.res-actions>*{width:100%}.res-viewer{min-height:260px}.res-viewer iframe{height:68vh}.res-detail-header>div:last-child{display:grid;grid-template-columns:1fr 1fr}}
 .res-tabs{display:flex;gap:8px}.res-tabs button{min-width:110px;border:1px solid #cbd5e1;border-radius:999px;background:#fff;padding:9px 16px}.res-tabs button.active{border-color:#526a28;background:#526a28;color:#fff}.res-offline{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px;border:1px solid #dbe3ec;border-radius:12px;background:#fff}.res-offline>div{display:grid;gap:3px}.res-offline span{color:#64748b;font-size:.82rem}.res-offline em{color:#92400e;font-size:.82rem}.res-notes{display:grid;gap:16px}.res-notes-heading{display:flex;justify-content:space-between;gap:12px}.res-notes-heading h2,.res-notes-heading p{margin:0}.res-notes-heading p{color:#64748b;font-size:.82rem}.res-notes label{display:grid;gap:6px;max-width:240px}.res-sync{font-size:.84rem;color:#64748b}.res-sync-synced{color:#166534}.res-sync-failed,.res-sync-conflict{color:#991b1b}.res-conflict{padding:14px;border-radius:10px;background:#fff7ed}.res-conflict>*{margin:5px}.res-note-list{display:grid;gap:7px;border-top:1px solid #e2e8f0;padding-top:15px}.res-note-list button{display:flex;justify-content:space-between;border:1px solid #e2e8f0;border-radius:9px;background:#fff;padding:11px;text-align:left}.res-note-list button.active{border-color:#526a28;background:#f7f9f3}.res-note-list span{color:#64748b;font-size:.8rem}
 @media(max-width:700px){.res-offline,.res-notes-heading{align-items:stretch;flex-direction:column}.res-offline>button,.res-notes-heading>button{width:100%}.res-note-list button{display:grid;gap:4px}}
+
+
+/* Keep mobile navigation reachable without scrolling back to the page header. */
+.admin-floating-menu-button {
+  align-items: center;
+  background: #263b1c;
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 999px;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  box-shadow: 0 5px 18px rgb(15 23 42 / 28%);
+  color: #fff;
+  display: inline-flex;
+  gap: 8px;
+  justify-content: center;
+  left: 18px;
+  min-height: 50px;
+  min-width: 50px;
+  padding: 0 16px;
+  position: fixed;
+  z-index: 25;
+}
+.admin-floating-menu-button:focus-visible {
+  outline: 3px solid #a3c56a;
+  outline-offset: 3px;
+}
