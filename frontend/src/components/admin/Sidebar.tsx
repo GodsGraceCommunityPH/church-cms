@@ -257,7 +257,7 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
 
         <nav className="admin-sidebar-nav flex-1 overflow-y-auto">
           <div className="flex flex-col gap-2">
-            {!trainingOnly && (
+            {!trainingOnly && !projectIlawOnly && (
               <NavLink
                 className={({ isActive }) => activeLinkClass(isActive)}
                 to="/admin/dashboard"

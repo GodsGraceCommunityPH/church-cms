@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 
 import PublicLayout from "./layouts/PublicLayout";
 import AdminLayout from "./layouts/AdminLayout";
@@ -61,6 +61,21 @@ import {
   ProtectedRoute,
 } from "./features/auth/ProtectedRoute";
 
+function AdminDashboardEntry() {
+  const { hasPermission } = useAuth();
+  const projectIlawOnly =
+    (hasPermission("project_ilaw.orders.view") || hasPermission("project_ilaw.production.view")) &&
+    ![
+      "training.view", "members.view", "cell_groups.view", "finance.view",
+      "evangelism.view", "ministries.view", "events.view", "equipment.view",
+      "resources.view", "website_content.view", "admin.users",
+    ].some(hasPermission);
+
+  return projectIlawOnly
+    ? <Navigate to="/admin/project-ilaw-orders" replace />
+    : <Dashboard />;
+}
+
 function App() {
   return (
     <Routes>
@@ -85,7 +100,7 @@ function App() {
       {/* Authenticated Admin Portal */}
       <Route element={<ProtectedRoute />}>
       <Route element={<AdminLayout />}>
-        <Route path="/admin/dashboard" element={<Dashboard />} />
+        <Route path="/admin/dashboard" element={<AdminDashboardEntry />} />
         <Route path="/admin/help" element={<HelpCenter />} />
         <Route path="/admin/help/:articleKey" element={<HelpArticle />} />
         <Route element={<PermissionRoute permission="admin.users" />}>
