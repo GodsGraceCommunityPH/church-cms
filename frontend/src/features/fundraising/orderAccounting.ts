@@ -62,8 +62,12 @@ export function filterProjectIlawOrders(
     if (filters.from && orderDate < filters.from) return false;
     if (filters.to && orderDate > filters.to) return false;
     if (filters.payment && order.paymentStatus !== filters.payment) return false;
+    if (filters.fulfillment === "not_cancelled" && order.fulfillmentStatus === "cancelled") {
+      return false;
+    }
     if (
       filters.fulfillment &&
+      filters.fulfillment !== "not_cancelled" &&
       order.fulfillmentStatus !== filters.fulfillment
     ) {
       return false;
