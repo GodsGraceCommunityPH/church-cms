@@ -53,7 +53,7 @@ function AdminLayout() {
 
       {/* Main */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar onMenuClick={() => setSidebarOpen(true)} />
+        <Topbar />
         {!sidebarOpen && (
           <PersistentBackButton
             fallback="/admin/dashboard"
