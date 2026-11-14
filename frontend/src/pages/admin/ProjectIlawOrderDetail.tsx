@@ -109,6 +109,7 @@ export default function ProjectIlawOrderDetail() {
     "project_ilaw.orders.confirm_payment",
   );
   const canManage = hasPermission("project_ilaw.orders.manage");
+  const canFulfill = hasPermission("project_ilaw.orders.fulfill");
 
   const [order, setOrder] = useState<ProjectIlawOrder | null>(null);
   const [activity, setActivity] = useState<ProjectIlawOrderEvent[]>([]);
@@ -234,9 +235,9 @@ export default function ProjectIlawOrderDetail() {
   }, [canViewEvidence, evidencePath]);
 
   const nextStatuses = useMemo(() => {
-    if (!order || !canManage) return [] as FulfillmentStatus[];
+    if (!order || !canFulfill) return [] as FulfillmentStatus[];
     return FULFILLMENT_TRANSITIONS[order.fulfillmentStatus];
-  }, [canManage, order]);
+  }, [canFulfill, order]);
 
   async function runAction(key: string, action: () => Promise<void>) {
     if (busy) return;
@@ -1042,7 +1043,7 @@ export default function ProjectIlawOrderDetail() {
               aria-labelledby="fulfillment-title"
             >
               <h2 id="fulfillment-title">Fulfillment</h2>
-              {canManage ? (
+              {canFulfill ? (
                 <>
                   <p className="pilaw-detail-note" style={{ marginTop: 0 }}>
                     Current status:{" "}
