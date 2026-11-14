@@ -268,9 +268,9 @@ export const SHOP_STATUS = {
   closedNotice:
     "Ordering is not open yet. The catalog is shown for preview only; no orders are being accepted.",
   openCatalogNotice:
-    "Both items are ₱499 each. Choose a size and colour, submit your order, then follow the payment steps on this page.",
+    "T-shirt ₱499 · Eco Bag ₱399. Choose a size and colour, submit your order, then follow the payment steps on this page.",
   closedCatalogNotice:
-    "Both items are ₱499 each. Ordering will open once the church announces it.",
+    "T-shirt ₱499 · Eco Bag ₱399. Ordering will open once the church announces it.",
   availabilityLabel: "Available to order",
   closedLabel: "Ordering not open yet",
 } as const;
@@ -298,7 +298,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     id: "project-ilaw-eco-bag",
     name: "Project Ilaw Eco Bag",
     category: "Eco bag",
-    price: 499,
+    price: 399,
     image: {
       src: "/images/fundraising/project-ilaw-tote-bags.jpg",
       alt: "Project Ilaw eco bag mockup showing the front logo and back design with maroon, green, and blue handles",
