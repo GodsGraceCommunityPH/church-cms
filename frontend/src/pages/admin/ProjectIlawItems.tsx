@@ -77,6 +77,7 @@ export default function ProjectIlawItems() {
   const { hasPermission } = useAuth();
   const canView = hasPermission("project_ilaw.production.view");
   const canManage = hasPermission("project_ilaw.production.manage");
+  const canMove = hasPermission("project_ilaw.production.move");
 
   const [tab, setTab] = useState<Tab>("overview");
   const [overview, setOverview] = useState<any>(null);
@@ -240,7 +241,7 @@ export default function ProjectIlawItems() {
       setMoveReason("");
       await load();
     } catch {
-      setError("Movement could not be recorded. Check quantities and try again.");
+      setError("Movement could not be recorded. Check quantities and permissions, then try again.");
     } finally {
       setMoveBusy(false);
     }
@@ -567,6 +568,7 @@ export default function ProjectIlawItems() {
                           <td>{v.completed_qty}</td>
                           <td>
                             <div className="pilaw-row-actions">
+                              {canMove && (
                               <Button
                                 variant="secondary"
                                 onClick={() => {
@@ -579,6 +581,7 @@ export default function ProjectIlawItems() {
                               >
                                 Move Quantities
                               </Button>
+                              )}
                               {canManage && (
                                 <Button
                                   variant="secondary"
