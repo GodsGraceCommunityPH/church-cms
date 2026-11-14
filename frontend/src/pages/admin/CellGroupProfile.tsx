@@ -363,6 +363,7 @@ export default function CellGroupProfile() {
               </div>
 
               {canManageThisGroup && <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                {hasPermission("cell_groups.manage") && (
                 <Button
                   type="button"
                   onClick={() => {
@@ -372,6 +373,7 @@ export default function CellGroupProfile() {
                 >
                   Transfer
                 </Button>
+                )}
 
                 <Button
                   type="button"
