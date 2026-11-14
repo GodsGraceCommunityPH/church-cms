@@ -521,12 +521,16 @@
 }
 
 .pilaw-detail-items {
+  max-width: 100%;
   min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .pilaw-detail-items table {
   border-collapse: collapse;
-  min-width: 460px;
+  min-width: 560px;
   width: 100%;
 }
 
@@ -973,7 +977,32 @@
   }
 
   .pilaw-detail-card {
+    min-width: 0;
     padding: 16px;
+  }
+
+  .pilaw-detail-items {
+    margin-right: -2px;
+    scrollbar-width: thin;
+  }
+
+  .pilaw-detail-items table {
+    min-width: 540px;
+  }
+
+  .pilaw-detail-items th,
+  .pilaw-detail-items td {
+    padding: 10px 9px;
+  }
+
+  .pilaw-detail-total {
+    justify-content: space-between;
+  }
+
+  .pilaw-order-detail-page,
+  .pilaw-detail-grid,
+  .pilaw-detail-card {
+    max-width: 100%;
   }
 }
 
