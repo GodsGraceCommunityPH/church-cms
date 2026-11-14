@@ -623,43 +623,48 @@ export default function ProjectIlawOrders() {
       </section>
 
       <section className="pilaw-summary" aria-label="Order summary">
-        <article>
+        <button type="button" className="pilaw-summary-card" onClick={() => { setFilters(EMPTY_FILTERS); setSearch(""); }}>
           <span>Total orders received</span>
           <strong>{summary.totalOrders}</strong>
           <small>All submitted orders in this view</small>
-        </article>
-        <article>
+          <em>View all orders <span aria-hidden="true">→</span></em>
+        </button>
+        <button type="button" className="pilaw-summary-card" onClick={() => { setFilters(EMPTY_FILTERS); setSearch(""); }}>
           <span>Total units ordered</span>
           <strong>{summary.totalUnits}</strong>
-          <small>
-            {summary.activeUnits} active · {summary.cancelledUnits} cancelled
-          </small>
-        </article>
-        <article>
+          <small>{summary.activeUnits} active · {summary.cancelledUnits} cancelled</small>
+          <em>View related orders <span aria-hidden="true">→</span></em>
+        </button>
+        <button type="button" className="pilaw-summary-card" onClick={() => { setFilters({ ...EMPTY_FILTERS, payment: "awaiting_payment" }); setSearch(""); }}>
           <span>Awaiting payment</span>
           <strong>{summary.awaitingPaymentOrders}</strong>
           <small>Cancelled orders are excluded</small>
-        </article>
-        <article>
+          <em>Review unpaid orders <span aria-hidden="true">→</span></em>
+        </button>
+        <button type="button" className="pilaw-summary-card" onClick={() => { setFilters({ ...EMPTY_FILTERS, payment: "payment_verification" }); setSearch(""); }}>
           <span>Payment verification</span>
           <strong>{summary.paymentVerificationOrders}</strong>
           <small>Evidence submitted, awaiting manual review</small>
-        </article>
-        <article>
+          <em>Review submitted evidence <span aria-hidden="true">→</span></em>
+        </button>
+        <button type="button" className="pilaw-summary-card" onClick={() => { setFilters({ ...EMPTY_FILTERS, payment: "paid" }); setSearch(""); }}>
           <span>Paid orders</span>
           <strong>{summary.paidOrders}</strong>
           <small>Manually confirmed by authorised staff</small>
-        </article>
-        <article>
+          <em>View paid orders <span aria-hidden="true">→</span></em>
+        </button>
+        <button type="button" className="pilaw-summary-card" onClick={() => { setFilters(EMPTY_FILTERS); setSearch(""); }}>
           <span>Total expected sales</span>
           <strong>{formatPeso(summary.expectedSales)}</strong>
           <small>Cancelled orders are excluded</small>
-        </article>
-        <article className="pilaw-summary-collections">
+          <em>View sales-related orders <span aria-hidden="true">→</span></em>
+        </button>
+        <button type="button" className="pilaw-summary-card pilaw-summary-collections" onClick={() => { setFilters({ ...EMPTY_FILTERS, payment: "paid" }); setSearch(""); }}>
           <span>Total confirmed collections</span>
           <strong>{formatPeso(summary.confirmedCollections)}</strong>
           <small>Paid orders only</small>
-        </article>
+          <em>View confirmed payments <span aria-hidden="true">→</span></em>
+        </button>
       </section>
 
       {summary.cancelledPaidOrders > 0 && (
