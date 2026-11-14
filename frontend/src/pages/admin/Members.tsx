@@ -27,8 +27,10 @@ function Members() {
   const [assigning, setAssigning] = useState(false);
   const [assignError, setAssignError] = useState("");
   const [currentMemberId, setCurrentMemberId] = useState<string | null>(null);
-  const ledCellGroup = cellGroups.find((group) => group.leaderId === currentMemberId);
-  const canAssignUnassigned = hasPermission("cell_groups.assign_members") && Boolean(ledCellGroup);
+  const [assigningCellGroupId, setAssigningCellGroupId] = useState("");
+  const assignableCellGroups = cellGroups.filter((group) => group.leaderId === currentMemberId || group.createdBy === user?.id);
+  const selectedCellGroup = assignableCellGroups.find((group) => group.id === assigningCellGroupId) ?? assignableCellGroups[0];
+  const canAssignUnassigned = hasPermission("cell_groups.assign_members") && assignableCellGroups.length > 0;
   const [successMessage, setSuccessMessage] = useState(
     () => location.state?.successMessage ?? "",
   );
@@ -81,12 +83,12 @@ function Members() {
   const hasActiveFilters = sortOrder !== "asc" || genderFilter !== "all" || cellGroupFilter !== "all";
 
   async function assignMemberToOwnCell() {
-    if (!assigningMember || !ledCellGroup || assigning) return;
+    if (!assigningMember || !selectedCellGroup || assigning) return;
     setAssigning(true);
     setAssignError("");
     const { error } = await supabase.rpc("assign_unassigned_member_to_led_cell", {
       p_member_id: assigningMember.id,
-      p_cell_group_id: ledCellGroup.id,
+      p_cell_group_id: selectedCellGroup.id,
     });
     setAssigning(false);
     if (error) {
@@ -230,7 +232,7 @@ function Members() {
         {assigningMember && <>
           <p>Assign <strong>{assigningMember.firstName} {assigningMember.lastName}</strong> to your cell group?</p>
           <p style={{ color: "#64748b" }}>This only updates the Cell Group assignment. Personal and other member details will remain unchanged.</p>
-          <p><strong>Cell Group:</strong> {ledCellGroup?.name}</p>
+          <p><strong>Cell Group:</strong> {selectedCellGroup?.name}</p>
           {assignError && <p role="alert" style={{ color: "#b91c1c" }}>{assignError}</p>}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
             <Button variant="secondary" disabled={assigning} onClick={() => setAssigningMember(null)}>Cancel</Button>
