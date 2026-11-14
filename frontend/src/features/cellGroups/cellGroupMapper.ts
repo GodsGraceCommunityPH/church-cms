@@ -15,6 +15,7 @@ export function mapCellGroup(data: any): CellGroup {
     name: data.name,
     slug: data.slug ?? "",
     leaderId: data.leader_id,
+    createdBy: data.created_by ?? null,
     description: data.description,
     status: data.status,
     createdAt: data.created_at,
