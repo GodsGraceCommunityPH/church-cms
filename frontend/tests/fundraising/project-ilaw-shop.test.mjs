@@ -49,7 +49,7 @@ test("Project Ilaw describes the lighting work without invented figures", () => 
   assert.doesNotMatch(content, /raised so far|fundraising target/i);
 });
 
-test("the catalog offers only the T-shirt and eco bag at ₱499 each", () => {
+test("the catalog offers the T-shirt at ₱499 and the eco bag at ₱399", () => {
   assert.equal(SHOP_ITEMS.length, 2);
   assert.deepEqual(
     SHOP_ITEMS.map((item) => item.name),
@@ -61,11 +61,13 @@ test("the catalog offers only the T-shirt and eco bag at ₱499 each", () => {
   );
   assert.equal(SHOP_ITEMS.some((item) => /sticker/i.test(item.name)), false);
 
-  for (const item of SHOP_ITEMS) {
-    assert.equal(item.price, 499, `${item.name} must cost ₱499`);
-    assert.equal(formatPeso(item.price), "₱499");
-    assert.ok(item.description);
-  }
+  const shirt = SHOP_ITEMS.find((item) => item.id === "project-ilaw-t-shirt");
+  const bag = SHOP_ITEMS.find((item) => item.id === "project-ilaw-eco-bag");
+  assert.equal(shirt?.price, 499);
+  assert.equal(formatPeso(shirt!.price), "₱499");
+  assert.equal(bag?.price, 399);
+  assert.equal(formatPeso(bag!.price), "₱399");
+  for (const item of SHOP_ITEMS) assert.ok(item.description);
 });
 
 test("the T-shirt lists XS through 3XL and the five documented colours", () => {
@@ -161,9 +163,9 @@ test("public ordering is closed by default and gated by the server setting", asy
   assert.match(SHOP_STATUS.closedNotice, /preview only/i);
   assert.match(SHOP_STATUS.openNotice, /payment instructions/i);
   assert.doesNotMatch(SHOP_STATUS.openNotice, /messenger/i);
-  assert.match(SHOP_STATUS.openCatalogNotice, /₱499/);
+  assert.match(SHOP_STATUS.openCatalogNotice, /T-shirt ₱499 · Eco Bag ₱399/);
   assert.match(SHOP_STATUS.openCatalogNotice, /colour/i);
-  assert.match(SHOP_STATUS.closedCatalogNotice, /₱499/);
+  assert.match(SHOP_STATUS.closedCatalogNotice, /T-shirt ₱499 · Eco Bag ₱399/);
   assert.match(SHOP_STATUS.availabilityLabel, /available/i);
   assert.equal(SHOP_STATUS.closedLabel, "Ordering not open yet");
 
@@ -268,7 +270,7 @@ test("draft validation enforces required fields, quantities, sizes, and colours"
   assert.equal(valid.customerName, "Grace Member");
   assert.equal(valid.notes, "Please prepare two");
   assert.equal(valid.totalQuantity, 3);
-  assert.equal(valid.totalAmount, 1497);
+  assert.equal(valid.totalAmount, 1397);
   assert.deepEqual(valid.items, [
     {
       productId: "project-ilaw-t-shirt",
@@ -304,7 +306,7 @@ test("the eco bag is always normalized to One Size and needs a handle colour", (
   assert.equal(validation.items[0].size, "One Size");
 });
 
-test("draft totals only count valid quantities at ₱499 each", () => {
+test("draft totals use the separate T-shirt and eco bag prices", () => {
   const items = [
     {
       key: "a",
@@ -330,7 +332,7 @@ test("draft totals only count valid quantities at ₱499 each", () => {
   ];
   assert.deepEqual(calculateDraftTotals(items), {
     totalQuantity: 5,
-    totalAmount: 2495,
+    totalAmount: 2195,
   });
 });
 
