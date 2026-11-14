@@ -18,9 +18,11 @@ import {
   type MemberTrainingJourneyItem,
 } from "../../features/training/trainingService";
 import { markMemberViewed } from "../../features/notifications/notificationService";
+import { useAuth } from "../../features/auth/auth";
 
 export default function MemberProfile() {
   const { id } = useParams();
+  const { hasPermission } = useAuth();
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -101,9 +103,11 @@ export default function MemberProfile() {
           ← Back to Members
         </button>
 
-        <button onClick={() => navigate(`/admin/members/${member.id}/edit`)} style={{ border: "1px solid #4d6b2d", borderRadius: "8px", background: "#526d2f", padding: "10px 14px", color: "white", cursor: "pointer" }}>
-          Edit Member
-        </button>
+        {hasPermission("members.update") && (
+          <button onClick={() => navigate(`/admin/members/${member.id}/edit`)} style={{ border: "1px solid #4d6b2d", borderRadius: "8px", background: "#526d2f", padding: "10px 14px", color: "white", cursor: "pointer" }}>
+            Edit Member
+          </button>
+        )}
       </div>
 
       {/* Header */}
@@ -236,6 +240,7 @@ export default function MemberProfile() {
         <InfoRow label="Remarks" value={member.remarks} />
       </ProfileCard>
 
+      {hasPermission("members.archive") && (
       <section style={{ marginTop: 20, padding: 20, border: "1px solid #e2e8f0", borderRadius: 12, background: "#fff" }}>
         <h2 style={{ margin: 0, fontSize: 18 }}>Member Actions</h2>
         <p style={{ margin: "6px 0 16px", color: "#64748b", fontSize: 14 }}>Use deactivation for normal lifecycle changes. Permanent deletion is only for mistaken, test, or duplicate records without history.</p>
@@ -244,6 +249,7 @@ export default function MemberProfile() {
           <Button variant="danger" onClick={() => { setActionError(""); setMemberAction("delete"); }}>Delete</Button>
         </div>
       </section>
+      )}
 
       <Modal open={memberAction === "deactivate"} title="Deactivate Member" onClose={() => { if (!savingAction) setMemberAction(null); }}>
         <p>Deactivate <strong>{member.firstName} {member.lastName}</strong>?</p>
