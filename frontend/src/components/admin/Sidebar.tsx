@@ -141,18 +141,13 @@ function matchesRoute(pathname: string, to: string) {
 }
 
 function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
-  const { signOut, hasPermission } = useAuth();
+  const { signOut, hasPermission, permissions } = useAuth();
   const location = useLocation();
   const [signingOut, setSigningOut] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
-  const trainingOnly = hasPermission("training.view") && !hasPermission("members.view") && !hasPermission("cell_groups.view") && !hasPermission("finance.view");
-  const projectIlawOnly =
-    (hasPermission("project_ilaw.orders.view") || hasPermission("project_ilaw.production.view")) &&
-    ![
-      "training.view", "members.view", "cell_groups.view", "finance.view",
-      "evangelism.view", "ministries.view", "events.view", "equipment.view",
-      "resources.view", "website_content.view", "admin.users",
-    ].some(hasPermission);
+  const hasIlawAccess = [...permissions].some((code) => code.startsWith("project_ilaw."));
+  const projectIlawOnly = hasIlawAccess && [...permissions].every((code) => code.startsWith("project_ilaw."));
+  const trainingOnly = !hasIlawAccess && hasPermission("training.view") && !hasPermission("members.view") && !hasPermission("cell_groups.view") && !hasPermission("finance.view");
   const linkClass =
     "flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-gray-100";
   const linkStyle = {
@@ -268,6 +263,20 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
               >
                 <LayoutDashboard size={18} aria-hidden="true" />
                 {!collapsed && "Overview"}
+              </NavLink>
+            )}
+
+            {hasIlawAccess && (
+              <NavLink
+                className={({ isActive }) => activeLinkClass(isActive)}
+                to="/admin/project-ilaw-overview"
+                onClick={onClose}
+                style={linkStyle}
+                title={collapsed ? "Project Ilaw Overview" : undefined}
+                aria-label={collapsed ? "Project Ilaw Overview" : undefined}
+              >
+                <LayoutDashboard size={18} aria-hidden="true" />
+                {!collapsed && "Project Ilaw Overview"}
               </NavLink>
             )}
 
