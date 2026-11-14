@@ -519,7 +519,6 @@ export default function ProjectIlawItems() {
                       <th scope="col">Size</th>
                       <th scope="col">Colour</th>
                       <th scope="col">Required</th>
-                      <th scope="col">Pending</th>
                       <th scope="col">Processing</th>
                       <th scope="col">Manufacturing</th>
                       <th scope="col">Completed</th>
