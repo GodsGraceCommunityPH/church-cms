@@ -97,6 +97,56 @@ Customer-facing status labels translate the internal model:
 The Eco Bag is one size, so neither the product card nor the line-item editor
 asks for a size. The server still stores `One Size` for reporting integrity.
 
+### Receipt reminder
+
+Immediately below the QR and payment details, and before the evidence form, the
+payment section shows a prominent warning (styled as a warning, not an error):
+**IMPORTANT: SAVE YOUR PAYMENT RECEIPT!** It tells the customer to keep the
+transaction reference number and a screenshot of the successful transaction
+before closing GCash or their banking app, and that this applies to every
+supported channel (GCash, InstaPay-enabled banking apps, and other supported
+methods). The two evidence fields are explicitly labelled **Transaction Reference
+Number (Required)** and **Payment Receipt Screenshot/PDF (Required)**, and the
+help text distinguishes the provider transaction reference from the Project
+Ilaw order reference. This is presentation only; server-side validation and
+manual staff verification are unchanged.
+
+## Staff-assisted orders
+
+Some buyers order through Facebook Messenger, personal messages, or in person.
+An authorized staff member can encode those orders from **Order Management →
+Create Staff Order** (never from the public Shop page). This requires
+`project_ilaw.orders.manage`; the staff identity is always taken from the
+authenticated session on the server, never from the client.
+
+1. Staff enter the customer name (required), mobile number (optional), and
+   optional notes.
+2. Staff add catalogue items through the same product cards and line-item editor
+   used by the public form. Product, variant, quantity, and price validation is
+   repeated by the server.
+3. Staff choose one payment state:
+   - **Unpaid** — the order stays `awaiting_payment`.
+   - **GCash** — the transaction reference and receipt are required, and the
+     order moves to `payment_verification`. It is never marked paid
+     automatically. A mobile number is required because the customer may need to
+     look the order up later.
+   - **Cash** — the order is marked `paid` only after staff confirm they
+     physically received the cash, using the existing secure cash-recording path
+     and `project_ilaw.orders.confirm_payment`.
+4. The order is created through `create_project_ilaw_staff_order` with the same
+   idempotency key, reference generator, order tables, line items, and audit
+   events as public orders. No separate order or payment system is introduced.
+5. On success the page shows the new reference, a copy button, the resulting
+   status, and a refreshed list. If the order is saved but the optional payment
+   step fails (for example, payment collection is disabled), the order is kept
+   in `awaiting_payment` and staff are told to open the order and retry rather
+   than creating a duplicate.
+
+Staff-assisted creation is independent of the public `orders_enabled` switch,
+so staff can keep recording offline orders while public intake is closed. The
+payment evidence step still honours `payments_enabled` and all existing payment
+rules.
+
 ### Idempotency
 
 The browser generates a UUID `client_request_id` for each submission attempt.
@@ -166,6 +216,11 @@ Server-side rules enforced by the migration:
 - `project_ilaw_order_events` rejects `UPDATE` and `DELETE`, including from the
   service role.
 - `client_request_id`, `reference`, and `payment_token` are unique.
+- `project_ilaw_orders.source` is `online` for customer submissions and `staff`
+  for staff-assisted orders. Existing rows default to `online`.
+- The customer mobile number is optional for staff-assisted orders, but it is
+  required for a staff-assisted GCash order and for any later customer lookup or
+  payment submission.
 
 ---
 

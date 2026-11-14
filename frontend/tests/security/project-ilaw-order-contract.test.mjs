@@ -13,8 +13,15 @@ const LOOKUP_MIGRATION =
 const CASH_MIGRATION =
   "../../../supabase/migrations/20261114090000_project_ilaw_cash_payment.sql";
 
+const STAFF_MIGRATION =
+  "../../../supabase/migrations/20261118090000_project_ilaw_staff_order.sql";
+
 async function cashMigrationSource() {
   return read(CASH_MIGRATION);
+}
+
+async function staffMigrationSource() {
+  return read(STAFF_MIGRATION);
 }
 
 async function lookupMigrationSource() {
@@ -1132,4 +1139,53 @@ test("the order management page no longer renders the settings panel", async () 
 
   assert.doesNotMatch(page, /ProjectIlawSettingsPanel/);
   assert.doesNotMatch(page, /ProductionReportPanel/);
+});
+
+test("staff-assisted order creation is permission-checked, validated, and auditable", async () => {
+  const source = await staffMigrationSource();
+
+  // Reuses the existing order tables; no parallel order system is created.
+  assert.doesNotMatch(source, /create table/i);
+
+  // Order source is constrained and existing orders default to online.
+  assert.match(
+    source,
+    /add column if not exists source text not null default 'online'/,
+  );
+  assert.match(source, /check \(source in \('online', 'staff'\)\)/);
+
+  // Staff identity is derived from the session and permission-checked.
+  assert.match(source, /actor uuid := auth\.uid\(\)/);
+  assert.match(source, /has_permission\('project_ilaw\.orders\.manage'\)/);
+  assert.doesNotMatch(source, /p_staff_id|p_actor_id/);
+
+  // Customer name is required while the mobile number stays optional.
+  assert.match(source, /alter column mobile drop not null/);
+  assert.match(source, /Customer name is required/);
+
+  // Items, variants, quantities, and prices are validated server-side.
+  assert.match(source, /project_ilaw_validated_items\(p_items\)/);
+  assert.match(source, /\(item ->> 'unit_price'\)::integer/);
+  assert.match(source, /client_request_id = p_request_id/);
+  assert.match(source, /duplicate', true/);
+
+  // The selected payment method is recorded on the order row.
+  assert.match(source, /when 'gcash' then 'gcash'/);
+  assert.match(source, /when 'cash' then 'cash'/);
+
+  // GCash keeps the manual verification path; cash uses the existing secure
+  // cash path and only when the cash was physically received.
+  assert.match(source, /submit_project_ilaw_payment\(/);
+  assert.match(source, /record_project_ilaw_cash_payment\(/);
+  assert.match(source, /coalesce\(p_confirmed_received, false\)/);
+
+  // Only authenticated staff can call the function.
+  assert.match(
+    source,
+    /revoke all on function public\.create_project_ilaw_staff_order\([\s\S]*?from public, anon, authenticated/,
+  );
+  assert.match(
+    source,
+    /grant execute on function public\.create_project_ilaw_staff_order\([\s\S]*?to authenticated/,
+  );
 });

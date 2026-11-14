@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { AlertCircle } from "lucide-react";
 import Modal from "../Modal";
 import {
   CUSTOMER_FULFILLMENT_STATUS_LABELS,
@@ -114,12 +115,14 @@ export default function PaymentPanel({
     const cleanReference = paymentReference.trim();
     if (cleanReference.length < 4) {
       setSubmitError(
-        "Enter the transaction reference shown on your payment receipt.",
+        "Enter the transaction reference number shown on your payment receipt.",
       );
       return;
     }
     if (!evidence) {
-      setSubmitError("Upload a screenshot or PDF of your payment.");
+      setSubmitError(
+        "Upload a screenshot or PDF of your payment receipt before submitting.",
+      );
       return;
     }
     if (evidence.size > MAX_EVIDENCE_BYTES) {
@@ -423,12 +426,42 @@ export default function PaymentPanel({
                 </div>
               )}
 
+              {instructions?.enabled && (
+                <div className="payment-receipt-warning" role="status">
+                  <AlertCircle
+                    size={22}
+                    aria-hidden="true"
+                    className="payment-receipt-warning-icon"
+                  />
+                  <div className="payment-receipt-warning-body">
+                    <strong className="payment-receipt-warning-title">
+                      IMPORTANT: SAVE YOUR PAYMENT RECEIPT!
+                    </strong>
+                    <p>
+                      Before closing GCash or your banking app, take a
+                      screenshot of your successful transaction and save the
+                      Transaction Reference Number.
+                    </p>
+                    <p>
+                      You will need this number to submit your payment for
+                      verification.
+                    </p>
+                    <p>
+                      This applies to all supported payment channels, including
+                      GCash, InstaPay-enabled banking apps, and other supported
+                      payment methods.
+                    </p>
+                    <p>Do not close your payment receipt until you have saved these details.</p>
+                  </div>
+                </div>
+              )}
+
               {canSubmitPayment && (
                 <form className="payment-submit" onSubmit={submitPayment}>
                   <h4>Submit your payment details</h4>
                   <div className="order-field">
                     <label htmlFor="payment-transaction-reference">
-                      Transaction reference
+                      Transaction Reference Number (Required)
                     </label>
                     <input
                       id="payment-transaction-reference"
@@ -437,13 +470,18 @@ export default function PaymentPanel({
                       onChange={(event) =>
                         setPaymentReference(event.target.value)
                       }
-                      placeholder="Reference shown on your GCash or bank receipt"
+                      placeholder="Enter the transaction reference number shown on your payment receipt"
                       required
                     />
+                    <small>
+                      This is the transaction reference from your payment
+                      receipt, not your Project Ilaw order reference (
+                      {context.reference}).
+                    </small>
                   </div>
                   <div className="order-field">
                     <label htmlFor="payment-evidence">
-                      Payment screenshot or PDF
+                      Payment Receipt Screenshot/PDF (Required)
                     </label>
                     <input
                       id="payment-evidence"
