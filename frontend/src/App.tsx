@@ -55,6 +55,7 @@ import MemberRegistrationReviews from "./pages/admin/MemberRegistrationReviews";
 import ResourceForm from "./pages/admin/ResourceForm";
 import ResourceDetail from "./pages/admin/ResourceDetail";
 import ProjectIlawItems from "./pages/admin/ProjectIlawItems";
+import ProjectIlawOverview from "./pages/admin/ProjectIlawOverview";
 import ProjectIlawOrders from "./pages/admin/ProjectIlawOrders";
 import ProjectIlawOrderDetail from "./pages/admin/ProjectIlawOrderDetail";
 import {
@@ -63,17 +64,11 @@ import {
 } from "./features/auth/ProtectedRoute";
 
 function AdminDashboardEntry() {
-  const { hasPermission } = useAuth();
-  const projectIlawOnly =
-    (hasPermission("project_ilaw.orders.view") || hasPermission("project_ilaw.production.view")) &&
-    ![
-      "training.view", "members.view", "cell_groups.view", "finance.view",
-      "evangelism.view", "ministries.view", "events.view", "equipment.view",
-      "resources.view", "website_content.view", "admin.users",
-    ].some(hasPermission);
-
+  const { permissions } = useAuth();
+  const hasIlawPermission = [...permissions].some((code) => code.startsWith("project_ilaw."));
+  const projectIlawOnly = hasIlawPermission && [...permissions].every((code) => code.startsWith("project_ilaw."));
   return projectIlawOnly
-    ? <Navigate to="/admin/project-ilaw-orders" replace />
+    ? <Navigate to="/admin/project-ilaw-overview" replace />
     : <Dashboard />;
 }
 
@@ -137,6 +132,9 @@ function App() {
           }
         >
           <Route path="/admin/notifications" element={<Notifications />} />
+        </Route>
+        <Route element={<PermissionRoute anyOf={["project_ilaw.orders.view", "project_ilaw.production.view"]} />}>
+          <Route path="/admin/project-ilaw-overview" element={<ProjectIlawOverview />} />
         </Route>
         <Route element={<PermissionRoute permission="project_ilaw.orders.view" />}>
           <Route path="/admin/project-ilaw-orders" element={<ProjectIlawOrders />} />
