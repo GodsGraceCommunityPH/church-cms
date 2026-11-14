@@ -166,8 +166,10 @@ function App() {
         <Route path="/admin/cell-groups" element={<CellGroups />} />
         <Route path="/admin/cell-groups/:id" element={<CellGroupProfile />} />
         </Route>
-        <Route element={<PermissionRoute permission="cell_groups.manage" />}>
+        <Route element={<PermissionRoute anyOf={["cell_groups.manage", "cell_groups.create"]} />}>
           <Route path="/admin/cell-groups/new" element={<CellGroupForm />} />
+        </Route>
+        <Route element={<PermissionRoute permission="cell_groups.manage" />}>
           <Route path="/admin/cell-groups/:id/edit" element={<CellGroupForm />} />
         </Route>
         <Route element={<PermissionRoute permission="ministries.view" />}>
