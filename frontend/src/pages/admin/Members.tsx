@@ -26,7 +26,8 @@ function Members() {
   const [assigningMember, setAssigningMember] = useState<(typeof members)[number] | null>(null);
   const [assigning, setAssigning] = useState(false);
   const [assignError, setAssignError] = useState("");
-  const ledCellGroup = cellGroups.find((group) => group.leaderId === user?.id);
+  const [currentMemberId, setCurrentMemberId] = useState<string | null>(null);
+  const ledCellGroup = cellGroups.find((group) => group.leaderId === currentMemberId);
   const canAssignUnassigned = hasPermission("cell_groups.assign_members") && Boolean(ledCellGroup);
   const [successMessage, setSuccessMessage] = useState(
     () => location.state?.successMessage ?? "",
@@ -58,6 +59,13 @@ function Members() {
 
   useEffect(() => {
     let active = true;
+    if (!user?.id) {
+      setCurrentMemberId(null);
+      return () => { active = false; };
+    }
+    void supabase.from("users").select("member_id").eq("id", user.id).maybeSingle().then(({ data, error }) => {
+      if (active) setCurrentMemberId(error ? null : data?.member_id ?? null);
+    });
     void getCellGroups().then((groups) => {
       if (active) setCellGroups(groups);
     }).catch(() => {
