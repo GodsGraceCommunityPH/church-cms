@@ -293,3 +293,15 @@ test("Project Ilaw staff fulfillment uses a dedicated permission", async () => {
   assert.match(migration, /project_ilaw\.orders\.fulfill/);
   assert.match(migration, /update_project_ilaw_fulfillment/);
 });
+
+test("Project Ilaw staff can move production quantities with a dedicated permission", async () => {
+  const source = await readSource("src/pages/admin/ProjectIlawItems.tsx");
+  assert.match(source, /const canMove = hasPermission\("project_ilaw\.production\.move"\)/);
+  assert.match(source, /\{canMove && \([\s\S]*?Move Quantities/);
+  assert.match(source, /\{canManage && \([\s\S]*?Adjust/);
+  const migration = await readSource(
+    "../supabase/migrations/20261114200000_project_ilaw_production_move_permission.sql",
+  );
+  assert.match(migration, /project_ilaw\.production\.move/);
+  assert.match(migration, /move_project_ilaw_production/);
+});
