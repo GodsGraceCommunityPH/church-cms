@@ -6,6 +6,7 @@ interface MemberRowProps {
   onOpen: (id: string) => void;
   onEdit: (id: string) => void;
   isNew?: boolean;
+  canEdit?: boolean;
 }
 
 export default function MemberRow({
@@ -13,6 +14,7 @@ export default function MemberRow({
   onOpen,
   onEdit,
   isNew = false,
+  canEdit = true,
 }: MemberRowProps) {
   const initials = `${member.firstName.charAt(0)}${member.lastName.charAt(0)}`.toUpperCase();
 
@@ -32,7 +34,7 @@ export default function MemberRow({
         </div>
       </td>
       <td style={{ width: 56, padding: "12px", textAlign: "right" }}>
-        <button type="button" className="training-icon-button" aria-label={`Edit ${member.firstName} ${member.lastName}`} title="Edit Member" onClick={(event) => { event.stopPropagation(); onEdit(member.id); }}><Pencil size={16} aria-hidden="true" /></button>
+        {canEdit && <button type="button" className="training-icon-button" aria-label={`Edit ${member.firstName} ${member.lastName}`} title="Edit Member" onClick={(event) => { event.stopPropagation(); onEdit(member.id); }}><Pencil size={16} aria-hidden="true" /></button>}
       </td>
     </tr>
   );
