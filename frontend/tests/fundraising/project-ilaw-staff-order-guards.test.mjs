@@ -281,3 +281,15 @@ test("staff order creation uses its dedicated permission instead of order manage
   // Backend authorization is also migrated to the dedicated create permission.
   assert.match(migration, /project_ilaw\.orders\.create/);
 });
+
+test("Project Ilaw staff fulfillment uses a dedicated permission", async () => {
+  const source = await readSource("src/pages/admin/ProjectIlawOrderDetail.tsx");
+  assert.match(source, /const canFulfill = hasPermission\("project_ilaw\.orders\.fulfill"\)/);
+  assert.match(source, /if \(!order \|\| !canFulfill\) return \[\] as FulfillmentStatus\[\]/);
+  assert.match(source, /aria-labelledby="fulfillment-title"[\s\S]*?\{canFulfill \?/);
+  const migration = await readSource(
+    "../supabase/migrations/20261114180000_project_ilaw_order_fulfill_permission.sql",
+  );
+  assert.match(migration, /project_ilaw\.orders\.fulfill/);
+  assert.match(migration, /update_project_ilaw_fulfillment/);
+});
