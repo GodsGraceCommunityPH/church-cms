@@ -157,12 +157,15 @@ export default function ProjectIlawItems() {
 
   const filteredStageVariants = useMemo(() => {
     if (!selectedStage) return [];
-    const qtyKey = selectedStage === "manufacturing" ? "manufacturing_qty" : `${selectedStage}_qty`;
     return variants.filter((v) => {
       if (filterProduct !== "all" && v.product_type !== filterProduct) return false;
       if (filterSize !== "all" && v.size !== filterSize) return false;
       if (filterColor !== "all" && v.color !== filterColor) return false;
-      return v[qtyKey] > 0;
+      const stageQty = selectedStage === "pending" ? v.pending_qty
+        : selectedStage === "processing" ? v.processing_qty
+        : selectedStage === "manufacturing" ? v.manufacturing_qty
+        : v.completed_qty;
+      return stageQty > 0;
     });
   }, [variants, selectedStage, filterProduct, filterSize, filterColor]);
 
