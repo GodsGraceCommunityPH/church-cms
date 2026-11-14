@@ -46,7 +46,7 @@ function AdminLayout() {
       />
 
       {/* Persistent mobile menu access while the page is scrolled */}
-      {!sidebarOpen && (
+      {showFloatingMenu && !sidebarOpen && (
         <button
           type="button"
           onClick={() => setSidebarOpen(true)}
