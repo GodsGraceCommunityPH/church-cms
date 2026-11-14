@@ -56,7 +56,6 @@ import ResourceDetail from "./pages/admin/ResourceDetail";
 import ProjectIlawItems from "./pages/admin/ProjectIlawItems";
 import ProjectIlawOrders from "./pages/admin/ProjectIlawOrders";
 import ProjectIlawOrderDetail from "./pages/admin/ProjectIlawOrderDetail";
-import ProjectIlawSettings from "./pages/admin/ProjectIlawSettings";
 import {
   PermissionRoute,
   ProtectedRoute,
@@ -129,9 +128,6 @@ function App() {
             path="/admin/project-ilaw-orders/:id"
             element={<ProjectIlawOrderDetail />}
           />
-        </Route>
-        <Route element={<PermissionRoute permission="project_ilaw.orders.manage" />}>
-          <Route path="/admin/project-ilaw-settings" element={<ProjectIlawSettings />} />
         </Route>
         <Route element={<PermissionRoute permission="project_ilaw.production.view" />}>
           <Route
