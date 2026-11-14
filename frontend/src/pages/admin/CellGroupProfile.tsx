@@ -57,6 +57,12 @@ export default function CellGroupProfile() {
   const [selectedMember, setSelectedMember] = useState<any>(null);
 
   const [cellGroups, setCellGroups] = useState<any[]>([]);
+  const canAssignExistingMembers = hasPermission("cell_groups.assign_members");
+  const [showAddExistingModal, setShowAddExistingModal] = useState(false);
+  const [unassignedMembers, setUnassignedMembers] = useState<any[]>([]);
+  const [unassignedSearch, setUnassignedSearch] = useState("");
+  const [loadingUnassigned, setLoadingUnassigned] = useState(false);
+  const [assigningMemberId, setAssigningMemberId] = useState<string | null>(null);
   const sortedMembers = useMemo(() => [...members].sort((left, right) => {
     const leftName = `${left.first_name ?? ""} ${left.last_name ?? ""}`.trim();
     const rightName = `${right.first_name ?? ""} ${right.last_name ?? ""}`.trim();
@@ -124,6 +130,50 @@ export default function CellGroupProfile() {
     setMembers(data ?? []);
   }
 
+  async function openAddExistingMembers() {
+    setShowAddExistingModal(true);
+    setUnassignedSearch("");
+    setLoadingUnassigned(true);
+    const { data, error } = await supabase
+      .from("members")
+      .select("id, first_name, last_name, mobile")
+      .is("cell_group_id", null)
+      .order("last_name")
+      .limit(500);
+    setLoadingUnassigned(false);
+    if (error) {
+      console.error(error);
+      alert("Unable to load unassigned members. Please try again.");
+      return;
+    }
+    setUnassignedMembers(data ?? []);
+  }
+
+  async function assignExistingMember(memberId: string) {
+    if (!id || assigningMemberId) return;
+    setAssigningMemberId(memberId);
+    const { error } = await supabase.rpc("assign_unassigned_member_to_led_cell", {
+      p_member_id: memberId,
+      p_cell_group_id: id,
+    });
+    setAssigningMemberId(null);
+    if (error) {
+      alert(error.message || "Unable to assign this member.");
+      await openAddExistingMembers();
+      return;
+    }
+    setUnassignedMembers((current) => current.filter((member) => member.id !== memberId));
+    await loadMembers();
+    await loadGroup();
+  }
+
+  const filteredUnassignedMembers = unassignedMembers.filter((member) => {
+    const keyword = unassignedSearch.trim().toLowerCase();
+    if (!keyword) return true;
+    return (member.first_name + " " + member.last_name + " " + (member.mobile ?? ""))
+      .toLowerCase().includes(keyword);
+  });
+
   if (loading) return <p>Loading...</p>;
 
   if (!group) return <p>Cell Group not found.</p>;
@@ -184,6 +234,7 @@ export default function CellGroupProfile() {
         </div>
 
         <div style={{ marginTop: "20px", display: "flex", gap: "10px" }}>
+          {hasPermission("cell_groups.manage") && <>
           <Button
             type="button"
             onClick={() => navigate(`/admin/cell-groups/${id}/edit`)}
@@ -209,6 +260,7 @@ export default function CellGroupProfile() {
             groupName={group.name}
             onClose={() => setShowInviteModal(false)}
           />
+          </>}
         </div>
 
         <p style={{ marginTop: 12, color: "#64748b", fontSize: 14 }}>
@@ -231,6 +283,16 @@ export default function CellGroupProfile() {
         )}
       </ProfileCard>
       <ProfileCard title={`Members (${members.length})`}>
+        {canAssignExistingMembers && (
+          <div style={{ marginBottom: 16 }}>
+            <Button type="button" onClick={() => void openAddExistingMembers()}>
+              Add Existing Member
+            </Button>
+            <p style={{ margin: "8px 0 0", color: "#64748b", fontSize: 14 }}>
+              Find a person already in the church database who is not yet assigned to a cell.
+            </p>
+          </div>
+        )}
         {members.length === 0 ? (
           <p>No members assigned to this cell group.</p>
         ) : (
@@ -292,7 +354,7 @@ export default function CellGroupProfile() {
                 </div>
               </div>
 
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              {hasPermission("cell_groups.manage") && <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                 <Button
                   type="button"
                   onClick={() => {
@@ -312,12 +374,48 @@ export default function CellGroupProfile() {
                 >
                   Remove
                 </Button>
-              </div>
+              </div>}
             </div>
           ))}
           </>
         )}
       </ProfileCard>
+      <Modal
+        open={showAddExistingModal}
+        title="Add Existing Member"
+        onClose={() => setShowAddExistingModal(false)}
+      >
+        <p style={{ color: "#64748b", marginTop: 0 }}>
+          Select an existing unassigned member. This adds the person to this cell without creating a duplicate or changing their personal details.
+        </p>
+        <input
+          type="search"
+          value={unassignedSearch}
+          onChange={(event) => setUnassignedSearch(event.target.value)}
+          placeholder="Search name or mobile number"
+          aria-label="Search unassigned members"
+          style={{ width: "100%", padding: 10, border: "1px solid #cbd5e1", borderRadius: 8, marginBottom: 12 }}
+        />
+        <div style={{ maxHeight: 360, overflowY: "auto" }}>
+          {loadingUnassigned ? (
+            <p>Loading unassigned members...</p>
+          ) : filteredUnassignedMembers.length === 0 ? (
+            <p style={{ color: "#64748b" }}>
+              {unassignedMembers.length === 0 ? "No unassigned members found." : "No members match your search."}
+            </p>
+          ) : filteredUnassignedMembers.map((member) => (
+            <div key={member.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid #e5e7eb" }}>
+              <div>
+                <div style={{ fontWeight: 600 }}>{member.first_name} {member.last_name}</div>
+                <div style={{ color: "#64748b", fontSize: 13 }}>{member.mobile || "No mobile number"}</div>
+              </div>
+              <Button type="button" disabled={assigningMemberId !== null} onClick={() => void assignExistingMember(member.id)}>
+                {assigningMemberId === member.id ? "Adding..." : "Add"}
+              </Button>
+            </div>
+          ))}
+        </div>
+      </Modal>
       <Modal
         open={showDeleteModal}
         title="Delete Cell Group"
