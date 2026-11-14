@@ -64,9 +64,9 @@ test("the catalog offers the T-shirt at ₱499 and the eco bag at ₱399", () =>
   const shirt = SHOP_ITEMS.find((item) => item.id === "project-ilaw-t-shirt");
   const bag = SHOP_ITEMS.find((item) => item.id === "project-ilaw-eco-bag");
   assert.equal(shirt?.price, 499);
-  assert.equal(formatPeso(shirt!.price), "₱499");
+  assert.equal(formatPeso(shirt?.price ?? 0), "₱499");
   assert.equal(bag?.price, 399);
-  assert.equal(formatPeso(bag!.price), "₱399");
+  assert.equal(formatPeso(bag?.price ?? 0), "₱399");
   for (const item of SHOP_ITEMS) assert.ok(item.description);
 });
 
@@ -950,7 +950,11 @@ test("order management offers a permission-gated staff-assisted order flow", asy
   // GCash stays in Payment Verification, cash is recorded only after physical
   // receipt, and an unpaid order keeps the existing Awaiting Payment status.
   assert.match(page, /paymentStatus = "payment_verification"/);
-  assert.match(page, /recordProjectIlawCashPayment\([\s\S]{0,160}?true,/);
+  assert.match(
+    page,
+    /recordProjectIlawCashPayment\(\s*created\.orderId,\s*created\.totalAmount,\s*staffCashNote,\s*staffCashConfirmed,/,
+  );
+  assert.doesNotMatch(page, /recordProjectIlawCashPayment\([\s\S]{0,160}?true,/);
   assert.match(page, /paymentStatus = "paid"/);
   assert.match(page, /Unpaid — Awaiting Payment/);
 

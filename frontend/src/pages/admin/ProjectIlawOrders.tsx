@@ -13,6 +13,7 @@ import Select from "../../components/ui/Select";
 import MerchandiseCard from "../../components/fundraising/MerchandiseCard";
 import OrderLineItemsEditor from "../../components/fundraising/OrderLineItemsEditor";
 import { useAuth } from "../../features/auth/auth";
+import { supabase } from "../../lib/supabase";
 import {
   FULFILLMENT_STATUS_LABELS,
   PAYMENT_STATUS_LABELS,
@@ -37,12 +38,20 @@ import {
   getPaymentEvidenceUrl,
   getProjectIlawExportRows,
   getProjectIlawOrders,
+  getProjectIlawPublicSettings,
   recordProjectIlawCashPayment,
   rejectProjectIlawPayment,
   submitProjectIlawPayment,
   uploadProjectIlawPaymentEvidence,
   type CreatedProjectIlawStaffOrder,
 } from "../../features/fundraising/orderService";
+import {
+  staffPaymentBlockReason,
+  staffPaymentErrorMessage,
+  staffPaymentOptionState,
+  validateStaffOrderItems,
+  type StaffPaymentMethod,
+} from "../../features/fundraising/staffOrder";
 import "./ProjectIlawOrders.css";
 
 const EMPTY_FILTERS: ProjectIlawOrderFilters = {
@@ -55,6 +64,7 @@ const EMPTY_FILTERS: ProjectIlawOrderFilters = {
 
 const STAFF_EVIDENCE_TYPES =
   "image/jpeg,image/png,image/webp,application/pdf";
+const STAFF_EVIDENCE_MAX_BYTES = 5 * 1024 * 1024;
 
 function itemsSummary(order: ProjectIlawOrder) {
   return order.items
@@ -107,12 +117,14 @@ export default function ProjectIlawOrders() {
     notes: "",
     items: [],
   }));
-  const [staffPaymentMethod, setStaffPaymentMethod] = useState<
-    "gcash" | "cash" | "unpaid"
-  >("unpaid");
+  const [staffPaymentMethod, setStaffPaymentMethod] =
+    useState<StaffPaymentMethod>("unpaid");
   const [staffPaymentReference, setStaffPaymentReference] = useState("");
   const [staffEvidenceFile, setStaffEvidenceFile] = useState<File | null>(null);
   const [staffCashNote, setStaffCashNote] = useState("");
+  const [staffCashConfirmed, setStaffCashConfirmed] = useState(false);
+  const [paymentsEnabled, setPaymentsEnabled] = useState<boolean | null>(null);
+  const staffEvidenceInputRef = useRef<HTMLInputElement>(null);
   const staffRequestIdRef = useRef(createRequestId());
   const [cashOrder, setCashOrder] = useState<ProjectIlawOrder | null>(null);
   const [cashAmount, setCashAmount] = useState("");
@@ -142,6 +154,84 @@ export default function ProjectIlawOrders() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Realtime keeps the staff order list fresh after an authorised payment
+  // confirmation or fulfillment change. Row-level security still decides which
+  // rows a session may receive, so realtime is a display concern only.
+  useEffect(() => {
+    if (!canManage) return;
+    const channel = supabase
+      .channel("project-ilaw-orders")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "project_ilaw_orders" },
+        () => {
+          void load();
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [canManage, load]);
+
+  const refreshPaymentSettings = useCallback(async () => {
+    try {
+      const settings = await getProjectIlawPublicSettings();
+      setPaymentsEnabled(settings.paymentsEnabled);
+    } catch {
+      // Unknown settings must not be treated as open: a GCash receipt uploaded
+      // while collection is closed would fail after the order already exists.
+      setPaymentsEnabled(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshPaymentSettings();
+  }, [refreshPaymentSettings]);
+
+  const resetStaffPaymentFields = useCallback(() => {
+    setStaffPaymentReference("");
+    setStaffEvidenceFile(null);
+    setStaffCashNote("");
+    setStaffCashConfirmed(false);
+    if (staffEvidenceInputRef.current) {
+      staffEvidenceInputRef.current.value = "";
+    }
+  }, []);
+
+  function openStaffOrderDialog() {
+    resetStaffPaymentFields();
+    setStaffPaymentMethod("unpaid");
+    setStaffOrderError("");
+    void refreshPaymentSettings();
+    setStaffOrderOpen(true);
+  }
+
+  function closeStaffOrderDialog() {
+    if (staffOrderSubmitting) return;
+    setStaffOrderOpen(false);
+    setStaffOrderError("");
+    resetStaffPaymentFields();
+    setStaffPaymentMethod("unpaid");
+  }
+
+  function changeStaffPaymentMethod(method: StaffPaymentMethod) {
+    setStaffPaymentMethod(method);
+    setStaffOrderError("");
+    if (method !== "gcash") {
+      // A receipt picked for a previous order must never be submitted again.
+      setStaffPaymentReference("");
+      setStaffEvidenceFile(null);
+      if (staffEvidenceInputRef.current) {
+        staffEvidenceInputRef.current.value = "";
+      }
+    }
+    if (method !== "cash") {
+      setStaffCashNote("");
+      setStaffCashConfirmed(false);
+    }
+  }
 
   const query = search.trim().toLowerCase();
   const filtered = useMemo(
@@ -191,24 +281,21 @@ export default function ProjectIlawOrders() {
       return;
     }
 
-    const items = staffDraft.items
-      .map((item) => ({
-        productId: item.productId,
-        size: item.size,
-        color: item.color,
-        quantity: Number(item.quantity),
-      }))
-      .filter(
-        (item) =>
-          item.productId &&
-          item.size &&
-          item.color &&
-          Number.isInteger(item.quantity) &&
-          item.quantity > 0,
-      );
+    const itemValidation = validateStaffOrderItems(staffDraft.items);
+    if (!itemValidation.ok) {
+      setStaffOrderError(itemValidation.error);
+      return;
+    }
+    const items = itemValidation.items;
 
-    if (items.length === 0) {
-      setStaffOrderError("Add at least one valid order item before submitting.");
+    const paymentBlock = staffPaymentBlockReason({
+      method: staffPaymentMethod,
+      paymentsEnabled,
+      canConfirmPayment,
+      cashConfirmed: staffCashConfirmed,
+    });
+    if (paymentBlock) {
+      setStaffOrderError(paymentBlock);
       return;
     }
 
@@ -221,6 +308,10 @@ export default function ProjectIlawOrders() {
       }
       if (!staffEvidenceFile) {
         setStaffOrderError("Attach the GCash receipt screenshot or PDF.");
+        return;
+      }
+      if (staffEvidenceFile.size > STAFF_EVIDENCE_MAX_BYTES) {
+        setStaffOrderError("The GCash receipt must be 5 MB or smaller.");
         return;
       }
     }
@@ -279,7 +370,7 @@ export default function ProjectIlawOrders() {
           created.orderId,
           created.totalAmount,
           staffCashNote,
-          true,
+          staffCashConfirmed,
         );
         paymentStatus = "paid";
       }
@@ -287,10 +378,16 @@ export default function ProjectIlawOrders() {
       const message =
         (error as { message?: string } | null)?.message ||
         "The payment step did not complete.";
-      warning =
-        `Order ${created.reference} was created, but the ${
-          staffPaymentMethod === "gcash" ? "GCash receipt" : "cash payment"
-        } was not recorded: ${message} Open the order to retry.`;
+      const retryHint =
+        staffPaymentMethod === "gcash"
+          ? "Open the order to retry the GCash receipt."
+          : "Open the order to record the cash.";
+      warning = `Order ${created.reference} was created, but the ${
+        staffPaymentMethod === "gcash" ? "GCash receipt" : "cash payment"
+      } was not recorded: ${staffPaymentErrorMessage(
+        message,
+        staffPaymentMethod,
+      )} ${retryHint}`;
     }
 
     // A fresh request id keeps the next staff order from being treated as a
@@ -306,9 +403,7 @@ export default function ProjectIlawOrders() {
       items: [],
     });
     setStaffPaymentMethod("unpaid");
-    setStaffPaymentReference("");
-    setStaffEvidenceFile(null);
-    setStaffCashNote("");
+    resetStaffPaymentFields();
     setStaffOrderError("");
     setNotice(`Staff-assisted order ${created.reference} created.`);
     setStaffOrderSubmitting(false);
@@ -427,6 +522,22 @@ export default function ProjectIlawOrders() {
     }
   }
 
+  const gcashOption = staffPaymentOptionState("gcash", {
+    paymentsEnabled,
+    canConfirmPayment,
+  });
+  const cashOption = staffPaymentOptionState("cash", {
+    paymentsEnabled,
+    canConfirmPayment,
+  });
+  const staffPaymentBlocked =
+    staffPaymentBlockReason({
+      method: staffPaymentMethod,
+      paymentsEnabled,
+      canConfirmPayment,
+      cashConfirmed: staffCashConfirmed,
+    }) !== "";
+
   return (
     <div className="pilaw-orders-page">
       <header className="pilaw-orders-header">
@@ -440,12 +551,7 @@ export default function ProjectIlawOrders() {
         </div>
         <div className="pilaw-orders-actions">
           {canManage && (
-            <Button
-              onClick={() => {
-                setStaffOrderError("");
-                setStaffOrderOpen(true);
-              }}
-            >
+            <Button onClick={openStaffOrderDialog}>
               <Plus size={16} aria-hidden="true" />
               Create Staff Order
             </Button>
@@ -884,9 +990,7 @@ export default function ProjectIlawOrders() {
       <Modal
         open={staffOrderOpen}
         title="Create staff-assisted order"
-        onClose={() => {
-          if (!staffOrderSubmitting) setStaffOrderOpen(false);
-        }}
+        onClose={closeStaffOrderDialog}
       >
         <div className="pilaw-embedded-form">
           <h3>Customer information</h3>
@@ -976,17 +1080,28 @@ export default function ProjectIlawOrders() {
             <Select
               value={staffPaymentMethod}
               onChange={(event) =>
-                setStaffPaymentMethod(
-                  event.target.value as "gcash" | "cash" | "unpaid",
+                changeStaffPaymentMethod(
+                  event.target.value as StaffPaymentMethod,
                 )
               }
               disabled={staffOrderSubmitting}
             >
               <option value="unpaid">Unpaid — Awaiting Payment</option>
-              <option value="gcash">GCash — receipt received</option>
-              <option value="cash">Cash — already received</option>
+              <option value="gcash" disabled={gcashOption.disabled}>
+                GCash — receipt received
+              </option>
+              <option value="cash" disabled={cashOption.disabled}>
+                Cash — already received
+              </option>
             </Select>
           </label>
+
+          {gcashOption.hint && (
+            <p className="pilaw-detail-note">{gcashOption.hint}</p>
+          )}
+          {cashOption.hint && (
+            <p className="pilaw-detail-note">{cashOption.hint}</p>
+          )}
 
           {staffPaymentMethod === "gcash" && (
             <>
@@ -1005,6 +1120,7 @@ export default function ProjectIlawOrders() {
               <label>
                 GCash receipt screenshot/PDF (required)
                 <input
+                  ref={staffEvidenceInputRef}
                   type="file"
                   accept={STAFF_EVIDENCE_TYPES}
                   onChange={(event) =>
@@ -1038,6 +1154,22 @@ export default function ProjectIlawOrders() {
                   disabled={staffOrderSubmitting}
                 />
               </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={staffCashConfirmed}
+                  onChange={(event) =>
+                    setStaffCashConfirmed(event.target.checked)
+                  }
+                  disabled={staffOrderSubmitting}
+                />
+                <span>I have physically received the cash for this order.</span>
+              </label>
+              {!staffCashConfirmed && (
+                <p className="pilaw-detail-note">
+                  Select the confirmation above to enable Create staff order.
+                </p>
+              )}
             </>
           )}
 
@@ -1057,13 +1189,13 @@ export default function ProjectIlawOrders() {
           <div className="pilaw-embedded-form-actions">
             <Button
               onClick={() => void submitStaffOrder()}
-              disabled={staffOrderSubmitting}
+              disabled={staffOrderSubmitting || staffPaymentBlocked}
             >
               {staffOrderSubmitting ? "Creating..." : "Create staff order"}
             </Button>
             <Button
               variant="secondary"
-              onClick={() => setStaffOrderOpen(false)}
+              onClick={closeStaffOrderDialog}
               disabled={staffOrderSubmitting}
             >
               Cancel

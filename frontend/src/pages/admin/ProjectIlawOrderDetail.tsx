@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import type { FormEvent } from "react";
 import {
@@ -12,6 +12,7 @@ import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import OrderLineItemsEditor from "../../components/fundraising/OrderLineItemsEditor";
 import { useAuth } from "../../features/auth/auth";
+import { supabase } from "../../lib/supabase";
 import {
   FULFILLMENT_STATUS_LABELS,
   FULFILLMENT_TRANSITIONS,
@@ -31,13 +32,24 @@ import {
   amendProjectIlawOrder,
   confirmProjectIlawPayment,
   getPaymentEvidenceUrl,
-  recordProjectIlawCashPayment,
   getProjectIlawOrder,
   getProjectIlawOrderActivity,
+  getProjectIlawPaymentContext,
+  getProjectIlawPublicSettings,
+  recordProjectIlawCashPayment,
   rejectProjectIlawPayment,
+  submitProjectIlawPayment,
   updateProjectIlawFulfillment,
+  uploadProjectIlawPaymentEvidence,
 } from "../../features/fundraising/orderService";
+import {
+  canRetryStaffGcashPayment,
+  staffPaymentErrorMessage,
+} from "../../features/fundraising/staffOrder";
 import "./ProjectIlawOrders.css";
+
+const MAX_EVIDENCE_BYTES = 5 * 1024 * 1024;
+const EVIDENCE_TYPES = "image/jpeg,image/png,image/webp,application/pdf";
 
 const EVENT_LABELS: Record<ProjectIlawOrderEvent["eventType"], string> = {
   order_created: "Order received",
@@ -120,6 +132,14 @@ export default function ProjectIlawOrderDetail() {
   const [evidenceUrl, setEvidenceUrl] = useState("");
   const [evidenceError, setEvidenceError] = useState("");
 
+  // Staff GCash retry: a failed receipt upload leaves the order Awaiting
+  // Payment, so staff must be able to finish it without creating a new order.
+  const [paymentsEnabled, setPaymentsEnabled] = useState<boolean | null>(null);
+  const [gcashReference, setGcashReference] = useState("");
+  const [gcashEvidence, setGcashEvidence] = useState<File | null>(null);
+  const [gcashError, setGcashError] = useState("");
+  const gcashEvidenceInputRef = useRef<HTMLInputElement>(null);
+
   const load = useCallback(async () => {
     if (!id) return;
     setLoading(true);
@@ -144,6 +164,47 @@ export default function ProjectIlawOrderDetail() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Realtime refreshes a single staff order after an authorised payment
+  // confirmation so the detail view reflects the latest status without a manual
+  // browser refresh. RLS still governs which rows may be received.
+  const orderId = order?.id;
+  useEffect(() => {
+    if (!orderId) return;
+    const channel = supabase
+      .channel(`project-ilaw-order:${orderId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "project_ilaw_orders",
+          filter: `id=eq.${orderId}`,
+        },
+        () => {
+          void load();
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [orderId, load]);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const settings = await getProjectIlawPublicSettings();
+        if (active) setPaymentsEnabled(settings.paymentsEnabled);
+      } catch {
+        if (active) setPaymentsEnabled(null);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const evidencePath = order?.paymentEvidencePath ?? "";
   const canViewEvidence = canConfirmPayment;
@@ -243,6 +304,65 @@ export default function ProjectIlawOrderDetail() {
       setCashConfirmed(false);
       setCashNote("");
       setNotice("Cash payment recorded. The order is now paid.");
+      await load();
+    });
+  }
+
+  async function handleRecordGcashReceipt(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!order || busy) return;
+    const reference = gcashReference.trim();
+    if (reference.length < 4) {
+      setGcashError(
+        "Enter the transaction reference shown on the buyer's receipt.",
+      );
+      return;
+    }
+    if (!gcashEvidence) {
+      setGcashError("Attach the buyer's GCash receipt screenshot or PDF.");
+      return;
+    }
+    if (gcashEvidence.size > MAX_EVIDENCE_BYTES) {
+      setGcashError("The GCash receipt must be 5 MB or smaller.");
+      return;
+    }
+
+    setGcashError("");
+    await runAction("gcash-retry", async () => {
+      try {
+        // Reuse the same customer payment RPC and token the public flow uses.
+        // It validates the reference, mobile number, token, and evidence path,
+        // and it never marks the order paid.
+        const context = await getProjectIlawPaymentContext(
+          order.reference,
+          order.mobile,
+        );
+        const evidencePath = await uploadProjectIlawPaymentEvidence(
+          order.id,
+          context.paymentToken,
+          gcashEvidence,
+        );
+        await submitProjectIlawPayment({
+          reference: order.reference,
+          mobile: order.mobile,
+          paymentToken: context.paymentToken,
+          paymentReference: reference,
+          evidencePath,
+        });
+      } catch (error) {
+        const message =
+          (error as { message?: string } | null)?.message ||
+          "The GCash receipt could not be recorded.";
+        throw new Error(staffPaymentErrorMessage(message, "gcash"));
+      }
+      setGcashReference("");
+      setGcashEvidence(null);
+      if (gcashEvidenceInputRef.current) {
+        gcashEvidenceInputRef.current.value = "";
+      }
+      setNotice(
+        "GCash receipt recorded. The order is now in Payment Verification and still needs manual confirmation.",
+      );
       await load();
     });
   }
@@ -353,6 +473,18 @@ export default function ProjectIlawOrderDetail() {
     order.fulfillmentStatus !== "cancelled";
   const paid = order.paymentStatus === "paid";
   const awaitingVerification = order.paymentStatus === "payment_verification";
+  const gcashRetryAvailable = canRetryStaffGcashPayment(
+    order,
+    paymentsEnabled,
+  );
+  const gcashRetryHint =
+    paymentsEnabled === false
+      ? "Payment collection is currently closed. GCash receipts cannot be recorded until an authorised staff member enables payments."
+      : paymentsEnabled === null
+        ? "Checking whether payment collection is open..."
+        : !order.mobile.trim()
+          ? "This order has no mobile number, so the GCash receipt cannot be matched to it. Update the order details before recording the receipt."
+          : "";
 
   return (
     <div className="pilaw-order-detail-page">
@@ -367,6 +499,10 @@ export default function ProjectIlawOrderDetail() {
             <p>
               Received {formatOrderDateTime(order.createdAt)} · Last updated{" "}
               {formatOrderDateTime(order.updatedAt)}
+            </p>
+            <p>
+              Order source:{" "}
+              {order.source === "staff" ? "Staff-assisted" : "Online customer"}
             </p>
           </div>
           <div className="pilaw-orders-actions">
@@ -769,6 +905,81 @@ export default function ProjectIlawOrderDetail() {
               )}
             </section>
           )}
+
+          {!cancelled &&
+            canManage &&
+            order.source === "staff" &&
+            order.paymentMethod === "gcash" &&
+            order.paymentStatus === "awaiting_payment" && (
+              <section
+                className="pilaw-detail-card"
+                aria-labelledby="gcash-retry-title"
+              >
+                <h2 id="gcash-retry-title">Record GCash payment</h2>
+                {gcashRetryAvailable ? (
+                  <form
+                    className="pilaw-embedded-form"
+                    onSubmit={handleRecordGcashReceipt}
+                  >
+                    <p className="pilaw-detail-note" style={{ marginTop: 0 }}>
+                      This staff-assisted order is still awaiting a GCash
+                      receipt. Upload the buyer's receipt to move it to Payment
+                      Verification. This never marks the order Paid; an
+                      authorised staff member must still confirm the actual
+                      transaction.
+                    </p>
+                    <label>
+                      Transaction reference (required)
+                      <Input
+                        value={gcashReference}
+                        maxLength={120}
+                        placeholder="Reference shown on the buyer's receipt"
+                        onChange={(event) =>
+                          setGcashReference(event.target.value)
+                        }
+                        disabled={Boolean(busy)}
+                      />
+                    </label>
+                    <label>
+                      GCash receipt screenshot/PDF (required)
+                      <input
+                        ref={gcashEvidenceInputRef}
+                        type="file"
+                        accept={EVIDENCE_TYPES}
+                        onChange={(event) =>
+                          setGcashEvidence(event.target.files?.[0] ?? null)
+                        }
+                        disabled={Boolean(busy)}
+                      />
+                    </label>
+                    {gcashError && (
+                      <p className="pilaw-inline-error" role="alert">
+                        {gcashError}
+                      </p>
+                    )}
+                    <div className="pilaw-embedded-form-actions">
+                      <Button
+                        type="submit"
+                        disabled={
+                          Boolean(busy) ||
+                          !gcashEvidence ||
+                          gcashReference.trim().length < 4
+                        }
+                      >
+                        {busy === "gcash-retry"
+                          ? "Recording..."
+                          : "Record GCash receipt"}
+                      </Button>
+                    </div>
+                  </form>
+                ) : (
+                  <p className="pilaw-detail-note" style={{ marginTop: 0 }}>
+                    {gcashRetryHint ||
+                      "This order cannot accept a GCash receipt right now."}
+                  </p>
+                )}
+              </section>
+            )}
 
           {!cancelled && canConfirmPayment && !paid && (
             <section
