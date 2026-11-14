@@ -22,6 +22,7 @@ export const PAYMENT_EVIDENCE_BUCKET = "project-ilaw-payment-evidence";
 
 const ORDER_SELECT = `
   id,
+  source,
   reference,
   customer_name,
   mobile,
@@ -36,6 +37,8 @@ const ORDER_SELECT = `
   payment_rejection_reason,
   payment_confirmed_at,
   payment_confirmed_by,
+  payment_method,
+  payment_amount_received,
   payment_note,
   fulfillment_status,
   cancelled_at,
@@ -79,9 +82,10 @@ function mapItem(row: any): ProjectIlawOrderItem {
 function mapOrder(row: any): ProjectIlawOrder {
   return {
     id: row.id,
+    source: row.source === "staff" ? "staff" : "online",
     reference: row.reference,
     customerName: row.customer_name,
-    mobile: row.mobile,
+    mobile: row.mobile ?? "",
     notes: row.notes ?? "",
     totalQuantity: row.total_quantity,
     totalAmount: row.total_amount,
@@ -211,6 +215,61 @@ export async function createProjectIlawOrder(
     fulfillmentStatus: data.fulfillment_status,
     createdAt: data.created_at,
     duplicate: data.duplicate === true,
+  };
+}
+
+export interface CreateProjectIlawStaffOrderInput {
+  requestId: string;
+  customerName: string;
+  mobile: string;
+  notes: string;
+  items: NormalizedOrderItem[];
+  paymentMethod: "gcash" | "cash" | "unpaid";
+  paymentReference?: string;
+  evidencePath?: string;
+  confirmedReceived?: boolean;
+}
+
+export interface CreatedProjectIlawStaffOrder {
+  orderId: string;
+  reference: string;
+  paymentToken: string;
+  totalQuantity: number;
+  totalAmount: number;
+  paymentStatus: PaymentStatus;
+  fulfillmentStatus: FulfillmentStatus;
+  createdAt: string;
+  duplicate: boolean;
+  source: "online" | "staff";
+}
+
+export async function createProjectIlawStaffOrder(
+  input: CreateProjectIlawStaffOrderInput,
+): Promise<CreatedProjectIlawStaffOrder> {
+  const { data, error } = await supabase.rpc("create_project_ilaw_staff_order", {
+    p_request_id: input.requestId,
+    p_customer_name: input.customerName,
+    p_mobile: input.mobile || null,
+    p_notes: input.notes || null,
+    p_items: input.items,
+    p_payment_method: input.paymentMethod,
+    p_payment_reference: input.paymentReference || null,
+    p_evidence_path: input.evidencePath || null,
+    p_confirmed_received: input.confirmedReceived ?? false,
+  });
+
+  if (error) throw error;
+  return {
+    orderId: data.order_id,
+    reference: data.reference,
+    paymentToken: data.payment_token,
+    totalQuantity: data.total_quantity,
+    totalAmount: data.total_amount,
+    paymentStatus: data.payment_status,
+    fulfillmentStatus: data.fulfillment_status,
+    createdAt: data.created_at,
+    duplicate: data.duplicate === true,
+    source: "staff",
   };
 }
 

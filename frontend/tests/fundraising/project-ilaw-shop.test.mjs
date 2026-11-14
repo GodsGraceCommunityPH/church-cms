@@ -459,17 +459,19 @@ test("the public order form captures colours and the payment section is present"
   assert.match(form, /Mobile number/);
   assert.match(form, /Order notes \(optional\)/);
   assert.match(form, /<OrderLineItemsEditor/);
-  assert.match(editor, /Add another item/);
+  assert.match(form, /<MerchandiseCard/);
+
+  // Variants are chosen on the merchandise cards and the order summary keeps
+  // the colour, quantity, and totals visible.
   assert.match(editor, /Remove/);
   assert.match(editor, /type="number"/);
-  assert.match(editor, /min=\{1\}/);
-  assert.match(editor, /max=\{99\}/);
-  assert.match(editor, /Unit price/);
-  assert.match(editor, /Line total/);
-  assert.match(editor, /product\.colorLabel/);
-  assert.match(editor, /defaultColorForProduct/);
+  assert.match(editor, /min="1"/);
+  assert.match(editor, /max="99"/);
+  assert.match(editor, /Order total/);
+  assert.match(editor, /Total quantity/);
+  assert.match(editor, /item\.color/);
 
-  assert.match(page, /Place your order/);
+  assert.match(page, /Shop and Order/);
   assert.match(page, /id="order-form"/);
   assert.match(page, /<PaymentPanel/);
   assert.match(page, /id="payment"/);
@@ -594,29 +596,26 @@ test("every order item renders its own colour selector from the product configur
     ["Maroon", "Green", "Blue"],
   );
 
-  // The selector is rendered per line item, keyed to that item so each row
-  // keeps an independent selection.
-  assert.match(editor, /id=\{`\$\{idPrefix\}-color-\$\{item\.key\}`\}/);
-  assert.match(editor, /value=\{item\.color\}/);
-  assert.match(
-    editor,
-    /updateItem\(item\.key, \{ color: event\.target\.value \}\)/,
+  // Variants are chosen on each merchandise card from the product
+  // configuration, so every product keeps an independent selection.
+  const card = await read(
+    "../../src/components/fundraising/MerchandiseCard.tsx",
   );
-  assert.match(editor, /product\.colors\.map/);
-  assert.match(editor, /Select a colour/);
-  assert.match(editor, /product\.colorLabel/);
+  assert.match(card, /id=\{`merch-color-\$\{item\.id\}`\}/);
+  assert.match(card, /value=\{selectedColor\}/);
+  assert.match(card, /item\.colors\.map/);
+  assert.match(card, /item\.colorLabel/);
+  assert.match(card, /T_SHIRT_SIZES\.map/);
+  assert.match(card, /onAddItem\(\{/);
 
-  // A T-shirt shows the colour field between Product and Size; the eco bag
-  // keeps its handle-colour field and hides the redundant size selector.
-  const productIndex = editor.indexOf("-product-${item.key}");
-  const colourIndex = editor.indexOf("-color-${item.key}");
-  const sizeIndex = editor.indexOf("-size-${item.key}");
-  assert.ok(productIndex < colourIndex, "colour follows the product selector");
-  assert.ok(colourIndex < sizeIndex, "colour precedes the size selector");
-  assert.match(editor, /isEcoBag\(item\.productId\)/);
+  // A T-shirt requires an explicit size; other products default to One Size.
+  assert.match(card, /const isShirt = item\.id === "project-ilaw-t-shirt"/);
+  assert.match(card, /size: isShirt \? selectedSize : "One Size"/);
+  assert.match(card, /color: selectedColor/);
 
-  // Colour state lives in the draft item, never in shared component state.
-  assert.doesNotMatch(editor, /useState/);
+  // The selection is handed to the draft as a new order line item.
+  assert.match(editor, /items\.map/);
+  assert.match(editor, /item\.color/);
 });
 
 test("the chosen colour reaches the review, the summary, and the submitted order", async () => {
@@ -645,7 +644,6 @@ test("the chosen colour reaches the review, the summary, and the submitted order
 
   // The live summary and the pre-submit review both show the Colour column.
   assert.match(form, /<th scope="col">Colour<\/th>/);
-  assert.match(form, /<td>\{item\.color \|\| "—"\}<\/td>/);
   assert.match(form, /<td>\{item\.color\}<\/td>/);
 
   // The reviewed items, including colour, are what gets submitted.
@@ -846,4 +844,127 @@ test("order detail offers a cash recording action with an explicit receipt confi
   assert.match(detail, /I have physically received the cash for this order/);
   assert.match(detail, /type="checkbox"/);
   assert.match(detail, /Amount received/);
+});
+
+test("the payment page shows a prominent receipt reminder before the evidence form", async () => {
+  const panel = await read("../../src/components/fundraising/PaymentPanel.tsx");
+  const css = await read("../../src/features/fundraising/Fundraising.css");
+
+  const instructionsStart = panel.indexOf('className="payment-instructions"');
+  const warningStart = panel.indexOf('className="payment-receipt-warning"');
+  const submitStart = panel.indexOf("canSubmitPayment &&");
+
+  assert.ok(
+    instructionsStart !== -1,
+    "the QR/payment instructions section is required",
+  );
+  assert.ok(
+    warningStart > instructionsStart,
+    "the reminder must follow the payment instructions",
+  );
+  assert.ok(
+    submitStart > warningStart,
+    "the reminder must precede the evidence submission form",
+  );
+
+  const warning = panel.slice(warningStart, submitStart).replace(/\s+/g, " ");
+
+  assert.match(warning, /IMPORTANT: SAVE YOUR PAYMENT RECEIPT!/);
+  assert.match(
+    warning,
+    /Before closing GCash or your banking app, take a screenshot of your successful transaction and save the Transaction Reference Number\./,
+  );
+  assert.match(
+    warning,
+    /You will need this number to submit your payment for verification\./,
+  );
+  assert.match(
+    warning,
+    /This applies to all supported payment channels, including GCash, InstaPay-enabled banking apps, and other supported payment methods\./,
+  );
+  assert.match(
+    warning,
+    /Do not close your payment receipt until you have saved these details\./,
+  );
+
+  // A warning icon and warning (not error) styling are required.
+  assert.match(warning, /AlertCircle/);
+  assert.match(css, /\.payment-receipt-warning \{/);
+  assert.match(css, /\.payment-receipt-warning-icon \{/);
+  assert.match(css, /\.payment-receipt-warning p \{/);
+  assert.match(
+    css,
+    /@media \(max-width: 620px\) \{[\s\S]*\.payment-receipt-warning \{[^}]*padding: 14px/s,
+  );
+});
+
+test("the payment evidence form requires both the transaction reference and the receipt", async () => {
+  const panel = await read("../../src/components/fundraising/PaymentPanel.tsx");
+
+  // Both requirements are explicit in the visible labels.
+  assert.match(panel, /Transaction Reference Number \(Required\)/);
+  assert.match(panel, /Payment Receipt Screenshot\/PDF \(Required\)/);
+  assert.match(
+    panel,
+    /placeholder="Enter the transaction reference number shown on your payment receipt"/,
+  );
+
+  // The order reference and the payment provider reference are distinguished.
+  assert.match(panel, /not your Project Ilaw order reference/);
+
+  // Submission is blocked before upload when either value is missing.
+  assert.match(panel, /cleanReference\.length < 4/);
+  assert.match(panel, /if \(!evidence\)/);
+
+  // Both controls stay required and the server-side submission is unchanged.
+  assert.match(
+    panel,
+    /id="payment-transaction-reference"[\s\S]{0,600}?required/,
+  );
+  assert.match(panel, /id="payment-evidence"[\s\S]{0,600}?required/);
+  assert.match(panel, /submitProjectIlawPayment\(\{/);
+  assert.match(panel, /uploadProjectIlawPaymentEvidence\(/);
+});
+
+test("order management offers a permission-gated staff-assisted order flow", async () => {
+  const page = await read("../../src/pages/admin/ProjectIlawOrders.tsx");
+  const service = await read("../../src/features/fundraising/orderService.ts");
+
+  // The entry point sits beside the existing page actions and is manage-only.
+  assert.match(page, /Create Staff Order/);
+  assert.match(page, /canManage &&/);
+  assert.match(page, /hasPermission\("project_ilaw\.orders\.manage"\)/);
+
+  // The form covers the three required sections and reuses the catalogue.
+  assert.match(page, /Create staff-assisted order/);
+  assert.match(page, /Customer information/);
+  assert.match(page, /Order items/);
+  assert.match(page, /Payment information/);
+  assert.match(page, /<MerchandiseCard/);
+  assert.match(page, /<OrderLineItemsEditor/);
+
+  // Customer name is required; mobile stays optional.
+  assert.match(page, /Customer name \(required\)/);
+  assert.match(page, /Mobile number \(optional\)/);
+
+  // GCash stays in Payment Verification, cash is recorded only after physical
+  // receipt, and an unpaid order keeps the existing Awaiting Payment status.
+  assert.match(page, /paymentStatus = "payment_verification"/);
+  assert.match(page, /recordProjectIlawCashPayment\([\s\S]{0,160}?true,/);
+  assert.match(page, /paymentStatus = "paid"/);
+  assert.match(page, /Unpaid — Awaiting Payment/);
+
+  // The new order is refreshed into the list with a copyable reference.
+  assert.match(page, /Copy reference/);
+  assert.match(page, /await load\(\)/);
+
+  // Staff identity comes from the session on the server, never the client.
+  assert.match(service, /createProjectIlawStaffOrder/);
+  assert.match(service, /rpc\("create_project_ilaw_staff_order"/);
+  assert.doesNotMatch(service, /p_staff_id|p_actor_id/);
+
+  // Order source is visible in the existing order table.
+  assert.match(page, /<th scope="col">Source<\/th>/);
+  assert.match(page, /Staff-assisted/);
+  assert.match(page, /"Online"/);
 });

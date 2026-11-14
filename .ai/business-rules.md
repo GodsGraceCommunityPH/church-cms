@@ -421,6 +421,26 @@ customer pays the exact total, then submits a transaction reference and payment
 screenshot or PDF through the website. Fulfilment is pickup at God's Grace
 Community Covenant Church; no delivery option is invented.
 
+Before submitting evidence, the payment screen shows a prominent warning to save
+the payment receipt: the transaction reference number and a screenshot of the
+successful transaction must be kept before closing GCash or the banking app, for
+every supported channel. The transaction reference and the receipt file are both
+explicitly required, and the interface distinguishes the provider transaction
+reference from the Project Ilaw order reference.
+
+Staff-assisted ordering supports buyers who order through Facebook Messenger,
+personal messages, or in person. An authorized staff member with the order-manage
+permission may create the same kind of order from Order Management. Staff enter
+the customer name (required) and mobile number (optional), choose catalogue items
+that the server validates again, and record one payment state: unpaid (Awaiting
+Payment), GCash (transaction reference and receipt required; the order moves to
+Payment Verification and is never auto-paid), or cash (marked Paid only after
+staff confirm they physically received it). Staff-assisted orders are tagged with
+the `staff` source, record the creating staff member and time, and use the same
+order tables, reference generator, idempotency, and audit history as public
+orders. They do not require public order intake to be open. The customer mobile
+number is optional except for GCash staff orders, where it is required.
+
 `orders_enabled` and `payments_enabled` are independent. While payments are
 disabled, no QR or active payment instructions are shown, and the database
 rejects payment evidence even when the caller has a valid reference, mobile

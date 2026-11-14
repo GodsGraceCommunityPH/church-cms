@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Download,
+  Plus,
   RefreshCcw,
   Search,
 } from "lucide-react";
@@ -9,12 +10,16 @@ import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
 import Modal from "../../components/Modal";
 import Select from "../../components/ui/Select";
+import MerchandiseCard from "../../components/fundraising/MerchandiseCard";
+import OrderLineItemsEditor from "../../components/fundraising/OrderLineItemsEditor";
 import { useAuth } from "../../features/auth/auth";
 import {
   FULFILLMENT_STATUS_LABELS,
   PAYMENT_STATUS_LABELS,
   SHOP_ITEMS,
+  createRequestId,
   formatPeso,
+  type OrderDraft,
   type ProjectIlawOrder,
   type ProjectIlawOrderFilters,
 } from "../../features/fundraising/projectIlaw";
@@ -28,11 +33,15 @@ import {
 } from "../../features/fundraising/orderAccounting";
 import {
   confirmProjectIlawPayment,
+  createProjectIlawStaffOrder,
   getPaymentEvidenceUrl,
   getProjectIlawExportRows,
   getProjectIlawOrders,
   recordProjectIlawCashPayment,
   rejectProjectIlawPayment,
+  submitProjectIlawPayment,
+  uploadProjectIlawPaymentEvidence,
+  type CreatedProjectIlawStaffOrder,
 } from "../../features/fundraising/orderService";
 import "./ProjectIlawOrders.css";
 
@@ -43,6 +52,9 @@ const EMPTY_FILTERS: ProjectIlawOrderFilters = {
   payment: "",
   fulfillment: "",
 };
+
+const STAFF_EVIDENCE_TYPES =
+  "image/jpeg,image/png,image/webp,application/pdf";
 
 function itemsSummary(order: ProjectIlawOrder) {
   return order.items
@@ -72,6 +84,7 @@ export default function ProjectIlawOrders() {
   const { hasPermission } = useAuth();
   const canExport = hasPermission("project_ilaw.orders.export");
   const canConfirmPayment = hasPermission("project_ilaw.orders.confirm_payment");
+  const canManage = hasPermission("project_ilaw.orders.manage");
   const [orders, setOrders] = useState<ProjectIlawOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -81,7 +94,26 @@ export default function ProjectIlawOrders() {
   const [filters, setFilters] =
     useState<ProjectIlawOrderFilters>(EMPTY_FILTERS);
 
-  // Cash payment dialog state.
+  // Staff-assisted order creation dialog state.
+  const [staffOrderOpen, setStaffOrderOpen] = useState(false);
+  const [staffOrderSubmitting, setStaffOrderSubmitting] = useState(false);
+  const [staffOrderError, setStaffOrderError] = useState("");
+  const [staffOrderWarning, setStaffOrderWarning] = useState("");
+  const [staffOrderCreated, setStaffOrderCreated] =
+    useState<CreatedProjectIlawStaffOrder | null>(null);
+  const [staffDraft, setStaffDraft] = useState<OrderDraft>(() => ({
+    customerName: "",
+    mobile: "",
+    notes: "",
+    items: [],
+  }));
+  const [staffPaymentMethod, setStaffPaymentMethod] = useState<
+    "gcash" | "cash" | "unpaid"
+  >("unpaid");
+  const [staffPaymentReference, setStaffPaymentReference] = useState("");
+  const [staffEvidenceFile, setStaffEvidenceFile] = useState<File | null>(null);
+  const [staffCashNote, setStaffCashNote] = useState("");
+  const staffRequestIdRef = useRef(createRequestId());
   const [cashOrder, setCashOrder] = useState<ProjectIlawOrder | null>(null);
   const [cashAmount, setCashAmount] = useState("");
   const [cashConfirmed, setCashConfirmed] = useState(false);
@@ -143,6 +175,153 @@ export default function ProjectIlawOrders() {
       setNotice("The CSV export could not be generated.");
     } finally {
       setExporting(false);
+    }
+  }
+
+  async function submitStaffOrder() {
+    if (staffOrderSubmitting) return;
+
+    const customerName = staffDraft.customerName.trim();
+    if (!customerName) {
+      setStaffOrderError("Customer name is required.");
+      return;
+    }
+    if (staffPaymentMethod === "gcash" && !staffDraft.mobile.trim()) {
+      setStaffOrderError("Enter the buyer mobile number for GCash staff orders.");
+      return;
+    }
+
+    const items = staffDraft.items
+      .map((item) => ({
+        productId: item.productId,
+        size: item.size,
+        color: item.color,
+        quantity: Number(item.quantity),
+      }))
+      .filter(
+        (item) =>
+          item.productId &&
+          item.size &&
+          item.color &&
+          Number.isInteger(item.quantity) &&
+          item.quantity > 0,
+      );
+
+    if (items.length === 0) {
+      setStaffOrderError("Add at least one valid order item before submitting.");
+      return;
+    }
+
+    if (staffPaymentMethod === "gcash") {
+      if (!staffPaymentReference.trim()) {
+        setStaffOrderError(
+          "Enter the GCash transaction reference from the buyer's receipt.",
+        );
+        return;
+      }
+      if (!staffEvidenceFile) {
+        setStaffOrderError("Attach the GCash receipt screenshot or PDF.");
+        return;
+      }
+    }
+
+    setStaffOrderSubmitting(true);
+    setStaffOrderError("");
+    setStaffOrderWarning("");
+    setStaffOrderCreated(null);
+
+    let created: CreatedProjectIlawStaffOrder;
+    try {
+      created = await createProjectIlawStaffOrder({
+        requestId: staffRequestIdRef.current,
+        customerName,
+        mobile: staffDraft.mobile.trim(),
+        notes: staffDraft.notes.trim(),
+        items,
+        // Record the intended method so the order row shows how the buyer is
+        // paying, even though the receipt is uploaded after the order exists.
+        paymentMethod:
+          staffPaymentMethod === "unpaid" ? "unpaid" : staffPaymentMethod,
+      });
+    } catch (error) {
+      const message =
+        (error as { message?: string } | null)?.message ||
+        "Staff-assisted order could not be created. Please try again.";
+      setStaffOrderError(message);
+      setStaffOrderSubmitting(false);
+      return;
+    }
+
+    let paymentStatus = created.paymentStatus;
+    let warning = "";
+
+    try {
+      if (staffPaymentMethod === "gcash" && staffEvidenceFile) {
+        // The receipt never marks the order paid. It only moves the order to
+        // Payment Verification for an independent manual review.
+        const evidencePath = await uploadProjectIlawPaymentEvidence(
+          created.orderId,
+          created.paymentToken,
+          staffEvidenceFile,
+        );
+        await submitProjectIlawPayment({
+          reference: created.reference,
+          mobile: staffDraft.mobile.trim(),
+          paymentToken: created.paymentToken,
+          paymentReference: staffPaymentReference.trim(),
+          evidencePath,
+        });
+        paymentStatus = "payment_verification";
+      } else if (staffPaymentMethod === "cash") {
+        // Cash is recorded only after the staff member confirms they
+        // physically received it, using the existing secure cash path.
+        await recordProjectIlawCashPayment(
+          created.orderId,
+          created.totalAmount,
+          staffCashNote,
+          true,
+        );
+        paymentStatus = "paid";
+      }
+    } catch (error) {
+      const message =
+        (error as { message?: string } | null)?.message ||
+        "The payment step did not complete.";
+      warning =
+        `Order ${created.reference} was created, but the ${
+          staffPaymentMethod === "gcash" ? "GCash receipt" : "cash payment"
+        } was not recorded: ${message} Open the order to retry.`;
+    }
+
+    // A fresh request id keeps the next staff order from being treated as a
+    // duplicate of the order that was just created.
+    staffRequestIdRef.current = createRequestId();
+    setStaffOrderCreated({ ...created, paymentStatus });
+    setStaffOrderWarning(warning);
+    setStaffOrderOpen(false);
+    setStaffDraft({
+      customerName: "",
+      mobile: "",
+      notes: "",
+      items: [],
+    });
+    setStaffPaymentMethod("unpaid");
+    setStaffPaymentReference("");
+    setStaffEvidenceFile(null);
+    setStaffCashNote("");
+    setStaffOrderError("");
+    setNotice(`Staff-assisted order ${created.reference} created.`);
+    setStaffOrderSubmitting(false);
+    await load();
+  }
+
+  async function copyStaffReference() {
+    if (!staffOrderCreated) return;
+    try {
+      await navigator.clipboard.writeText(staffOrderCreated.reference);
+      setNotice("Order reference copied to the clipboard.");
+    } catch {
+      setNotice(`Order reference: ${staffOrderCreated.reference}`);
     }
   }
 
@@ -260,6 +439,17 @@ export default function ProjectIlawOrders() {
           </p>
         </div>
         <div className="pilaw-orders-actions">
+          {canManage && (
+            <Button
+              onClick={() => {
+                setStaffOrderError("");
+                setStaffOrderOpen(true);
+              }}
+            >
+              <Plus size={16} aria-hidden="true" />
+              Create Staff Order
+            </Button>
+          )}
           <Button variant="secondary" onClick={() => void load()} disabled={loading}>
             <RefreshCcw size={16} aria-hidden="true" />
             Refresh
@@ -277,6 +467,36 @@ export default function ProjectIlawOrders() {
         <p className="pilaw-notice" role="status">
           {notice}
         </p>
+      )}
+
+      {staffOrderCreated && (
+        <div className="pilaw-notice pilaw-staff-created" role="status">
+          <p>
+            Staff-assisted order{" "}
+            <strong>{staffOrderCreated.reference}</strong> created for{" "}
+            {formatPeso(staffOrderCreated.totalAmount)}. Status:{" "}
+            {PAYMENT_STATUS_LABELS[staffOrderCreated.paymentStatus]}.
+          </p>
+          {staffOrderWarning && (
+            <p className="pilaw-inline-error" role="alert">
+              {staffOrderWarning}
+            </p>
+          )}
+          <div className="pilaw-embedded-form-actions">
+            <Button variant="secondary" onClick={() => void copyStaffReference()}>
+              Copy reference
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setStaffOrderCreated(null);
+                setStaffOrderWarning("");
+              }}
+            >
+              Dismiss
+            </Button>
+          </div>
+        </div>
       )}
 
       <section className="pilaw-search-panel" aria-label="Order search">
@@ -456,6 +676,7 @@ export default function ProjectIlawOrders() {
                   <th scope="col">Amount</th>
                   <th scope="col">Payment status</th>
                   <th scope="col">Fulfillment status</th>
+                  <th scope="col">Source</th>
                   <th scope="col">Action</th>
                 </tr>
               </thead>
@@ -490,6 +711,11 @@ export default function ProjectIlawOrders() {
                         className={`pilaw-status pilaw-status-${order.fulfillmentStatus}`}
                       >
                         {FULFILLMENT_STATUS_LABELS[order.fulfillmentStatus]}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`pilaw-status pilaw-source-${order.source}`}>
+                        {order.source === "staff" ? "Staff-assisted" : "Online"}
                       </span>
                     </td>
                      <td>
@@ -542,6 +768,8 @@ export default function ProjectIlawOrders() {
         only paid orders. A cancelled order that was already paid stays visible
         in the records and CSV export and is not automatically treated as a
         refund.
+      </p>
+
       <Modal
         open={Boolean(cashOrder)}
         title="Record cash payment"
@@ -652,7 +880,197 @@ export default function ProjectIlawOrders() {
           </div>
         )}
       </Modal>
-      </p>
+
+      <Modal
+        open={staffOrderOpen}
+        title="Create staff-assisted order"
+        onClose={() => {
+          if (!staffOrderSubmitting) setStaffOrderOpen(false);
+        }}
+      >
+        <div className="pilaw-embedded-form">
+          <h3>Customer information</h3>
+          <label>
+            Customer name (required)
+            <Input
+              value={staffDraft.customerName}
+              maxLength={120}
+              placeholder="Name used by the buyer"
+              onChange={(event) =>
+                setStaffDraft((draft) => ({
+                  ...draft,
+                  customerName: event.target.value,
+                }))
+              }
+              disabled={staffOrderSubmitting}
+            />
+          </label>
+          <label>
+            Mobile number (optional)
+            <Input
+              type="tel"
+              inputMode="tel"
+              value={staffDraft.mobile}
+              maxLength={32}
+              placeholder="09XX XXX XXXX"
+              onChange={(event) =>
+                setStaffDraft((draft) => ({
+                  ...draft,
+                  mobile: event.target.value,
+                }))
+              }
+              disabled={staffOrderSubmitting}
+            />
+          </label>
+          <label>
+            Staff notes (optional)
+            <Input
+              value={staffDraft.notes}
+              maxLength={1000}
+              placeholder="e.g. Ordered through Facebook Messenger"
+              onChange={(event) =>
+                setStaffDraft((draft) => ({
+                  ...draft,
+                  notes: event.target.value,
+                }))
+              }
+              disabled={staffOrderSubmitting}
+            />
+          </label>
+
+          <h3>Order items</h3>
+          <p className="pilaw-detail-note">
+            Choose the product, colour, size, and quantity, then add it to the
+            order. Prices always come from the official product catalogue.
+          </p>
+          <div className="merch-grid">
+            {SHOP_ITEMS.map((item) => (
+              <MerchandiseCard
+                key={item.id}
+                item={item}
+                ordersEnabled
+                disabled={
+                  staffOrderSubmitting || staffDraft.items.length >= 20
+                }
+                onAddItem={(newItem) =>
+                  setStaffDraft((draft) => ({
+                    ...draft,
+                    items: [...draft.items, newItem],
+                  }))
+                }
+              />
+            ))}
+          </div>
+          <OrderLineItemsEditor
+            items={staffDraft.items}
+            onChange={(items) =>
+              setStaffDraft((draft) => ({ ...draft, items }))
+            }
+            disabled={staffOrderSubmitting}
+            idPrefix="staff-order"
+          />
+
+          <h3>Payment information</h3>
+          <label>
+            Payment method
+            <Select
+              value={staffPaymentMethod}
+              onChange={(event) =>
+                setStaffPaymentMethod(
+                  event.target.value as "gcash" | "cash" | "unpaid",
+                )
+              }
+              disabled={staffOrderSubmitting}
+            >
+              <option value="unpaid">Unpaid — Awaiting Payment</option>
+              <option value="gcash">GCash — receipt received</option>
+              <option value="cash">Cash — already received</option>
+            </Select>
+          </label>
+
+          {staffPaymentMethod === "gcash" && (
+            <>
+              <label>
+                GCash transaction reference (required)
+                <Input
+                  value={staffPaymentReference}
+                  maxLength={120}
+                  placeholder="Reference shown on the buyer's receipt"
+                  onChange={(event) =>
+                    setStaffPaymentReference(event.target.value)
+                  }
+                  disabled={staffOrderSubmitting}
+                />
+              </label>
+              <label>
+                GCash receipt screenshot/PDF (required)
+                <input
+                  type="file"
+                  accept={STAFF_EVIDENCE_TYPES}
+                  onChange={(event) =>
+                    setStaffEvidenceFile(event.target.files?.[0] ?? null)
+                  }
+                  disabled={staffOrderSubmitting}
+                />
+              </label>
+              <p className="pilaw-detail-note">
+                The receipt only moves the order to Payment Verification. A
+                staff member must still confirm the actual transaction before the
+                order is marked Paid.
+              </p>
+            </>
+          )}
+
+          {staffPaymentMethod === "cash" && (
+            <>
+              <p className="pilaw-detail-note">
+                Record cash only after you have physically received it. This
+                marks the order Paid and records your staff account as the
+                confirmer.
+              </p>
+              <label>
+                Cash note (optional)
+                <Input
+                  value={staffCashNote}
+                  maxLength={1000}
+                  placeholder="e.g. Received at the church office"
+                  onChange={(event) => setStaffCashNote(event.target.value)}
+                  disabled={staffOrderSubmitting}
+                />
+              </label>
+            </>
+          )}
+
+          {staffPaymentMethod === "unpaid" && (
+            <p className="pilaw-detail-note">
+              The order stays Awaiting Payment. The buyer can submit GCash
+              evidence later using the order reference and mobile number.
+            </p>
+          )}
+
+          {staffOrderError && (
+            <p className="pilaw-inline-error" role="alert">
+              {staffOrderError}
+            </p>
+          )}
+
+          <div className="pilaw-embedded-form-actions">
+            <Button
+              onClick={() => void submitStaffOrder()}
+              disabled={staffOrderSubmitting}
+            >
+              {staffOrderSubmitting ? "Creating..." : "Create staff order"}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setStaffOrderOpen(false)}
+              disabled={staffOrderSubmitting}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

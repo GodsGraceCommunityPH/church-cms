@@ -54,6 +54,7 @@ export interface ProjectIlawOrderItem {
 
 export interface ProjectIlawOrder {
   id: string;
+  source: "online" | "staff";
   reference: string;
   customerName: string;
   mobile: string;
