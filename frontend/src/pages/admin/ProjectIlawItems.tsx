@@ -384,7 +384,6 @@ export default function ProjectIlawItems() {
                 {STAGES.map((stage) => {
                   const count = overview[stage === "manufacturing" ? "manufacturing" : stage];
                   const labels: Record<string, string> = {
-                    pending: "Awaiting production",
                     processing: "In progress",
                     manufacturing: "Being produced",
                     completed: "Finished units",
@@ -575,7 +574,6 @@ export default function ProjectIlawItems() {
                         <th scope="col">Size</th>
                         <th scope="col">Colour</th>
                         <th scope="col">Required</th>
-                        <th scope="col">Pending</th>
                         <th scope="col">Processing</th>
                         <th scope="col">Manufacturing</th>
                         <th scope="col">Completed</th>
@@ -589,7 +587,6 @@ export default function ProjectIlawItems() {
                           <td>{v.size}</td>
                           <td>{v.color}</td>
                           <td>{v.required_qty}</td>
-                          <td>{v.pending_qty}</td>
                           <td>{v.processing_qty}</td>
                           <td>{v.manufacturing_qty}</td>
                           <td>{v.completed_qty}</td>
