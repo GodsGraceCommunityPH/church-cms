@@ -532,7 +532,6 @@ export default function ProjectIlawItems() {
                         <td>{v.size}</td>
                         <td>{v.color}</td>
                         <td>{v.required_qty}</td>
-                        <td>{v.pending_qty}</td>
                         <td>{v.processing_qty}</td>
                         <td>{v.manufacturing_qty}</td>
                         <td>{v.completed_qty}</td>
