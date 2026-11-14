@@ -401,32 +401,41 @@ export default function ProjectIlawItems() {
                 })}
               </section>
 
-              <section className="pilaw-panel" aria-label="Product summary">
-                <h2>Product-level summary</h2>
-                {["t_shirt", "eco_bag"].map((pt) => {
-                  const t = productTotals[pt] ?? { required: 0, processing: 0, manufacturing: 0, completed: 0 };
-                  const pct = t.required > 0 ? Math.round((t.completed / t.required) * 100) : 0;
-                  return (
-                    <div key={pt} className="pilaw-breakdown-card" style={{ marginBottom: 12 }}>
-                      <h3>{pt === "t_shirt" ? "Project Ilaw T-shirt" : "Project Ilaw Eco Bag"}</h3>
-                      <p>
-                        Required {t.required} · Processing {t.processing} ·
-                        Manufacturing {t.manufacturing} · Completed {t.completed}
-                      </p>
-                      <div style={{ background: "#e5e7eb", borderRadius: 4, height: 8, marginTop: 8 }}>
+              <section className="pilaw-panel pilaw-product-summary" aria-label="Product summary">
+                <header className="pilaw-product-summary-header">
+                  <h2>Product-level summary</h2>
+                  <p>Production progress for each Project Ilaw product</p>
+                </header>
+                <div className="pilaw-product-summary-list">
+                  {["t_shirt", "eco_bag"].map((pt) => {
+                    const totals = productTotals[pt] ?? { required: 0, processing: 0, manufacturing: 0, completed: 0 };
+                    const pct = totals.required > 0 ? Math.round((totals.completed / totals.required) * 100) : 0;
+                    return (
+                      <article key={pt} className="pilaw-product-summary-card">
+                        <div className="pilaw-product-summary-card-heading">
+                          <h3>{pt === "t_shirt" ? "Project Ilaw T-shirt" : "Project Ilaw Eco Bag"}</h3>
+                          <span>{pct}% complete</span>
+                        </div>
+                        <dl className="pilaw-product-summary-metrics">
+                          <div><dt>Required</dt><dd>{totals.required}</dd></div>
+                          <div><dt>Processing</dt><dd>{totals.processing}</dd></div>
+                          <div><dt>Printing / Manufacturing</dt><dd>{totals.manufacturing}</dd></div>
+                          <div><dt>Completed</dt><dd>{totals.completed}</dd></div>
+                        </dl>
                         <div
-                          style={{
-                            background: "#4ade80",
-                            borderRadius: 4,
-                            height: 8,
-                            width: `${pct}%`,
-                          }}
-                        />
-                      </div>
-                      <small>{pct}% complete</small>
-                    </div>
-                  );
-                })}
+                          className="pilaw-product-summary-progress"
+                          role="progressbar"
+                          aria-label={`${pt === "t_shirt" ? "T-shirt" : "Eco Bag"} completion`}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-valuenow={pct}
+                        >
+                          <span style={{ width: `${pct}%` }} />
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
               </section>
 
               {reviewFlags.length > 0 && (
