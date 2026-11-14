@@ -97,6 +97,91 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+/* Item Management overview cards */
+.pilaw-summary > article {
+  align-content: start;
+  background: #fff;
+  border: 1px solid #d7e1ed;
+  border-radius: 18px;
+  box-shadow: 0 2px 5px rgb(15 23 42 / 6%);
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 24px 28px;
+}
+
+.pilaw-summary > article span,
+.pilaw-summary-stage span {
+  color: #64748b;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pilaw-summary > article strong,
+.pilaw-summary-stage strong {
+  color: #1e293b;
+  font-size: 2.25rem;
+  font-weight: 750;
+  line-height: 1.1;
+}
+
+.pilaw-summary > article small,
+.pilaw-summary-stage small {
+  color: #94a3b8;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.pilaw-summary-stage {
+  appearance: none;
+  background: #fff;
+  border: 1px solid #d7e1ed;
+  border-radius: 18px;
+  box-shadow: 0 2px 5px rgb(15 23 42 / 6%);
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  font: inherit;
+  gap: 8px;
+  min-width: 0;
+  padding: 24px 28px;
+  text-align: left;
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+  width: 100%;
+}
+
+.pilaw-summary-stage:hover,
+.pilaw-summary-stage:focus-visible {
+  border-color: #2453d4;
+  box-shadow: 0 0 0 3px rgb(36 83 212 / 12%);
+  outline: none;
+}
+
+.pilaw-summary-stage:active {
+  transform: translateY(1px);
+}
+
+.pilaw-stage-filter-heading {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  margin: 12px 0 16px;
+}
+
+@media (max-width: 640px) {
+  .pilaw-summary > article,
+  .pilaw-summary-stage {
+    padding: 20px;
+  }
+}
+
 .pilaw-summary-card {
   appearance: none;
   background: #fff;
