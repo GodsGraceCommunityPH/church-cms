@@ -178,6 +178,7 @@ function Members() {
         ) : (
           <MemberTable
             members={filteredMembers}
+            canEdit={hasPermission("members.update")}
             newMemberIds={newMemberIds}
             onOpen={(id) => navigate(`/admin/members/${id}`)}
             onEdit={(id) => navigate(`/admin/members/${id}/edit`)}
