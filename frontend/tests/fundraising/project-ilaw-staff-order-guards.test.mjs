@@ -269,3 +269,15 @@ test("evidence file reads are bounded before upload", async () => {
   assert.match(source, /MAX_EVIDENCE_BYTES/);
   assert.match(source, /gcashEvidence\.size > MAX_EVIDENCE_BYTES/);
 });
+
+test("staff order creation uses its dedicated permission instead of order management", async () => {
+  const source = await readSource("src/pages/admin/ProjectIlawOrders.tsx");
+  assert.match(source, /const canCreateStaffOrder = hasPermission\("project_ilaw\.orders\.create"\)/);
+  assert.match(source, /\{canCreateStaffOrder && \([\s\S]*?Create Staff Order/);
+  assert.doesNotMatch(source, /\{canManage && \([\s\S]*?Create Staff Order/);
+  const migration = await readSource(
+    "../supabase/migrations/20261114170000_project_ilaw_staff_order_create_permission.sql",
+  ).catch(async () => "");
+  // Backend authorization is also migrated to the dedicated create permission.
+  assert.match(migration, /project_ilaw\.orders\.create/);
+});
