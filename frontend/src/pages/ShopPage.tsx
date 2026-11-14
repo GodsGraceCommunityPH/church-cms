@@ -77,8 +77,7 @@ export default function ShopPage() {
           <h2 id="shop-intro-title">Light for our church home</h2>
           <p>{PROJECT_ILAW.summary}</p>
           <p>
-            The shop is one way the church family can take part. Both items are
-            ₱499 each. Orders are placed here when ordering is open, then paid
+            The shop is one way the church family can take part. The T-shirt is ₱499 and the Eco Bag is ₱399. Orders are placed here when ordering is open, then paid
             through the official payment details published on this page once
             they are available.
           </p>
