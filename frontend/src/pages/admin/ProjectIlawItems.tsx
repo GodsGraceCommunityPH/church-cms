@@ -80,6 +80,7 @@ export default function ProjectIlawItems() {
   const canMove = hasPermission("project_ilaw.production.move");
 
   const [tab, setTab] = useState<Tab>("overview");
+  const [selectedStage, setSelectedStage] = useState<(typeof STAGES)[number] | null>(null);
   const [overview, setOverview] = useState<any>(null);
   const [variants, setVariants] = useState<Variant[]>([]);
   const [queue, setQueue] = useState<Variant[]>([]);
@@ -153,6 +154,17 @@ export default function ProjectIlawItems() {
       return true;
     });
   }, [variants, filterProduct, filterSize, filterColor, showZero, showAllVariants]);
+
+  const filteredStageVariants = useMemo(() => {
+    if (!selectedStage) return [];
+    const qtyKey = selectedStage === "manufacturing" ? "manufacturing_qty" : `${selectedStage}_qty`;
+    return variants.filter((v) => {
+      if (filterProduct !== "all" && v.product_type !== filterProduct) return false;
+      if (filterSize !== "all" && v.size !== filterSize) return false;
+      if (filterColor !== "all" && v.color !== filterColor) return false;
+      return v[qtyKey] > 0;
+    });
+  }, [variants, selectedStage, filterProduct, filterSize, filterColor]);
 
   const filteredQueue = useMemo(() => {
     return queue.filter((v) => {
@@ -366,26 +378,32 @@ export default function ProjectIlawItems() {
                   <strong>{overview.total_required}</strong>
                   <small>All paid, non-cancelled orders</small>
                 </article>
-                <article>
-                  <span>Pending</span>
-                  <strong>{overview.pending}</strong>
-                  <small>Awaiting production</small>
-                </article>
-                <article>
-                  <span>Processing</span>
-                  <strong>{overview.processing}</strong>
-                  <small>In progress</small>
-                </article>
-                <article>
-                  <span>Printing / Manufacturing</span>
-                  <strong>{overview.manufacturing}</strong>
-                  <small>Being produced</small>
-                </article>
-                <article>
-                  <span>Completed</span>
-                  <strong>{overview.completed}</strong>
-                  <small>Finished units</small>
-                </article>
+                {STAGES.map((stage) => {
+                  const count = overview[stage === "manufacturing" ? "manufacturing" : stage];
+                  const labels: Record<string, string> = {
+                    pending: "Awaiting production",
+                    processing: "In progress",
+                    manufacturing: "Being produced",
+                    completed: "Finished units",
+                  };
+                  return (
+                    <button
+                      key={stage}
+                      type="button"
+                      className="pilaw-summary-stage"
+                      onClick={() => {
+                        setSelectedStage(stage);
+                        resetFilters();
+                        setTab("queue");
+                      }}
+                      aria-label={`View ${count} units in ${STAGE_LABELS[stage]}`}
+                    >
+                      <span>{STAGE_LABELS[stage]}</span>
+                      <strong>{count}</strong>
+                      <small>{labels[stage]} · View and move items</small>
+                    </button>
+                  );
+                })}
               </section>
 
               <section className="pilaw-panel" aria-label="Product summary">
@@ -536,8 +554,14 @@ export default function ProjectIlawItems() {
 
           {tab === "queue" && (
             <section className="pilaw-panel" aria-label="Production queue">
-              <h2>Production queue</h2>
-              {filteredQueue.length === 0 ? (
+              <h2>{selectedStage ? `${STAGE_LABELS[selectedStage]} items` : "Production queue"}</h2>
+              {selectedStage && (
+                <div className="pilaw-stage-filter-heading">
+                  <span>Showing items currently in {STAGE_LABELS[selectedStage]}.</span>
+                  <Button variant="secondary" onClick={() => setSelectedStage(null)}>Show full queue</Button>
+                </div>
+              )}
+              {(selectedStage ? filteredStageVariants : filteredQueue).length === 0 ? (
                 <p className="pilaw-state">No variants require production.</p>
               ) : (
                 <div className="pilaw-table-wrap">
@@ -556,7 +580,7 @@ export default function ProjectIlawItems() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredQueue.map((v) => (
+                      {(selectedStage ? filteredStageVariants : filteredQueue).map((v) => (
                         <tr key={v.variant_id}>
                           <td>{productLabel(v.product_type)}</td>
                           <td>{v.size}</td>
@@ -574,8 +598,11 @@ export default function ProjectIlawItems() {
                                 onClick={() => {
                                   setMoveVariant(v);
                                   setMoveQty("");
-                                  setMoveFrom("pending");
-                                  setMoveTo("processing");
+                                  const sourceStage = selectedStage ?? "pending";
+                                  const sourceIndex = STAGES.indexOf(sourceStage);
+                                  const destinationStage = sourceIndex < STAGES.length - 1 ? STAGES[sourceIndex + 1] : STAGES[sourceIndex - 1];
+                                  setMoveFrom(sourceStage);
+                                  setMoveTo(destinationStage);
                                   setMoveReason("");
                                 }}
                               >
