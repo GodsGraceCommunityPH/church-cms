@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Outlet } from "react-router-dom";
+import { Menu } from "lucide-react";
 
 import Sidebar from "../components/admin/Sidebar";
 import Topbar from "../components/admin/Topbar";
@@ -35,6 +36,20 @@ function AdminLayout() {
         onClose={() => setSidebarOpen(false)}
         onToggleCollapse={() => setSidebarCollapsed((current) => !current)}
       />
+
+      {/* Persistent mobile menu access while the page is scrolled */}
+      {!sidebarOpen && (
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Open navigation menu"
+          title="Open navigation menu"
+          className="admin-floating-menu-button md:hidden"
+        >
+          <Menu size={22} aria-hidden="true" />
+          <span>Menu</span>
+        </button>
+      )}
 
       {/* Main */}
       <div className="flex min-w-0 flex-1 flex-col">
