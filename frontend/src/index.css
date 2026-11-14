@@ -758,13 +758,13 @@ body {
   background: #263b1c;
   border: 1px solid rgb(255 255 255 / 20%);
   border-radius: 999px;
-  bottom: calc(18px + env(safe-area-inset-bottom));
+  top: calc(12px + env(safe-area-inset-top));
   box-shadow: 0 5px 18px rgb(15 23 42 / 28%);
   color: #fff;
   display: inline-flex;
   gap: 8px;
   justify-content: center;
-  left: 18px;
+  left: 14px;
   min-height: 50px;
   min-width: 50px;
   padding: 0 16px;
