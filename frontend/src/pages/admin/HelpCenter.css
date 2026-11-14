@@ -529,3 +529,32 @@
     line-height: 1.7;
   }
 }
+
+
+.help-ilaw-guide {
+  border-bottom: 1px solid #e4e9ef;
+  padding: 18px 20px;
+}
+
+.help-ilaw-guide:last-child {
+  border-bottom: 0;
+}
+
+.help-ilaw-guide summary {
+  color: #172033;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.help-ilaw-guide summary:focus-visible {
+  outline: 3px solid rgba(82, 112, 45, 0.38);
+  outline-offset: 4px;
+}
+
+.help-ilaw-guide p {
+  color: #526076;
+  line-height: 1.7;
+  margin: 12px 0 2px;
+  max-width: 900px;
+}

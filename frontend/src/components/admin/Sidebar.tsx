@@ -146,6 +146,13 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
   const [signingOut, setSigningOut] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const trainingOnly = hasPermission("training.view") && !hasPermission("members.view") && !hasPermission("cell_groups.view") && !hasPermission("finance.view");
+  const projectIlawOnly =
+    (hasPermission("project_ilaw.orders.view") || hasPermission("project_ilaw.production.view")) &&
+    ![
+      "training.view", "members.view", "cell_groups.view", "finance.view",
+      "evangelism.view", "ministries.view", "events.view", "equipment.view",
+      "resources.view", "website_content.view", "admin.users",
+    ].some(hasPermission);
   const linkClass =
     "flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-gray-100";
   const linkStyle = {
@@ -351,11 +358,11 @@ function Sidebar({ open, collapsed, onClose, onToggleCollapse }: SidebarProps) {
                 to="/admin/help"
                 onClick={onClose}
                 style={linkStyle}
-                title={collapsed ? "How To's" : undefined}
-                aria-label={collapsed ? "How To's" : undefined}
+                title={collapsed ? (projectIlawOnly ? "Project Ilaw How To's" : "How To's") : undefined}
+                aria-label={collapsed ? (projectIlawOnly ? "Project Ilaw How To's" : "How To's") : undefined}
               >
                 <BookOpen size={18} aria-hidden="true" />
-                {!collapsed && "How To's"}
+                {!collapsed && (projectIlawOnly ? "Project Ilaw How To's" : "How To's")}
               </NavLink>
             </div>
           </div>
