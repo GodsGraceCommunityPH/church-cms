@@ -161,14 +161,13 @@ export function staffPaymentBlockReason(input: {
 }
 
 /**
- * A failed GCash upload leaves the order Awaiting Payment. Staff can retry from
- * the order page as long as payment collection is open and the order still has
- * the mobile number used by the public payment lookup.
+ * Staff can attach a GCash receipt sent directly to them to any unpaid GCash
+ * order. The existing public payment lookup supplies the order's private token,
+ * so the same order-scoped storage and payment submission safeguards apply.
  */
-export function canRetryStaffGcashPayment(
+export function canRecordGcashReceipt(
   order: Pick<
     ProjectIlawOrder,
-    | "source"
     | "paymentMethod"
     | "paymentStatus"
     | "fulfillmentStatus"
@@ -178,7 +177,6 @@ export function canRetryStaffGcashPayment(
 ): boolean {
   return (
     paymentsEnabled === true &&
-    order.source === "staff" &&
     order.paymentMethod === "gcash" &&
     order.paymentStatus === "awaiting_payment" &&
     order.fulfillmentStatus !== "cancelled" &&
