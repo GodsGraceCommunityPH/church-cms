@@ -1005,7 +1005,7 @@ export default function ProjectIlawOrderDetail() {
                     <option value="cash">Cash</option>
                   </Select>
                   <p className="pilaw-detail-note">
-                    Payment method can only be changed while the order is Awaiting Payment.
+                    Payment method can only be changed while the order is Awaiting Payment and fulfillment has not started.
                     Once a payment is submitted for verification or confirmed, it is locked.
                   </p>
                   <div className="pilaw-embedded-form-actions">
