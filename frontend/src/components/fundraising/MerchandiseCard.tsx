@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { T_SHIRT_SIZES, type OrderDraftItem } from "../../features/fundraising/projectIlaw";
 import type { ShopItem } from "../../features/fundraising/projectIlaw";
 import { formatPeso, SHOP_STATUS } from "../../features/fundraising/projectIlaw";
@@ -15,6 +15,14 @@ export default function MerchandiseCard({ item, ordersEnabled = false, onAddItem
   const [selectedColor, setSelectedColor] = useState(item.colors[0] ?? "Black");
   const [selectedSize, setSelectedSize] = useState(isShirt ? "" : "One Size");
   const [quantity, setQuantity] = useState("1");
+  const [imageOpen, setImageOpen] = useState(false);
+
+  useEffect(() => {
+    if (!imageOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") setImageOpen(false); };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [imageOpen]);
 
   return (
     <article className="merch-card">
