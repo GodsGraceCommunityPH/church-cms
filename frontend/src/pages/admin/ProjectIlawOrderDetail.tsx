@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import type { FormEvent } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import {
   ArrowLeft,
   FileImage,
   RefreshCcw,
   ShieldAlert,
   ShieldCheck,
+  Upload,
 } from "lucide-react";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
@@ -144,6 +145,18 @@ export default function ProjectIlawOrderDetail() {
   const [staffEvidenceNote, setStaffEvidenceNote] = useState("");
   const [staffEvidenceError, setStaffEvidenceError] = useState("");
   const staffEvidenceInputRef = useRef<HTMLInputElement>(null);
+  const [staffEvidencePreviewUrl, setStaffEvidencePreviewUrl] = useState("");
+
+  useEffect(() => {
+    if (!staffEvidence || !staffEvidence.type.startsWith("image/")) {
+      setStaffEvidencePreviewUrl("");
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(staffEvidence);
+    setStaffEvidencePreviewUrl(previewUrl);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [staffEvidence]);
 
   // Staff GCash retry: a failed receipt upload leaves the order Awaiting
   // Payment, so staff must be able to finish it without creating a new order.
@@ -399,9 +412,44 @@ export default function ProjectIlawOrderDetail() {
     });
   }
 
+  function openStaffEvidencePicker() {
+    const input = staffEvidenceInputRef.current;
+    if (!input || busy) return;
+    // Clearing first allows the same file to be selected again after removal.
+    input.value = "";
+    input.click();
+  }
+
+  function handleStaffEvidenceSelection(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0] ?? null;
+    if (!file) return;
+
+    setStaffEvidence(file);
+    if (file.size > MAX_EVIDENCE_BYTES) {
+      setStaffEvidenceError("The payment proof must be 5 MB or smaller.");
+    } else if (
+      !["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(file.type)
+    ) {
+      setStaffEvidenceError("Use a JPG, PNG, WEBP, or PDF payment proof.");
+    } else {
+      setStaffEvidenceError("");
+    }
+  }
+
+  function removeStaffEvidence() {
+    if (busy) return;
+    setStaffEvidence(null);
+    setStaffEvidenceError("");
+    if (staffEvidenceInputRef.current) staffEvidenceInputRef.current.value = "";
+  }
+
   async function handleStaffEvidenceUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!order || !staffEvidence || busy) return;
+    if (!order || busy) return;
+    if (!staffEvidence) {
+      setStaffEvidenceError("Choose a payment screenshot or PDF first.");
+      return;
+    }
     if (staffEvidence.size > MAX_EVIDENCE_BYTES) {
       setStaffEvidenceError("The payment proof must be 5 MB or smaller.");
       return;
@@ -410,6 +458,7 @@ export default function ProjectIlawOrderDetail() {
       setStaffEvidenceError("Use a JPG, PNG, WEBP, or PDF payment proof.");
       return;
     }
+
     setStaffEvidenceError("");
     await runAction("staff-evidence", async () => {
       const evidencePath = await uploadStaffProjectIlawPaymentEvidence(order.id, staffEvidence);
@@ -422,6 +471,7 @@ export default function ProjectIlawOrderDetail() {
       setStaffEvidence(null);
       setStaffEvidenceReference("");
       setStaffEvidenceNote("");
+      setStaffEvidenceError("");
       if (staffEvidenceInputRef.current) staffEvidenceInputRef.current.value = "";
       setNotice("Payment proof attached. The order is awaiting payment verification; it has not been marked paid.");
       await load();
@@ -932,27 +982,119 @@ export default function ProjectIlawOrderDetail() {
               )}
 
               {canConfirmPayment && order.paymentMethod === "gcash" && !paid && !cancelled && (
-                <form className="pilaw-embedded-form" onSubmit={(event) => void handleStaffEvidenceUpload(event)}>
+                <form
+                  className="pilaw-embedded-form"
+                  onSubmit={(event) => void handleStaffEvidenceUpload(event)}
+                >
                   <strong>Attach customer payment proof</strong>
-                  <p className="pilaw-detail-note">Use this when the customer sends their GCash screenshot directly to staff. This records the proof for review; it does not confirm payment.</p>
+                  <p className="pilaw-detail-note">
+                    Use this when the customer sends their GCash screenshot directly to staff.
+                    This records the proof for review; it does not confirm payment.
+                  </p>
                   <label>
                     Transaction reference (optional)
-                    <Input value={staffEvidenceReference} maxLength={120} onChange={(event) => setStaffEvidenceReference(event.target.value)} placeholder="Reference from the GCash receipt" disabled={Boolean(busy)} />
+                    <Input
+                      value={staffEvidenceReference}
+                      maxLength={120}
+                      onChange={(event) => setStaffEvidenceReference(event.target.value)}
+                      placeholder="Reference from the GCash receipt"
+                      disabled={Boolean(busy)}
+                    />
                   </label>
-                  <label>
-                    Screenshot or PDF
-                    <input ref={staffEvidenceInputRef} type="file" accept={EVIDENCE_TYPES} onChange={(event) => setStaffEvidence(event.target.files?.[0] ?? null)} disabled={Boolean(busy)} required />
-                  </label>
+
+                  <div className="pilaw-payment-upload">
+                    <span className="pilaw-payment-upload-label">Screenshot or PDF</span>
+                    <input
+                      ref={staffEvidenceInputRef}
+                      className="pilaw-file-input"
+                      type="file"
+                      accept={EVIDENCE_TYPES}
+                      onChange={handleStaffEvidenceSelection}
+                      disabled={Boolean(busy)}
+                      aria-label="Choose customer payment proof"
+                    />
+
+                    {!staffEvidence ? (
+                      <div className="pilaw-payment-upload-actions">
+                        <Button
+                          type="button"
+                          onClick={openStaffEvidencePicker}
+                          disabled={Boolean(busy)}
+                        >
+                          <Upload size={16} aria-hidden="true" />
+                          Upload Payment Proof
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="pilaw-payment-upload-selection">
+                        <div className="pilaw-payment-upload-preview">
+                          {staffEvidencePreviewUrl ? (
+                            <img
+                              src={staffEvidencePreviewUrl}
+                              alt={`Preview of ${staffEvidence.name}`}
+                            />
+                          ) : (
+                            <div className="pilaw-payment-upload-file-icon" aria-hidden="true">
+                              <FileImage size={30} />
+                            </div>
+                          )}
+                          <div className="pilaw-payment-upload-file-details">
+                            <strong>{staffEvidence.name}</strong>
+                            <span>
+                              {staffEvidence.type === "application/pdf" ? "PDF document" : "Image"}
+                              {" · "}
+                              {(staffEvidence.size / 1024).toFixed(1)} KB
+                            </span>
+                          </div>
+                        </div>
+                        <div className="pilaw-payment-upload-actions">
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={openStaffEvidencePicker}
+                            disabled={Boolean(busy)}
+                          >
+                            Change file
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="danger"
+                            onClick={removeStaffEvidence}
+                            disabled={Boolean(busy)}
+                          >
+                            Remove file
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {staffEvidenceError && (
+                      <p className="pilaw-inline-error" role="alert">
+                        {staffEvidenceError}
+                      </p>
+                    )}
+                    {staffEvidence && (
+                      <div className="pilaw-embedded-form-actions">
+                        <Button
+                          type="submit"
+                          disabled={Boolean(busy) || Boolean(staffEvidenceError)}
+                        >
+                          {busy === "staff-evidence" ? "Uploading..." : "Upload"}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
                   <label>
                     Staff note (optional)
-                    <Input value={staffEvidenceNote} maxLength={1000} onChange={(event) => setStaffEvidenceNote(event.target.value)} placeholder="e.g. Sent by customer via Messenger" disabled={Boolean(busy)} />
+                    <Input
+                      value={staffEvidenceNote}
+                      maxLength={1000}
+                      onChange={(event) => setStaffEvidenceNote(event.target.value)}
+                      placeholder="e.g. Sent by customer via Messenger"
+                      disabled={Boolean(busy)}
+                    />
                   </label>
-                  {staffEvidenceError && <p className="pilaw-inline-error" role="alert">{staffEvidenceError}</p>}
-                  <div className="pilaw-embedded-form-actions">
-                    <Button type="submit" disabled={Boolean(busy) || !staffEvidence}>
-                      {busy === "staff-evidence" ? "Uploading..." : "Upload payment proof"}
-                    </Button>
-                  </div>
                 </form>
               )}
 
