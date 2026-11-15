@@ -68,17 +68,6 @@ const STAFF_EVIDENCE_TYPES =
   "image/jpeg,image/png,image/webp,application/pdf";
 const STAFF_EVIDENCE_MAX_BYTES = 5 * 1024 * 1024;
 
-function itemsSummary(order: ProjectIlawOrder) {
-  return order.items
-    .map(
-      (item) =>
-        `${item.productName} · ${item.color} · ${
-          item.productType === "eco_bag" ? "One Size" : item.size
-        } ×${item.quantity}`,
-    )
-    .join(", ");
-}
-
 function matchesSearch(order: ProjectIlawOrder, query: string) {
   if (!query) return true;
   const haystack = [
@@ -793,7 +782,7 @@ export default function ProjectIlawOrders() {
           {productionReport && <><div className="pilaw-production-meta"><div><dt>Production lines</dt><dd>{productionReport.rows.length}</dd></div><div><dt>Total units</dt><dd>{productionReport.totalQuantity}</dd></div><div><dt>Cutoff</dt><dd>{productionReport.cutoff || "Not set"}</dd></div></div>
           {productionReport.rows.length ? <div className="pilaw-table-wrap"><table className="pilaw-table pilaw-production-table"><thead><tr><th>Product</th><th>Color</th><th>Size</th><th>Qty</th></tr></thead><tbody>{productionReport.rows.map((row) => <tr key={row.productId+"-"+row.color+"-"+row.size}><td>{row.productName}</td><td>{row.color}</td><td>{row.productType === "eco_bag" ? "One Size" : row.size}</td><td>{row.quantity}</td></tr>)}</tbody></table></div> : <p className="pilaw-state">No paid, non-cancelled orders are eligible for production yet.</p>}</>}
           {productionExportError && <p className="pilaw-inline-error" role="alert">{productionExportError}</p>}
-          <div className="pilaw-embedded-form-actions"><Button variant="secondary" onClick={printProductionOrder} disabled={!productionReport?.rows.length}>Print / Save PDF</Button><Button onClick={downloadProductionSpreadsheet} disabled={!productionReport?.rows.length}>Download Excel file</Button></div>
+          <div className="pilaw-embedded-form-actions"><Button variant="secondary" onClick={printProductionOrder} disabled={!productionReport?.rows.length}>Print / Save PDF</Button><Button onClick={downloadProductionSpreadsheet} disabled={!productionReport?.rows.length}>Download Excel-compatible file</Button></div>
         </div>
       </Modal>
 
