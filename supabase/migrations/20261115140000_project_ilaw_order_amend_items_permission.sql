@@ -23,6 +23,11 @@ where r.code = 'project_ilaw_orders_staff'
   and p.code = 'project_ilaw.orders.amend_items'
 on conflict do nothing;
 
+update public.roles
+set description =
+  'View orders, confirm payments, create staff-assisted orders, update fulfillment, and amend existing line quantities/colours and T-shirt sizes only. No customer-detail changes, product changes, settings, exports, or production quantity management.'
+where code = 'project_ilaw_orders_staff';
+
 -- Keep the existing amendment RPC and audit history, but permit either:
 -- * orders.manage: current full amendment capability; or
 -- * orders.amend_items: line-item-only edits for the dedicated staff role.
