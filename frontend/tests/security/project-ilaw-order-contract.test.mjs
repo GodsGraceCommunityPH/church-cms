@@ -512,7 +512,7 @@ test("the order dashboard and detail page expose no direct table writes", async 
     /Enter a rejection reason of at least 5 characters/,
   );
   assert.match(detail, /rejectReason\.trim\(\)\.length < 5/);
-  assert.match(detail, /awaitingVerification && \(\s*<Button/s);
+  assert.match(detail, /awaitingVerification[\s\S]*?Confirm payment/);
   assert.match(detail, /disabled=\{Boolean\(busy\) \|\| !evidencePath\}/);
 
   // Evidence is opened through a short-lived signed URL, never a public URL.

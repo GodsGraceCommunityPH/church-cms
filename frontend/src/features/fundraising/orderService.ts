@@ -384,6 +384,16 @@ export async function confirmProjectIlawPayment(id: string, note: string) {
   return data;
 }
 
+export async function manualConfirmProjectIlawGcashPayment(id: string, note: string) {
+  const { data, error } = await supabase.rpc("manual_confirm_project_ilaw_gcash_payment", {
+    p_order_id: id,
+    p_note: note.trim() || null,
+  });
+
+  if (error) throw error;
+  return data;
+}
+
 export async function recordProjectIlawCashPayment(
   id: string,
   amount: number,
