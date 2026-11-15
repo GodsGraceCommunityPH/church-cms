@@ -36,6 +36,7 @@ import {
   getProjectIlawOrderActivity,
   getProjectIlawPaymentContext,
   getProjectIlawPublicSettings,
+  manualConfirmProjectIlawGcashPayment,
   recordProjectIlawCashPayment,
   rejectProjectIlawPayment,
   submitProjectIlawPayment,
@@ -125,6 +126,7 @@ export default function ProjectIlawOrderDetail() {
   const [cashNote, setCashNote] = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [statusNote, setStatusNote] = useState("");
+  const [manualConfirmNote, setManualConfirmNote] = useState("");
   const [showAmend, setShowAmend] = useState(false);
   const [amendDraft, setAmendDraft] = useState<OrderDraft | null>(null);
   const [amendNote, setAmendNote] = useState("");
@@ -265,6 +267,25 @@ export default function ProjectIlawOrderDetail() {
       setPaymentNote("");
       setNotice(
         "Payment confirmed. Only now does this order count toward production quantities.",
+      );
+      await load();
+    });
+  }
+
+  async function handleManualConfirmGcashPayment() {
+    if (!order) return;
+    if (
+      !window.confirm(
+        `Confirm that you have verified this GCash payment in the church GCash account for ${order.reference} (${formatPeso(order.totalAmount)})?`,
+      )
+    ) {
+      return;
+    }
+    await runAction("manual-gcash-confirm", async () => {
+      await manualConfirmProjectIlawGcashPayment(order.id, manualConfirmNote);
+      setManualConfirmNote("");
+      setNotice(
+        "GCash payment manually confirmed. This order now counts toward production quantities.",
       );
       await load();
     });
@@ -841,6 +862,41 @@ export default function ProjectIlawOrderDetail() {
 
               {canConfirmPayment ? (
                 <div className="pilaw-embedded-form">
+                  {order.paymentStatus === "awaiting_payment" &&
+                    order.paymentMethod === "gcash" &&
+                    !cancelled &&
+                    !paid && (
+                      <>
+                        <p className="pilaw-detail-note" style={{ marginTop: 0 }}>
+                          If you have already verified this GCash payment in the
+                          church GCash account, you can confirm it manually
+                          without waiting for the customer to upload evidence.
+                        </p>
+                        <label>
+                          Confirmation note (optional)
+                          <Input
+                            value={manualConfirmNote}
+                            maxLength={1000}
+                            placeholder="e.g. Verified in church GCash account"
+                            onChange={(event) =>
+                              setManualConfirmNote(event.target.value)
+                            }
+                            disabled={Boolean(busy)}
+                          />
+                        </label>
+                        <div className="pilaw-embedded-form-actions">
+                          <Button
+                            onClick={() => void handleManualConfirmGcashPayment()}
+                            disabled={Boolean(busy)}
+                          >
+                            <ShieldCheck size={16} aria-hidden="true" />
+                            {busy === "manual-gcash-confirm"
+                              ? "Confirming..."
+                              : "Confirm GCash Payment"}
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   {awaitingVerification && (
                     <label>
                       Rejection reason (required)
@@ -854,18 +910,20 @@ export default function ProjectIlawOrderDetail() {
                       />
                     </label>
                   )}
-                  <label>
-                    Confirmation note (optional)
-                    <Input
-                      value={paymentNote}
-                      maxLength={1000}
-                      placeholder="e.g. Verified in the church GCash account"
-                      onChange={(event) => setPaymentNote(event.target.value)}
-                      disabled={Boolean(busy) || paid}
-                    />
-                  </label>
-                  <div className="pilaw-embedded-form-actions">
-                    {awaitingVerification && (
+                  {awaitingVerification && (
+                    <label>
+                      Confirmation note (optional)
+                      <Input
+                        value={paymentNote}
+                        maxLength={1000}
+                        placeholder="e.g. Verified in the church GCash account"
+                        onChange={(event) => setPaymentNote(event.target.value)}
+                        disabled={Boolean(busy)}
+                      />
+                    </label>
+                  )}
+                  {awaitingVerification && (
+                    <div className="pilaw-embedded-form-actions">
                       <Button
                         onClick={() => void handleConfirmPayment()}
                         disabled={Boolean(busy) || !evidencePath}
@@ -875,8 +933,6 @@ export default function ProjectIlawOrderDetail() {
                           ? "Confirming..."
                           : "Confirm payment"}
                       </Button>
-                    )}
-                    {awaitingVerification && (
                       <Button
                         variant="danger"
                         onClick={() => void handleRejectPayment()}
@@ -886,16 +942,18 @@ export default function ProjectIlawOrderDetail() {
                       >
                         {busy === "reject" ? "Rejecting..." : "Reject submission"}
                       </Button>
-                    )}
-                  </div>
-                  {!awaitingVerification && !paid && (
-                    <p className="pilaw-detail-note">
-                      Payment review starts after the customer submits a
-                      transaction reference and evidence. Uploading evidence does
-                      not mark the order paid; confirm only after verifying the
-                      actual transaction.
-                    </p>
+                    </div>
                   )}
+                  {order.paymentStatus !== "awaiting_payment" &&
+                    !awaitingVerification &&
+                    !paid && (
+                      <p className="pilaw-detail-note">
+                        Payment review starts after the customer submits a
+                        transaction reference and evidence. Uploading evidence does
+                        not mark the order paid; confirm only after verifying the
+                        actual transaction.
+                      </p>
+                    )}
                 </div>
               ) : (
                 <p className="pilaw-detail-note">
