@@ -91,7 +91,7 @@ begin
   if not found then
     raise exception 'Order not found' using errcode = 'P0002';
   end if;
-  if target.payment_method <> 'gcash'
+  if coalesce(target.payment_method, 'gcash') <> 'gcash'
      or target.payment_status = 'paid'
      or target.fulfillment_status = 'cancelled' then
     raise exception 'Payment evidence can only be attached to an unpaid, active GCash order'
