@@ -26,7 +26,7 @@ export default function MerchandiseCard({ item, ordersEnabled = false, onAddItem
 
   return (
     <article className="merch-card">
-      <div className="merch-art">
+      <div className="merch-art">\n        <button className="merch-image-trigger" type="button" onClick={() => setImageOpen(true)} aria-label={`Enlarge ${item.name} image`} aria-haspopup="dialog">
         <img src={item.image.src} alt={item.image.alt} width={item.image.width} height={item.image.height} loading="lazy" decoding="async" />
       </div>
       <div className="merch-body">
@@ -79,6 +79,6 @@ export default function MerchandiseCard({ item, ordersEnabled = false, onAddItem
         </div>
       </div>
 
-    </article>
+      {imageOpen && (\n        <div className="merch-image-lightbox" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setImageOpen(false); }}>\n          <div className="merch-image-dialog" role="dialog" aria-modal="true" aria-label={`${item.name} enlarged image`}>\n            <button className="merch-image-close" type="button" onClick={() => setImageOpen(false)} aria-label="Close enlarged image" autoFocus>×</button>\n            <img src={item.image.src} alt={item.image.alt} />\n            <p>{item.name} · {selectedColor}</p>\n          </div>\n        </div>\n      )}\n    </article>
   );
 }
