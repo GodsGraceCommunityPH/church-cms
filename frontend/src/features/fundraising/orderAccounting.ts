@@ -62,6 +62,10 @@ export function filterProjectIlawOrders(
     if (filters.from && orderDate < filters.from) return false;
     if (filters.to && orderDate > filters.to) return false;
     if (filters.payment && order.paymentStatus !== filters.payment) return false;
+    if (filters.paymentMethod) {
+      const selectedMethod = filters.paymentMethod === "not_set" ? null : filters.paymentMethod;
+      if (order.paymentMethod !== selectedMethod) return false;
+    }
     if (
       filters.fulfillment &&
       order.fulfillmentStatus !== filters.fulfillment
