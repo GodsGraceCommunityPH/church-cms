@@ -756,6 +756,12 @@ export default function ProjectIlawOrders() {
               : ""}
           </span>
         )}
+        <Link
+          className="pilaw-order-link"
+          to={`/admin/project-ilaw-orders/${order.id}`}
+        >
+          View Order
+        </Link>
       </>
     );
   }
@@ -1077,6 +1083,7 @@ export default function ProjectIlawOrders() {
                   <th scope="col">Order</th>
                   <th scope="col">Customer</th>
                   <th scope="col">Payment status</th>
+                  <th scope="col">Fulfillment</th>
                   <th scope="col">Action</th>
                 </tr>
               </thead>
@@ -1108,11 +1115,13 @@ export default function ProjectIlawOrders() {
                       >
                         {PAYMENT_STATUS_LABELS[order.paymentStatus]}
                       </span>
-                      {order.fulfillmentStatus === "cancelled" && (
-                        <span className="pilaw-status pilaw-status-cancelled">
-                          {FULFILLMENT_STATUS_LABELS.cancelled}
-                        </span>
-                      )}
+                    </td>
+                    <td>
+                      <span
+                        className={`pilaw-status pilaw-status-${order.fulfillmentStatus}`}
+                      >
+                        {FULFILLMENT_STATUS_LABELS[order.fulfillmentStatus]}
+                      </span>
                     </td>
                      <td>
                        <div className="pilaw-row-actions">
@@ -1149,11 +1158,11 @@ export default function ProjectIlawOrders() {
                   >
                     {PAYMENT_STATUS_LABELS[order.paymentStatus]}
                   </span>
-                  {order.fulfillmentStatus === "cancelled" && (
-                    <span className="pilaw-status pilaw-status-cancelled">
-                      {FULFILLMENT_STATUS_LABELS.cancelled}
-                    </span>
-                  )}
+                  <span
+                    className={`pilaw-status pilaw-status-${order.fulfillmentStatus}`}
+                  >
+                    {FULFILLMENT_STATUS_LABELS[order.fulfillmentStatus]}
+                  </span>
                 </div>
                 <div className="pilaw-order-card-actions">
                   {renderOrderActions(order)}
