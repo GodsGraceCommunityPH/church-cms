@@ -410,6 +410,19 @@ export async function getPaymentEvidenceUrl(
   return data.signedUrl;
 }
 
+export async function updateProjectIlawPaymentMethod(
+  id: string,
+  paymentMethod: "gcash" | "cash",
+) {
+  const { data, error } = await supabase.rpc("update_project_ilaw_payment_method", {
+    p_order_id: id,
+    p_payment_method: paymentMethod,
+  });
+
+  if (error) throw error;
+  return data;
+}
+
 export async function confirmProjectIlawPayment(id: string, note: string) {
   const { data, error } = await supabase.rpc("confirm_project_ilaw_payment", {
     p_order_id: id,
