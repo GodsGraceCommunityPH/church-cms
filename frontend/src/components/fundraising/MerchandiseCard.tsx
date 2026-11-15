@@ -19,15 +19,26 @@ export default function MerchandiseCard({ item, ordersEnabled = false, onAddItem
 
   useEffect(() => {
     if (!imageOpen) return;
-    const handleKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") setImageOpen(false); };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setImageOpen(false);
+    };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [imageOpen]);
 
   return (
     <article className="merch-card">
-      <div className="merch-art">\n        <button className="merch-image-trigger" type="button" onClick={() => setImageOpen(true)} aria-label={`Enlarge ${item.name} image`} aria-haspopup="dialog">
-        <img src={item.image.src} alt={item.image.alt} width={item.image.width} height={item.image.height} loading="lazy" decoding="async" />
+      <div className="merch-art">
+        <button
+          className="merch-image-trigger"
+          type="button"
+          onClick={() => setImageOpen(true)}
+          aria-label={`Enlarge ${item.name} image`}
+          aria-haspopup="dialog"
+        >
+          <img src={item.image.src} alt={item.image.alt} width={item.image.width} height={item.image.height} loading="lazy" decoding="async" />
+          <span className="merch-image-hint">Tap to enlarge</span>
+        </button>
       </div>
       <div className="merch-body">
         <p className="merch-category">{item.category}</p>
@@ -79,6 +90,21 @@ export default function MerchandiseCard({ item, ordersEnabled = false, onAddItem
         </div>
       </div>
 
-      {imageOpen && (\n        <div className="merch-image-lightbox" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setImageOpen(false); }}>\n          <div className="merch-image-dialog" role="dialog" aria-modal="true" aria-label={`${item.name} enlarged image`}>\n            <button className="merch-image-close" type="button" onClick={() => setImageOpen(false)} aria-label="Close enlarged image" autoFocus>×</button>\n            <img src={item.image.src} alt={item.image.alt} />\n            <p>{item.name} · {selectedColor}</p>\n          </div>\n        </div>\n      )}\n    </article>
+      {imageOpen && (
+        <div
+          className="merch-image-lightbox"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setImageOpen(false);
+          }}
+        >
+          <div className="merch-image-dialog" role="dialog" aria-modal="true" aria-label={`${item.name} enlarged image`}>
+            <button className="merch-image-close" type="button" onClick={() => setImageOpen(false)} aria-label="Close enlarged image" autoFocus>×</button>
+            <img src={item.image.src} alt={item.image.alt} />
+            <p>{item.name} · {selectedColor}</p>
+          </div>
+        </div>
+      )}
+    </article>
   );
 }
