@@ -1,7 +1,9 @@
 import {
   calculateDraftTotals,
+  createDraftItem,
   formatPeso,
   getShopItem,
+  SHOP_ITEMS,
   type OrderDraftItem,
 } from "../../features/fundraising/projectIlaw";
 
@@ -12,13 +14,33 @@ interface OrderLineItemsEditorProps {
   idPrefix: string;
 }
 
-export default function OrderLineItemsEditor({ items, onChange, disabled = false }: OrderLineItemsEditorProps) {
+export default function OrderLineItemsEditor({
+  items,
+  onChange,
+  disabled = false,
+  idPrefix,
+}: OrderLineItemsEditorProps) {
   const totals = calculateDraftTotals(items);
+
+  function updateItem(key: string, changes: Partial<OrderDraftItem>) {
+    onChange(items.map((item) => item.key === key ? { ...item, ...changes } : item));
+  }
+
   return (
-    <section className="order-line-items" aria-labelledby="order-items-title">
-      <h3 id="order-items-title">Your order</h3>
+    <section className="order-line-items" aria-labelledby={`${idPrefix}-items-title`}>
+      <div className="order-line-item-heading">
+        <h3 id={`${idPrefix}-items-title`}>Order items</h3>
+        <button
+          type="button"
+          className="order-line-remove"
+          disabled={disabled || items.length >= 20}
+          onClick={() => onChange([...items, createDraftItem()])}
+        >
+          Add item
+        </button>
+      </div>
       {items.length === 0 ? (
-        <p className="order-cart-empty">Choose a product above and add it to your order.</p>
+        <p className="order-cart-empty">Add at least one product to this order.</p>
       ) : (
         <div className="order-line-items-list">
           {items.map((item, index) => {
@@ -29,16 +51,78 @@ export default function OrderLineItemsEditor({ items, onChange, disabled = false
               <div className="order-line-item order-cart-item" key={item.key}>
                 <div className="order-line-item-heading">
                   <span>Item {index + 1}</span>
-                  <button type="button" className="order-line-remove" onClick={() => onChange(items.filter((line) => line.key !== item.key))} disabled={disabled}>Remove</button>
+                  <button
+                    type="button"
+                    className="order-line-remove"
+                    onClick={() => onChange(items.filter((line) => line.key !== item.key))}
+                    disabled={disabled || items.length <= 1}
+                  >
+                    Remove
+                  </button>
                 </div>
                 <div className="order-cart-item-details">
-                  <strong>{product?.name ?? "Unknown product"}</strong>
-                  <span>{item.color}{item.size && item.size !== "One Size" ? ` · ${item.size}` : ""}</span>
+                  <label>
+                    Product
+                    <select
+                      value={item.productId}
+                      disabled={disabled}
+                      onChange={(event) => {
+                        const next = getShopItem(event.target.value);
+                        if (!next) return;
+                        updateItem(item.key, {
+                          productId: next.id,
+                          size: next.sizes.length === 1 ? next.sizes[0] : "",
+                          color: "",
+                        });
+                      }}
+                    >
+                      {SHOP_ITEMS.map((shopItem) => (
+                        <option key={shopItem.id} value={shopItem.id}>
+                          {shopItem.name} · {formatPeso(shopItem.price)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {product && product.sizes.length > 1 && (
+                    <label>
+                      Size
+                      <select
+                        value={item.size}
+                        disabled={disabled}
+                        onChange={(event) => updateItem(item.key, { size: event.target.value })}
+                      >
+                        <option value="">Choose size</option>
+                        {product.sizes.map((size) => <option key={size} value={size}>{size}</option>)}
+                      </select>
+                    </label>
+                  )}
+                  {product && (
+                    <label>
+                      {product.colorLabel}
+                      <select
+                        value={item.color}
+                        disabled={disabled}
+                        onChange={(event) => updateItem(item.key, { color: event.target.value })}
+                      >
+                        <option value="">Choose colour</option>
+                        {product.colors.map((color) => <option key={color} value={color}>{color}</option>)}
+                      </select>
+                    </label>
+                  )}
                   <span>{formatPeso(product?.price ?? 0)} each</span>
                 </div>
                 <div className="order-cart-item-footer">
-                  <label htmlFor={`cart-quantity-${item.key}`}>Quantity</label>
-                  <input id={`cart-quantity-${item.key}`} type="number" min="1" max="99" step="1" value={item.quantity} disabled={disabled} onChange={(event) => onChange(items.map((line) => line.key === item.key ? { ...line, quantity: event.target.value } : line))} />
+                  <label htmlFor={`${idPrefix}-quantity-${item.key}`}>Quantity</label>
+                  <input
+                    id={`${idPrefix}-quantity-${item.key}`}
+                    type="number"
+                    min="1"
+                    max="99"
+                    step="1"
+                    value={item.quantity}
+                    disabled={disabled}
+                    onChange={(event) => updateItem(item.key, { quantity: event.target.value })}
+                  />
                   <strong>{validQuantity ? formatPeso((product?.price ?? 0) * quantity) : "Check quantity"}</strong>
                 </div>
               </div>
