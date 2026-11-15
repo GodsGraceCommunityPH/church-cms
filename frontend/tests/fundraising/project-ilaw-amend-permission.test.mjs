@@ -7,7 +7,7 @@ const readSource = (path) =>
 
 test("Project Ilaw Orders Staff receives a dedicated line-item amendment permission", async () => {
   const migration = await readSource(
-    "../../../supabase/migrations/20261115140000_project_ilaw_order_amend_items_permission.sql",
+    "../../../supabase/migrations/20261115112659_project_ilaw_order_amend_items_permission.sql",
   );
   assert.match(migration, /project_ilaw\.orders\.amend_items/);
   assert.match(migration, /project_ilaw_orders_staff/);
