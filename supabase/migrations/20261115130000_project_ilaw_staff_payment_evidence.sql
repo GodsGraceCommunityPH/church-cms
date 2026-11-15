@@ -32,7 +32,7 @@ begin
   end;
 
   return found
-    and target.payment_method = 'gcash'
+    and coalesce(target.payment_method, 'gcash') = 'gcash'
     and target.payment_status <> 'paid'
     and target.fulfillment_status <> 'cancelled';
 end;
