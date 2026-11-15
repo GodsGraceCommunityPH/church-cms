@@ -398,7 +398,7 @@ test("fulfilment changes and amendments require project_ilaw.orders.manage", asy
 
 test("Project Ilaw Orders Staff receives only the constrained amendment permission", async () => {
   const migration = await readFile(
-    new URL("../../../supabase/migrations/20261115140000_project_ilaw_order_amend_items_permission.sql", import.meta.url),
+    new URL("../../../supabase/migrations/20261115112659_project_ilaw_order_amend_items_permission.sql", import.meta.url),
     "utf8",
   );
 
