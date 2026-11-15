@@ -588,7 +588,7 @@ export async function getProjectIlawExportRows(
   });
 
   if (error) throw error;
-  return ((data ?? []) as any[]).map((row) => ({
+  const rows = ((data ?? []) as any[]).map((row) => ({
     orderReference: row.order_reference,
     orderCreatedAt: row.order_created_at,
     customerName: row.customer_name,
@@ -601,12 +601,16 @@ export async function getProjectIlawExportRows(
     unitPrice: row.unit_price,
     lineTotal: row.line_total,
     paymentStatus: row.payment_status,
+    paymentMethod: row.payment_method ?? null,
     paymentReference: row.payment_reference ?? "",
     paymentSubmittedAt: row.payment_submitted_at,
     fulfillmentStatus: row.fulfillment_status,
     paymentConfirmedAt: row.payment_confirmed_at,
     paymentConfirmedBy: row.payment_confirmed_by,
   }));
+  return filters.paymentMethod
+    ? rows.filter((row) => (row.paymentMethod ?? "not_specified") === filters.paymentMethod)
+    : rows;
 }
 
 export async function getProjectIlawProductionReport(): Promise<ProductionReport> {
