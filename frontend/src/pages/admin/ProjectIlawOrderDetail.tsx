@@ -48,6 +48,7 @@ import {
 import {
   canRetryStaffGcashPayment,
   staffPaymentErrorMessage,
+  validateStaffOrderItems,
 } from "../../features/fundraising/staffOrder";
 import "./ProjectIlawOrders.css";
 
@@ -112,6 +113,7 @@ export default function ProjectIlawOrderDetail() {
     "project_ilaw.orders.confirm_payment",
   );
   const canManage = hasPermission("project_ilaw.orders.manage");
+  const canAmendItems = hasPermission("project_ilaw.orders.amend_items");
   const canFulfill = hasPermission("project_ilaw.orders.fulfill");
 
   const [order, setOrder] = useState<ProjectIlawOrder | null>(null);
@@ -477,6 +479,33 @@ export default function ProjectIlawOrderDetail() {
     event.preventDefault();
     if (!order || !amendDraft) return;
 
+    if (restrictedAmendment) {
+      const validation = validateStaffOrderItems(amendDraft.items);
+      if (!validation.ok) {
+        setAmendErrors([validation.error]);
+        return;
+      }
+
+      setAmendErrors([]);
+      await runAction("amend", async () => {
+        await amendProjectIlawOrder(order.id, {
+          // Restricted Project Ilaw staff may only amend line-item attributes.
+          // The RPC independently verifies these order fields are unchanged.
+          customerName: order.customerName,
+          mobile: order.mobile,
+          notes: order.notes,
+          items: validation.items,
+          note: amendNote,
+        });
+        setAmendNote("");
+        setShowAmend(false);
+        setNotice("Order items updated. The previous line items remain in the history.");
+        setAmendDraft(null);
+        await load();
+      });
+      return;
+    }
+
     const validation = validateOrderDraft(amendDraft);
     if (!validation.ok) {
       setAmendErrors(validation.errors);
@@ -525,8 +554,9 @@ export default function ProjectIlawOrderDetail() {
   }
 
   const cancelled = order.fulfillmentStatus === "cancelled";
+  const restrictedAmendment = canAmendItems && !canManage;
   const amendable =
-    canManage &&
+    (canManage || canAmendItems) &&
     order.fulfillmentStatus !== "completed" &&
     order.fulfillmentStatus !== "cancelled";
   const paid = order.paymentStatus === "paid";
@@ -690,68 +720,71 @@ export default function ProjectIlawOrderDetail() {
 
           {showAmend && amendDraft && (
             <form className="pilaw-amend-form" onSubmit={handleAmend}>
-              <div className="order-form-grid">
-                <div className="order-field">
-                  <label htmlFor="amend-customer-name">Customer name</label>
-                  <Input
-                    id="amend-customer-name"
-                    value={amendDraft.customerName}
-                    maxLength={120}
-                    onChange={(event) =>
-                      setAmendDraft({
-                        ...amendDraft,
-                        customerName: event.target.value,
-                      })
-                    }
-                    disabled={Boolean(busy)}
-                  />
+              {!restrictedAmendment && (
+                <div className="order-form-grid">
+                  <div className="order-field">
+                    <label htmlFor="amend-customer-name">Customer name</label>
+                    <Input
+                      id="amend-customer-name"
+                      value={amendDraft.customerName}
+                      maxLength={120}
+                      onChange={(event) =>
+                        setAmendDraft({
+                          ...amendDraft,
+                          customerName: event.target.value,
+                        })
+                      }
+                      disabled={Boolean(busy)}
+                    />
+                  </div>
+                  <div className="order-field">
+                    <label htmlFor="amend-mobile">Mobile number</label>
+                    <Input
+                      id="amend-mobile"
+                      type="tel"
+                      value={amendDraft.mobile}
+                      maxLength={32}
+                      onChange={(event) =>
+                        setAmendDraft({
+                          ...amendDraft,
+                          mobile: event.target.value,
+                        })
+                      }
+                      disabled={Boolean(busy)}
+                    />
+                  </div>
+                  <div className="order-field" style={{ gridColumn: "1 / -1" }}>
+                    <label htmlFor="amend-notes">Order notes</label>
+                    <textarea
+                      id="amend-notes"
+                      rows={3}
+                      maxLength={1000}
+                      value={amendDraft.notes}
+                      onChange={(event) =>
+                        setAmendDraft({
+                          ...amendDraft,
+                          notes: event.target.value,
+                        })
+                      }
+                      disabled={Boolean(busy)}
+                      style={{
+                        border: "1px solid #cbd5e1",
+                        borderRadius: 10,
+                        font: "inherit",
+                        padding: "11px 13px",
+                        width: "100%",
+                      }}
+                    />
+                  </div>
                 </div>
-                <div className="order-field">
-                  <label htmlFor="amend-mobile">Mobile number</label>
-                  <Input
-                    id="amend-mobile"
-                    type="tel"
-                    value={amendDraft.mobile}
-                    maxLength={32}
-                    onChange={(event) =>
-                      setAmendDraft({
-                        ...amendDraft,
-                        mobile: event.target.value,
-                      })
-                    }
-                    disabled={Boolean(busy)}
-                  />
-                </div>
-                <div className="order-field" style={{ gridColumn: "1 / -1" }}>
-                  <label htmlFor="amend-notes">Order notes</label>
-                  <textarea
-                    id="amend-notes"
-                    rows={3}
-                    maxLength={1000}
-                    value={amendDraft.notes}
-                    onChange={(event) =>
-                      setAmendDraft({
-                        ...amendDraft,
-                        notes: event.target.value,
-                      })
-                    }
-                    disabled={Boolean(busy)}
-                    style={{
-                      border: "1px solid #cbd5e1",
-                      borderRadius: 10,
-                      font: "inherit",
-                      padding: "11px 13px",
-                      width: "100%",
-                    }}
-                  />
-                </div>
-              </div>
+              )}
 
               <OrderLineItemsEditor
                 idPrefix="amend-order"
                 items={amendDraft.items}
                 onChange={(items) => setAmendDraft({ ...amendDraft, items })}
                 disabled={Boolean(busy)}
+                restricted={restrictedAmendment}
               />
 
               <label>
