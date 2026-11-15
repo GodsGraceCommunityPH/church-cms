@@ -771,12 +771,7 @@ export default function ProjectIlawOrders() {
             </Button>
           )}
         {order.paymentStatus === "paid" && (
-          <span className="pilaw-paid-indicator">
-            Paid
-            {order.paymentMethod
-              ? ` · ${order.paymentMethod === "cash" ? "Cash" : "GCash"}`
-              : ""}
-          </span>
+          <span className="pilaw-paid-indicator">Paid</span>
         )}
       </>
     );
