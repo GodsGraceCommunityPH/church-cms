@@ -11,6 +11,8 @@ interface OrderLineItemsEditorProps {
   items: OrderDraftItem[];
   onChange: (items: OrderDraftItem[]) => void;
   disabled?: boolean;
+  /** Locks product identity and line count while allowing quantity, colour, and applicable size edits. */
+  restricted?: boolean;
   idPrefix: string;
 }
 
@@ -18,6 +20,7 @@ export default function OrderLineItemsEditor({
   items,
   onChange,
   disabled = false,
+  restricted = false,
   idPrefix,
 }: OrderLineItemsEditorProps) {
   const totals = calculateDraftTotals(items);
@@ -30,14 +33,16 @@ export default function OrderLineItemsEditor({
     <section className="order-line-items" aria-labelledby={`${idPrefix}-items-title`}>
       <div className="order-line-item-heading">
         <h3 id={`${idPrefix}-items-title`}>Order items</h3>
-        <button
-          type="button"
-          className="order-line-remove"
-          disabled={disabled || items.length >= 20}
-          onClick={() => onChange([...items, createDraftItem()])}
-        >
-          Add item
-        </button>
+        {!restricted && (
+          <button
+            type="button"
+            className="order-line-remove"
+            disabled={disabled || items.length >= 20}
+            onClick={() => onChange([...items, createDraftItem()])}
+          >
+            Add item
+          </button>
+        )}
       </div>
       {items.length === 0 ? (
         <p className="order-cart-empty">Add at least one product to this order.</p>
@@ -51,38 +56,42 @@ export default function OrderLineItemsEditor({
               <div className="order-line-item order-cart-item" key={item.key}>
                 <div className="order-line-item-heading">
                   <span>Item {index + 1}</span>
-                  <button
-                    type="button"
-                    className="order-line-remove"
-                    onClick={() => onChange(items.filter((line) => line.key !== item.key))}
-                    disabled={disabled || items.length <= 1}
-                  >
-                    Remove
-                  </button>
+                  {!restricted && (
+                    <button
+                      type="button"
+                      className="order-line-remove"
+                      onClick={() => onChange(items.filter((line) => line.key !== item.key))}
+                      disabled={disabled || items.length <= 1}
+                    >
+                      Remove
+                    </button>
+                  )}
                 </div>
                 <div className="order-cart-item-details">
-                  <label>
-                    Product
-                    <select
-                      value={item.productId}
-                      disabled={disabled}
-                      onChange={(event) => {
-                        const next = getShopItem(event.target.value);
-                        if (!next) return;
-                        updateItem(item.key, {
-                          productId: next.id,
-                          size: next.sizes.length === 1 ? next.sizes[0] : "",
-                          color: "",
-                        });
-                      }}
-                    >
-                      {SHOP_ITEMS.map((shopItem) => (
-                        <option key={shopItem.id} value={shopItem.id}>
-                          {shopItem.name} · {formatPeso(shopItem.price)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  {!restricted && (
+                    <label>
+                      Product
+                      <select
+                        value={item.productId}
+                        disabled={disabled}
+                        onChange={(event) => {
+                          const next = getShopItem(event.target.value);
+                          if (!next) return;
+                          updateItem(item.key, {
+                            productId: next.id,
+                            size: next.sizes.length === 1 ? next.sizes[0] : "",
+                            color: "",
+                          });
+                        }}
+                      >
+                        {SHOP_ITEMS.map((shopItem) => (
+                          <option key={shopItem.id} value={shopItem.id}>
+                            {shopItem.name} · {formatPeso(shopItem.price)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                   {product && product.sizes.length > 1 && (
                     <label>
                       Size
