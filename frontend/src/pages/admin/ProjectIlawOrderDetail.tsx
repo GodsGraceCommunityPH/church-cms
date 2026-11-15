@@ -970,7 +970,7 @@ export default function ProjectIlawOrderDetail() {
                   </div>
                   {(canConfirmPayment || canManage) &&
                     order.paymentStatus === "awaiting_payment" &&
-                    order.fulfillmentStatus !== "completed" &&
+                    order.fulfillmentStatus === "not_started" &&
                     !editingPaymentMethod && (
                       <Button
                         type="button"
