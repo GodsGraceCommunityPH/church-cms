@@ -831,6 +831,52 @@ test("order management puts search before summary cards and hides production rep
   assert.match(page, /pilaw-paid-indicator/);
 });
 
+test("order management is a task-oriented workspace with attention, tabs, and reporting", async () => {
+  const page = await read("../../src/pages/admin/ProjectIlawOrders.tsx");
+  const css = await read("../../src/pages/admin/ProjectIlawOrders.css");
+
+  // The page opens with a plain-language title, subtitle, and primary action.
+  assert.match(page, /<h1>Order Management<\/h1>/);
+  assert.match(page, /View customer orders, check payments, and manage order progress\./);
+  assert.match(page, /Create Staff Order/);
+
+  // Actionable attention counts lead the page and open the payment queue.
+  const attentionIndex = page.indexOf('aria-label="Orders needing attention"');
+  const searchIndex = page.indexOf('aria-label="Order search"');
+  const summaryIndex = page.indexOf('aria-label="Order summary"');
+  assert.ok(attentionIndex !== -1, "attention section is required");
+  assert.ok(searchIndex > attentionIndex, "attention must lead the page");
+  assert.ok(searchIndex < summaryIndex, "search must precede summary cards");
+  assert.match(page, /focusPaymentFilter\("payment_verification"\)/);
+  assert.match(page, /focusPaymentFilter\("awaiting_payment"\)/);
+  assert.match(page, /attentionCounts\.paymentVerificationOrders/);
+  assert.match(page, /attentionCounts\.awaitingPaymentOrders/);
+
+  // Financial reporting moves behind a disclosure and keeps its summary label.
+  assert.match(page, /<details className="pilaw-reporting">/);
+  assert.match(page, /<summary>Reporting<\/summary>/);
+  assert.doesNotMatch(page, /<ProductionReportPanel/);
+  assert.doesNotMatch(page, /pilaw-breakdown/);
+
+  // Simple status tabs drive the order list.
+  assert.match(page, /ORDER_LIST_TABS/);
+  for (const label of [
+    "All Orders",
+    "Needs Attention",
+    "Paid",
+    "In Progress",
+    "Completed",
+  ]) {
+    assert.ok(page.includes(`"${label}"`), `status tab "${label}" is required`);
+  }
+  assert.match(page, /displayedOrders/);
+
+  // Mobile uses responsive order cards instead of the wide table.
+  assert.match(page, /pilaw-order-cards/);
+  assert.match(page, /pilaw-order-card/);
+  assert.match(css, /@media \(max-width: 900px\)[\s\S]*pilaw-order-cards/);
+});
+
 test("order detail offers a cash recording action with an explicit receipt confirmation", async () => {
   const detail = await read("../../src/pages/admin/ProjectIlawOrderDetail.tsx");
   const service = await read("../../src/features/fundraising/orderService.ts");
