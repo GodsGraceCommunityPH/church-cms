@@ -871,6 +871,13 @@ test("order management is a task-oriented workspace with attention, tabs, and re
   }
   assert.match(page, /displayedOrders/);
 
+  // A hidden attention-card narrowing is dropped when another tab is opened, so
+  // no tab can silently show an empty list.
+  assert.match(page, /function selectListTab\(tab: OrderListTab\)/);
+  assert.match(page, /setFilters\(\(current\) => \(\{ \.\.\.current, payment: "" \}\)\)/);
+  assert.match(page, /onClick=\{\(\) => selectListTab\(tab\.value\)\}/);
+  assert.match(page, /aria-pressed=\{attentionPayment === "payment_verification"\}/);
+
   // Mobile uses responsive order cards instead of the wide table.
   assert.match(page, /pilaw-order-cards/);
   assert.match(page, /pilaw-order-card/);

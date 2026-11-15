@@ -124,6 +124,9 @@ export default function ProjectIlawOrders() {
   const [filters, setFilters] =
     useState<ProjectIlawOrderFilters>(EMPTY_FILTERS);
   const [listTab, setListTab] = useState<OrderListTab>("all");
+  const [attentionPayment, setAttentionPayment] = useState<
+    "awaiting_payment" | "payment_verification" | null
+  >(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Staff-assisted order creation dialog state.
@@ -313,6 +316,8 @@ export default function ProjectIlawOrders() {
   }, [filtered, listTab]);
 
   const updateFilter = (key: keyof ProjectIlawOrderFilters, value: string) => {
+    // Choosing a payment status by hand replaces any attention-card focus.
+    if (key === "payment") setAttentionPayment(null);
     setFilters((current) => ({ ...current, [key]: value }));
   };
 
@@ -320,12 +325,25 @@ export default function ProjectIlawOrders() {
     payment: "awaiting_payment" | "payment_verification",
   ) {
     setFilters({ ...EMPTY_FILTERS, payment });
+    setAttentionPayment(payment);
     setListTab("needs_attention");
+  }
+
+  function selectListTab(tab: OrderListTab) {
+    // The attention cards narrow the Needs Attention tab through the payment
+    // filter. That hidden narrowing is dropped as soon as the staff member
+    // moves to another tab, so no tab silently hides orders.
+    if (attentionPayment) {
+      setFilters((current) => ({ ...current, payment: "" }));
+      setAttentionPayment(null);
+    }
+    setListTab(tab);
   }
 
   function clearOrderFilters() {
     setFilters(EMPTY_FILTERS);
     setSearch("");
+    setAttentionPayment(null);
     setListTab("all");
   }
 
@@ -834,6 +852,7 @@ export default function ProjectIlawOrders() {
           <button
             type="button"
             className="pilaw-attention-card"
+            aria-pressed={attentionPayment === "payment_verification"}
             onClick={() => focusPaymentFilter("payment_verification")}
           >
             <span className="pilaw-attention-count">
@@ -847,6 +866,7 @@ export default function ProjectIlawOrders() {
           <button
             type="button"
             className="pilaw-attention-card"
+            aria-pressed={attentionPayment === "awaiting_payment"}
             onClick={() => focusPaymentFilter("awaiting_payment")}
           >
             <span className="pilaw-attention-count">
@@ -943,7 +963,7 @@ export default function ProjectIlawOrders() {
                     : "pilaw-tab"
                 }
                 aria-pressed={listTab === tab.value}
-                onClick={() => setListTab(tab.value)}
+                onClick={() => selectListTab(tab.value)}
               >
                 {tab.label}
               </button>
