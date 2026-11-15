@@ -50,7 +50,7 @@ test("desktop order rows show the payment method and navigate as a whole row", a
   const source = await readSource("../../src/pages/admin/ProjectIlawOrders.tsx");
 
   assert.match(source, /className="pilaw-order-row"/);
-  assert.match(source, /aria-label=\{\`Open order \$\{order\.reference\}\`\}/);
+  assert.ok(source.includes('aria-label={`Open order ${order.reference}`}'));
   assert.match(source, /onClick=\{\(event\) => \{/);
   assert.match(source, /event\.target\.closest\("button, input, select, textarea"\)/);
   assert.match(source, /paymentMethodLabel\(order\.paymentMethod\)/);
