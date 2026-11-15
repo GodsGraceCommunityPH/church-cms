@@ -126,7 +126,7 @@ begin
       'payment_method', target.payment_method,
       'payment_status', target.payment_status
     ),
-    'Payment method changed by authorised staff. Any previous rejected payment details were cleared from the active order fields.'
+    'Payment method changed by authorised staff. Any stale payment submission or rejection details were cleared from the active order fields.'
   );
 
   return jsonb_build_object(
