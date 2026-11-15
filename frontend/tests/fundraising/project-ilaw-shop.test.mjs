@@ -677,7 +677,7 @@ test("the confirmed GCash InstaPay QR is a public, unchanged asset", async () =>
   const give = await read("../../src/pages/GivePage.tsx");
   // The Give page points at the approved Tom Dones InstaPay QR asset, while the
   // Shop payment panel keeps its own original GCash InstaPay QR asset.
-  assert.match(give, /\/images\/fundraising\/tom-dones-instapay-qr\.png/);
+  assert.match(give, /\/images\/fundraising\/tom-dones-instapay-qr\.svg/);
   assert.doesNotMatch(give, /assets\/instapay-qr\.png/);
   assert.match(give, /GCash/);
 });
@@ -973,9 +973,14 @@ test("order management offers a permission-gated staff-assisted order flow", asy
   const page = await read("../../src/pages/admin/ProjectIlawOrders.tsx");
   const service = await read("../../src/features/fundraising/orderService.ts");
 
-  // The entry point sits beside the existing page actions and is manage-only.
+  // The entry point sits beside the existing page actions and is gated on the
+  // dedicated create permission, while managing orders keeps its own gate.
   assert.match(page, /Create Staff Order/);
-  assert.match(page, /canManage &&/);
+  assert.match(
+    page,
+    /const canCreateStaffOrder = hasPermission\("project_ilaw\.orders\.create"\)/,
+  );
+  assert.match(page, /\{canCreateStaffOrder && \([\s\S]*?Create Staff Order/);
   assert.match(page, /hasPermission\("project_ilaw\.orders\.manage"\)/);
 
   // The form covers the three required sections and reuses the catalogue.
