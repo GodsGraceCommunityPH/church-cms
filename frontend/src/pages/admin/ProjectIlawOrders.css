@@ -483,7 +483,7 @@
   border-bottom: 1px solid #e8edf3;
   display: grid;
   gap: 13px;
-  grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
   padding: 16px 18px;
 }
 
@@ -538,6 +538,15 @@
   background: #fafcf7;
 }
 
+.pilaw-table tbody tr.pilaw-order-row {
+  cursor: pointer;
+}
+
+.pilaw-table tbody tr.pilaw-order-row:focus-visible {
+  outline: 2px solid #527724;
+  outline-offset: -2px;
+}
+
 .pilaw-order-link {
   color: #4d6b26;
   font-weight: 800;
@@ -555,6 +564,14 @@
   font-size: 0.82rem;
   font-weight: 650;
   margin-top: 2px;
+}
+
+.pilaw-order-payment-method {
+  color: #64748b;
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 650;
+  margin-top: 5px;
 }
 
 .pilaw-order-customer {
@@ -1461,9 +1478,20 @@
   background: #fff;
   border: 1px solid #dbe3ec;
   border-radius: 14px;
+  cursor: pointer;
   display: grid;
   gap: 8px;
   padding: 14px 16px;
+}
+
+.pilaw-order-card:hover {
+  border-color: #b9cba0;
+  background: #fbfdf7;
+}
+
+.pilaw-order-card:focus-visible {
+  outline: 2px solid #527724;
+  outline-offset: 2px;
 }
 
 .pilaw-order-card-head {
@@ -1490,6 +1518,13 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.pilaw-order-card-payment-method {
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 650;
+  margin: 0;
 }
 
 .pilaw-order-card-actions {
