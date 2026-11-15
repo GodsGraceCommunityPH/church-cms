@@ -919,6 +919,11 @@ test("order detail offers a cash recording action with an explicit receipt confi
   assert.match(detail, /I have physically received the cash for this order/);
   assert.match(detail, /type="checkbox"/);
   assert.match(detail, /Amount received/);
+  // The prefilled total is also held in React state, so submitting without
+  // touching the input validates the amount that staff can actually see.
+  assert.match(detail, /if \(order\) setCashAmount\(String\(order\.totalAmount\)\)/);
+  assert.match(detail, /value=\{cashAmount\}/);
+  assert.doesNotMatch(detail, /value=\{cashAmount \|\| String\(order\.totalAmount\)\}/);
 });
 
 test("the payment page shows a prominent receipt reminder before the evidence form", async () => {
