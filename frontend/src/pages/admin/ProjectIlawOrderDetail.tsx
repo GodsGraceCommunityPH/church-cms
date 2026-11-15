@@ -38,10 +38,12 @@ import {
   getProjectIlawPublicSettings,
   manualConfirmProjectIlawGcashPayment,
   recordProjectIlawCashPayment,
+  recordStaffProjectIlawPaymentEvidence,
   rejectProjectIlawPayment,
   submitProjectIlawPayment,
   updateProjectIlawFulfillment,
   uploadProjectIlawPaymentEvidence,
+  uploadStaffProjectIlawPaymentEvidence,
 } from "../../features/fundraising/orderService";
 import {
   canRetryStaffGcashPayment,
@@ -134,6 +136,11 @@ export default function ProjectIlawOrderDetail() {
 
   const [evidenceUrl, setEvidenceUrl] = useState("");
   const [evidenceError, setEvidenceError] = useState("");
+  const [staffEvidence, setStaffEvidence] = useState<File | null>(null);
+  const [staffEvidenceReference, setStaffEvidenceReference] = useState("");
+  const [staffEvidenceNote, setStaffEvidenceNote] = useState("");
+  const [staffEvidenceError, setStaffEvidenceError] = useState("");
+  const staffEvidenceInputRef = useRef<HTMLInputElement>(null);
 
   // Staff GCash retry: a failed receipt upload leaves the order Awaiting
   // Payment, so staff must be able to finish it without creating a new order.
@@ -385,6 +392,35 @@ export default function ProjectIlawOrderDetail() {
       setNotice(
         "GCash receipt recorded. The order is now in Payment Verification and still needs manual confirmation.",
       );
+      await load();
+    });
+  }
+
+  async function handleStaffEvidenceUpload(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!order || !staffEvidence || busy) return;
+    if (staffEvidence.size > MAX_EVIDENCE_BYTES) {
+      setStaffEvidenceError("The payment proof must be 5 MB or smaller.");
+      return;
+    }
+    if (!["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(staffEvidence.type)) {
+      setStaffEvidenceError("Use a JPG, PNG, WEBP, or PDF payment proof.");
+      return;
+    }
+    setStaffEvidenceError("");
+    await runAction("staff-evidence", async () => {
+      const evidencePath = await uploadStaffProjectIlawPaymentEvidence(order.id, staffEvidence);
+      await recordStaffProjectIlawPaymentEvidence({
+        orderId: order.id,
+        evidencePath,
+        paymentReference: staffEvidenceReference,
+        note: staffEvidenceNote,
+      });
+      setStaffEvidence(null);
+      setStaffEvidenceReference("");
+      setStaffEvidenceNote("");
+      if (staffEvidenceInputRef.current) staffEvidenceInputRef.current.value = "";
+      setNotice("Payment proof attached. The order is awaiting payment verification; it has not been marked paid.");
       await load();
     });
   }
@@ -858,6 +894,31 @@ export default function ProjectIlawOrderDetail() {
                 <p className="pilaw-detail-note">
                   No payment evidence has been submitted yet.
                 </p>
+              )}
+
+              {canConfirmPayment && order.paymentMethod === "gcash" && !paid && !cancelled && (
+                <form className="pilaw-embedded-form" onSubmit={(event) => void handleStaffEvidenceUpload(event)}>
+                  <strong>Attach customer payment proof</strong>
+                  <p className="pilaw-detail-note">Use this when the customer sends their GCash screenshot directly to staff. This records the proof for review; it does not confirm payment.</p>
+                  <label>
+                    Transaction reference (optional)
+                    <Input value={staffEvidenceReference} maxLength={120} onChange={(event) => setStaffEvidenceReference(event.target.value)} placeholder="Reference from the GCash receipt" disabled={Boolean(busy)} />
+                  </label>
+                  <label>
+                    Screenshot or PDF
+                    <input ref={staffEvidenceInputRef} type="file" accept={EVIDENCE_TYPES} onChange={(event) => setStaffEvidence(event.target.files?.[0] ?? null)} disabled={Boolean(busy)} required />
+                  </label>
+                  <label>
+                    Staff note (optional)
+                    <Input value={staffEvidenceNote} maxLength={1000} onChange={(event) => setStaffEvidenceNote(event.target.value)} placeholder="e.g. Sent by customer via Messenger" disabled={Boolean(busy)} />
+                  </label>
+                  {staffEvidenceError && <p className="pilaw-inline-error" role="alert">{staffEvidenceError}</p>}
+                  <div className="pilaw-embedded-form-actions">
+                    <Button type="submit" disabled={Boolean(busy) || !staffEvidence}>
+                      {busy === "staff-evidence" ? "Uploading..." : "Upload payment proof"}
+                    </Button>
+                  </div>
+                </form>
               )}
 
               {canConfirmPayment ? (
