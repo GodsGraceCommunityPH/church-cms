@@ -822,6 +822,38 @@
   font-size: 1.25rem;
 }
 
+.pilaw-payment-method-value {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.pilaw-payment-method-value > div {
+  min-width: 0;
+}
+
+.pilaw-payment-method-editor {
+  background: #f8fafc;
+  border: 1px solid #dbe3ec;
+  border-radius: 11px;
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 14px;
+}
+
+.pilaw-payment-method-editor > label {
+  color: #475569;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.pilaw-payment-method-editor .pilaw-detail-note {
+  margin-top: 0;
+}
+
 .pilaw-detail-note {
   color: #64748b;
   font-size: 0.8rem;
