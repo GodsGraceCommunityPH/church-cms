@@ -168,6 +168,12 @@ export default function ProjectIlawOrderDetail() {
     void load();
   }, [load]);
 
+  // Keep the displayed default amount and the value validated on submit in
+  // sync. This also resets the amount when navigating to a different order.
+  useEffect(() => {
+    if (order) setCashAmount(String(order.totalAmount));
+  }, [order?.id, order?.totalAmount]);
+
   // Realtime refreshes a single staff order after an authorised payment
   // confirmation so the detail view reflects the latest status without a manual
   // browser refresh. RLS still governs which rows may be received.
@@ -1058,7 +1064,7 @@ export default function ProjectIlawOrderDetail() {
                     type="number"
                     min={order.totalAmount}
                     max={order.totalAmount}
-                    value={cashAmount || String(order.totalAmount)}
+                    value={cashAmount}
                     onChange={(event) => setCashAmount(event.target.value)}
                     disabled={Boolean(busy)}
                   />
