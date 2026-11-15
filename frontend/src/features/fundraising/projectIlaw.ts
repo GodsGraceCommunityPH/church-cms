@@ -168,6 +168,7 @@ export interface ProjectIlawOrderFilters {
   to: string;
   product: string;
   payment: string;
+  paymentMethod?: string;
   fulfillment: string;
 }
 
