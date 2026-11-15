@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Download,
   Plus,
@@ -61,6 +61,7 @@ const EMPTY_FILTERS: ProjectIlawOrderFilters = {
   to: "",
   product: "",
   payment: "",
+  paymentMethod: "",
   fulfillment: "",
 };
 
@@ -91,6 +92,12 @@ function escapeHtml(value: string | number) {
     .replace(/"/g, "&quot;");
 }
 
+function paymentMethodLabel(method: ProjectIlawOrder["paymentMethod"]) {
+  if (method === "cash") return "Cash";
+  if (method === "gcash") return "GCash";
+  return "Not specified";
+}
+
 function matchesSearch(order: ProjectIlawOrder, query: string) {
   if (!query) return true;
   const haystack = [
@@ -105,6 +112,7 @@ function matchesSearch(order: ProjectIlawOrder, query: string) {
 }
 
 export default function ProjectIlawOrders() {
+  const navigate = useNavigate();
   const { hasPermission } = useAuth();
   const canExport = hasPermission("project_ilaw.orders.export");
   const canConfirmPayment = hasPermission("project_ilaw.orders.confirm_payment");
@@ -353,13 +361,23 @@ export default function ProjectIlawOrders() {
     setNotice("");
     try {
       const rows = await getProjectIlawExportRows(filters);
-      if (rows.length === 0) {
+      const exportRows = filters.paymentMethod
+        ? rows.filter((row) => {
+            const matchingOrder = orders.find(
+              (order) => order.reference === row.orderReference,
+            );
+            return filters.paymentMethod === "not_set"
+              ? !matchingOrder?.paymentMethod
+              : matchingOrder?.paymentMethod === filters.paymentMethod;
+          })
+        : rows;
+      if (exportRows.length === 0) {
         setNotice("No order lines match these filters, so there is nothing to export.");
         return;
       }
-      downloadCsv(csvFilename(), projectIlawExportRowsToCsv(rows));
+      downloadCsv(csvFilename(), projectIlawExportRowsToCsv(exportRows));
       setNotice(
-        `Exported ${rows.length} order line${rows.length === 1 ? "" : "s"} to CSV.`,
+        `Exported ${exportRows.length} order line${exportRows.length === 1 ? "" : "s"} to CSV.`,
       );
     } catch {
       setNotice("The CSV export could not be generated.");
@@ -726,6 +744,10 @@ export default function ProjectIlawOrders() {
       cashConfirmed: staffCashConfirmed,
     }) !== "";
 
+  function openOrder(orderId: string) {
+    navigate(`/admin/project-ilaw-orders/${orderId}`);
+  }
+
   function renderOrderActions(order: ProjectIlawOrder) {
     return (
       <>
@@ -756,12 +778,6 @@ export default function ProjectIlawOrders() {
               : ""}
           </span>
         )}
-        <Link
-          className="pilaw-order-link"
-          to={`/admin/project-ilaw-orders/${order.id}`}
-        >
-          View Order
-        </Link>
       </>
     );
   }
@@ -1025,6 +1041,18 @@ export default function ProjectIlawOrders() {
               </Select>
             </label>
             <label>
+              <span>Payment method</span>
+              <Select
+                value={filters.paymentMethod ?? ""}
+                onChange={(event) => updateFilter("paymentMethod", event.target.value)}
+              >
+                <option value="">All payment methods</option>
+                <option value="gcash">GCash</option>
+                <option value="cash">Cash</option>
+                <option value="not_set">Not specified</option>
+              </Select>
+            </label>
+            <label>
               <span>Fulfillment status</span>
               <Select
                 value={filters.fulfillment}
@@ -1089,14 +1117,26 @@ export default function ProjectIlawOrders() {
               </thead>
               <tbody>
                 {displayedOrders.map((order) => (
-                  <tr key={order.id}>
+                  <tr
+                    key={order.id}
+                    className="pilaw-order-row"
+                    tabIndex={0}
+                    aria-label={`Open order ${order.reference}`}
+                    aria-keyshortcuts="Enter Space"
+                    onClick={(event) => {
+                      if (event.target instanceof Element && event.target.closest("button, input, select, textarea")) return;
+                      openOrder(order.id);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.target !== event.currentTarget) return;
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        openOrder(order.id);
+                      }
+                    }}
+                  >
                     <td>
-                      <Link
-                        className="pilaw-order-link"
-                        to={`/admin/project-ilaw-orders/${order.id}`}
-                      >
-                        {order.reference}
-                      </Link>
+                      <span className="pilaw-order-link">{order.reference}</span>
                       <span className="pilaw-order-amount">
                         {formatPeso(order.totalAmount)}
                       </span>
@@ -1115,6 +1155,9 @@ export default function ProjectIlawOrders() {
                       >
                         {PAYMENT_STATUS_LABELS[order.paymentStatus]}
                       </span>
+                      <span className="pilaw-order-payment-method">
+                        {paymentMethodLabel(order.paymentMethod)}
+                      </span>
                     </td>
                     <td>
                       <span
@@ -1123,11 +1166,11 @@ export default function ProjectIlawOrders() {
                         {FULFILLMENT_STATUS_LABELS[order.fulfillmentStatus]}
                       </span>
                     </td>
-                     <td>
-                       <div className="pilaw-row-actions">
-                          {renderOrderActions(order)}
-                        </div>
-                     </td>
+                    <td>
+                      <div className="pilaw-row-actions">
+                        {renderOrderActions(order)}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1136,14 +1179,26 @@ export default function ProjectIlawOrders() {
 
           <div className="pilaw-order-cards">
             {displayedOrders.map((order) => (
-              <article key={order.id} className="pilaw-order-card">
+              <article
+                key={order.id}
+                className="pilaw-order-card"
+                tabIndex={0}
+                aria-label={`Open order ${order.reference}`}
+                aria-keyshortcuts="Enter Space"
+                onClick={(event) => {
+                  if (event.target instanceof Element && event.target.closest("button, input, select, textarea")) return;
+                  openOrder(order.id);
+                }}
+                onKeyDown={(event) => {
+                  if (event.target !== event.currentTarget) return;
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    openOrder(order.id);
+                  }
+                }}
+              >
                 <div className="pilaw-order-card-head">
-                  <Link
-                    className="pilaw-order-link"
-                    to={`/admin/project-ilaw-orders/${order.id}`}
-                  >
-                    {order.reference}
-                  </Link>
+                  <span className="pilaw-order-link">{order.reference}</span>
                   <span className="pilaw-order-amount">
                     {formatPeso(order.totalAmount)}
                   </span>
@@ -1164,6 +1219,9 @@ export default function ProjectIlawOrders() {
                     {FULFILLMENT_STATUS_LABELS[order.fulfillmentStatus]}
                   </span>
                 </div>
+                <p className="pilaw-order-card-payment-method">
+                  Payment method: {paymentMethodLabel(order.paymentMethod)}
+                </p>
                 <div className="pilaw-order-card-actions">
                   {renderOrderActions(order)}
                 </div>
