@@ -1,0 +1,100 @@
+/* Project Ilaw staff payment proof selection and preview */
+
+.pilaw-payment-upload {
+  display: grid;
+  gap: 10px;
+}
+
+.pilaw-payment-upload-label {
+  color: #475569;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.pilaw-file-input {
+  border: 0;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+.pilaw-payment-upload-selection {
+  background: #f8fafc;
+  border: 1px solid #dbe3ec;
+  border-radius: 12px;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.pilaw-payment-upload-preview {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pilaw-payment-upload-preview img {
+  background: #fff;
+  border: 1px solid #dbe3ec;
+  border-radius: 9px;
+  display: block;
+  height: auto;
+  max-height: 340px;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: left center;
+  width: fit-content;
+}
+
+.pilaw-payment-upload-file-icon {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #dbe3ec;
+  border-radius: 9px;
+  color: #64748b;
+  display: flex;
+  height: 76px;
+  justify-content: center;
+  width: 76px;
+}
+
+.pilaw-payment-upload-file-details {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.pilaw-payment-upload-file-details strong {
+  color: #1e293b;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.pilaw-payment-upload-file-details span {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.pilaw-payment-upload-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .pilaw-payment-upload-actions > * {
+    flex: 1 1 auto;
+  }
+
+  .pilaw-payment-upload-selection {
+    padding: 10px;
+  }
+}
