@@ -52,6 +52,7 @@ import {
   validateStaffOrderItems,
 } from "../../features/fundraising/staffOrder";
 import "./ProjectIlawOrders.css";
+import "./ProjectIlawPaymentUpload.css";
 
 const MAX_EVIDENCE_BYTES = 5 * 1024 * 1024;
 const EVIDENCE_TYPES = "image/jpeg,image/png,image/webp,application/pdf";
