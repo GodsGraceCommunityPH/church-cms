@@ -73,6 +73,11 @@ $anchor$;
         using errcode = '42501';
     end if;
 
+    if clean_note is not null then
+      raise exception 'Project Ilaw order staff cannot add amendment notes'
+        using errcode = '42501';
+    end if;
+
     if jsonb_array_length(snapshot_items) <> (
       select count(*)::integer
       from public.project_ilaw_order_items current_items
