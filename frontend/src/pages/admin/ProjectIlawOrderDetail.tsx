@@ -44,7 +44,7 @@ import {
   uploadProjectIlawPaymentEvidence,
 } from "../../features/fundraising/orderService";
 import {
-  canRetryStaffGcashPayment,
+  canRecordGcashReceipt,
   staffPaymentErrorMessage,
 } from "../../features/fundraising/staffOrder";
 import "./ProjectIlawOrders.css";
@@ -135,8 +135,8 @@ export default function ProjectIlawOrderDetail() {
   const [evidenceUrl, setEvidenceUrl] = useState("");
   const [evidenceError, setEvidenceError] = useState("");
 
-  // Staff GCash retry: a failed receipt upload leaves the order Awaiting
-  // Payment, so staff must be able to finish it without creating a new order.
+  // Staff can attach a customer-supplied GCash receipt to an existing unpaid
+  // order without creating a replacement order.
   const [paymentsEnabled, setPaymentsEnabled] = useState<boolean | null>(null);
   const [gcashReference, setGcashReference] = useState("");
   const [gcashEvidence, setGcashEvidence] = useState<File | null>(null);
@@ -374,7 +374,7 @@ export default function ProjectIlawOrderDetail() {
       } catch (error) {
         const message =
           (error as { message?: string } | null)?.message ||
-          "The GCash receipt could not be recorded.";
+          "The GCash receipt could not be attached.";
         throw new Error(staffPaymentErrorMessage(message, "gcash"));
       }
       setGcashReference("");
@@ -495,7 +495,7 @@ export default function ProjectIlawOrderDetail() {
     order.fulfillmentStatus !== "cancelled";
   const paid = order.paymentStatus === "paid";
   const awaitingVerification = order.paymentStatus === "payment_verification";
-  const gcashRetryAvailable = canRetryStaffGcashPayment(
+  const gcashRetryAvailable = canRecordGcashReceipt(
     order,
     paymentsEnabled,
   );
@@ -967,23 +967,22 @@ export default function ProjectIlawOrderDetail() {
 
           {!cancelled &&
             canManage &&
-            order.source === "staff" &&
             order.paymentMethod === "gcash" &&
             order.paymentStatus === "awaiting_payment" && (
               <section
                 className="pilaw-detail-card"
-                aria-labelledby="gcash-retry-title"
+                aria-labelledby="gcash-receipt-title"
               >
-                <h2 id="gcash-retry-title">Record GCash payment</h2>
+                <h2 id="gcash-receipt-title">Attach customer GCash receipt</h2>
                 {gcashRetryAvailable ? (
                   <form
                     className="pilaw-embedded-form"
                     onSubmit={handleRecordGcashReceipt}
                   >
                     <p className="pilaw-detail-note" style={{ marginTop: 0 }}>
-                      This staff-assisted order is still awaiting a GCash
-                      receipt. Upload the buyer's receipt to move it to Payment
-                      Verification. This never marks the order Paid; an
+                      This order is awaiting a GCash receipt. If the customer sent the
+                      screenshot directly to you, attach it here to move the order
+                      to Payment Verification. This never marks the order Paid; an
                       authorised staff member must still confirm the actual
                       transaction.
                     </p>
@@ -1027,7 +1026,7 @@ export default function ProjectIlawOrderDetail() {
                       >
                         {busy === "gcash-retry"
                           ? "Recording..."
-                          : "Record GCash receipt"}
+                          : "Attach GCash receipt"}
                       </Button>
                     </div>
                   </form>
