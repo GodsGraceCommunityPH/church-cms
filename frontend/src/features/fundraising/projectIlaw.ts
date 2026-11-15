@@ -156,6 +156,7 @@ export interface ProjectIlawExportRow {
   unitPrice: number;
   lineTotal: number;
   paymentStatus: PaymentStatus;
+  paymentMethod: "gcash" | "cash" | null;
   paymentReference: string;
   paymentSubmittedAt: string | null;
   fulfillmentStatus: FulfillmentStatus;
@@ -169,6 +170,7 @@ export interface ProjectIlawOrderFilters {
   product: string;
   payment: string;
   fulfillment: string;
+  paymentMethod: string;
 }
 
 export interface ProjectIlawPaymentInstructions {
