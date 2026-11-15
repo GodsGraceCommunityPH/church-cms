@@ -62,6 +62,10 @@ export function filterProjectIlawOrders(
     if (filters.from && orderDate < filters.from) return false;
     if (filters.to && orderDate > filters.to) return false;
     if (filters.payment && order.paymentStatus !== filters.payment) return false;
+    if (filters.paymentMethod) {
+      const paymentMethod = order.paymentMethod ?? "not_specified";
+      if (paymentMethod !== filters.paymentMethod) return false;
+    }
     if (
       filters.fulfillment &&
       order.fulfillmentStatus !== filters.fulfillment
@@ -238,6 +242,7 @@ const CSV_HEADERS = [
   "Unit Price",
   "Line Total",
   "Payment Status",
+  "Payment Method",
   "Payment Reference",
   "Payment Submitted At",
   "Fulfillment Status",
@@ -262,6 +267,11 @@ export function projectIlawExportRowsToCsv(rows: ProjectIlawExportRow[]) {
         row.unitPrice,
         row.lineTotal,
         PAYMENT_STATUS_LABELS[row.paymentStatus] ?? row.paymentStatus,
+        row.paymentMethod === "cash"
+          ? "Cash"
+          : row.paymentMethod === "gcash"
+            ? "GCash"
+            : "Not specified",
         row.paymentReference,
         formatOrderDateTime(row.paymentSubmittedAt),
         FULFILLMENT_STATUS_LABELS[row.fulfillmentStatus] ??
