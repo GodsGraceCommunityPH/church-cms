@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 import {
-  canRetryStaffGcashPayment,
+  canRecordGcashReceipt,
   staffPaymentBlockReason,
   staffPaymentErrorMessage,
   staffPaymentOptionState,
@@ -173,35 +173,35 @@ test("gcash is unavailable while public payment collection is disabled", () => {
   assert.equal(allowed.hint, "");
 });
 
-test("failed gcash submissions keep the order retryable through the retry action", () => {
-  const awaitingStaffGcash = canRetryStaffGcashPayment(GCASH_ORDER, true);
+test("staff can attach GCash evidence to any unpaid GCash order", () => {
+  const awaitingStaffGcash = canRecordGcashReceipt(GCASH_ORDER, true);
   assert.equal(awaitingStaffGcash, true);
 
-  const retryBlockedAfterPayment = canRetryStaffGcashPayment(
+  const retryBlockedAfterPayment = canRecordGcashReceipt(
     { ...GCASH_ORDER, paymentStatus: "payment_verification" },
     true,
   );
   assert.equal(retryBlockedAfterPayment, false);
 
-  const retryBlockedForOnlineOrder = canRetryStaffGcashPayment(
+  const onlineOrder = canRecordGcashReceipt(
     { ...GCASH_ORDER, source: "online" },
     true,
   );
-  assert.equal(retryBlockedForOnlineOrder, false);
+  assert.equal(onlineOrder, true);
 
-  const retryBlockedWhenClosed = canRetryStaffGcashPayment(
+  const retryBlockedWhenClosed = canRecordGcashReceipt(
     GCASH_ORDER,
     false,
   );
   assert.equal(retryBlockedWhenClosed, false);
 
-  const retryBlockedWithoutMobile = canRetryStaffGcashPayment(
+  const retryBlockedWithoutMobile = canRecordGcashReceipt(
     { ...GCASH_ORDER, mobile: "" },
     true,
   );
   assert.equal(retryBlockedWithoutMobile, false);
 
-  const retryBlockedForCancelledOrder = canRetryStaffGcashPayment(
+  const retryBlockedForCancelledOrder = canRecordGcashReceipt(
     { ...GCASH_ORDER, fulfillmentStatus: "cancelled" },
     true,
   );
@@ -247,8 +247,8 @@ test("the cash create action requires explicit physical receipt confirmation", a
 
 test("the order detail page offers the GCash retry without duplicating the order", async () => {
   const source = await readSource("src/pages/admin/ProjectIlawOrderDetail.tsx");
-  assert.match(source, /Record GCash payment/);
-  assert.match(source, /canRetryStaffGcashPayment\(/);
+  assert.match(source, /Attach customer GCash receipt/);
+  assert.match(source, /canRecordGcashReceipt\(/);
   assert.match(source, /handleRecordGcashReceipt/);
   assert.match(source, /getProjectIlawPaymentContext\(/);
   assert.match(source, /uploadProjectIlawPaymentEvidence\(/);
