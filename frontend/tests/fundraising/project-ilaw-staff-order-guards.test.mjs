@@ -312,5 +312,8 @@ test("Project Ilaw overview stage cards open a stage-filtered production queue",
   assert.match(source, /setSelectedStage\(stage\)[\s\S]*?setTab\("queue"\)/);
   assert.match(source, /const filteredStageVariants = useMemo/);
   assert.match(source, /selectedStage \? filteredStageVariants : filteredQueue/);
-  assert.match(source, /const sourceStage = selectedStage \?\? "pending"/);
+  assert.match(
+    source,
+    /const sourceStage =\s*selectedStage \?\? \(v\.processing_qty > 0 \? "processing" : v\.manufacturing_qty > 0 \? "manufacturing" : "completed"\)/,
+  );
 });

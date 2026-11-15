@@ -21,6 +21,7 @@ import {
   createRequestId,
   formatPeso,
   type OrderDraft,
+  type ProductionReport,
   type ProjectIlawOrder,
   type ProjectIlawOrderFilters,
 } from "../../features/fundraising/projectIlaw";
@@ -38,15 +39,14 @@ import {
   getPaymentEvidenceUrl,
   getProjectIlawExportRows,
   getProjectIlawOrders,
-  getProjectIlawPublicSettings,
   getProjectIlawProductionReport,
+  getProjectIlawPublicSettings,
   recordProjectIlawCashPayment,
   rejectProjectIlawPayment,
   submitProjectIlawPayment,
   uploadProjectIlawPaymentEvidence,
   type CreatedProjectIlawStaffOrder,
 } from "../../features/fundraising/orderService";
-import type { ProductionReport } from "../../features/fundraising/projectIlaw";
 import {
   staffPaymentBlockReason,
   staffPaymentErrorMessage,
@@ -64,9 +64,32 @@ const EMPTY_FILTERS: ProjectIlawOrderFilters = {
   fulfillment: "",
 };
 
+type OrderListTab =
+  | "all"
+  | "needs_attention"
+  | "paid"
+  | "in_progress"
+  | "completed";
+
+const ORDER_LIST_TABS: Array<{ value: OrderListTab; label: string }> = [
+  { value: "all", label: "All Orders" },
+  { value: "needs_attention", label: "Needs Attention" },
+  { value: "paid", label: "Paid" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "completed", label: "Completed" },
+];
+
 const STAFF_EVIDENCE_TYPES =
   "image/jpeg,image/png,image/webp,application/pdf";
 const STAFF_EVIDENCE_MAX_BYTES = 5 * 1024 * 1024;
+
+function escapeHtml(value: string | number) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 function matchesSearch(order: ProjectIlawOrder, query: string) {
   if (!query) return true;
@@ -92,13 +115,19 @@ export default function ProjectIlawOrders() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [exporting, setExporting] = useState(false);
-  const [productionReport, setProductionReport] = useState<ProductionReport | null>(null);
+  const [productionReport, setProductionReport] =
+    useState<ProductionReport | null>(null);
   const [productionExportOpen, setProductionExportOpen] = useState(false);
   const [productionExportLoading, setProductionExportLoading] = useState(false);
   const [productionExportError, setProductionExportError] = useState("");
   const [search, setSearch] = useState("");
   const [filters, setFilters] =
     useState<ProjectIlawOrderFilters>(EMPTY_FILTERS);
+  const [listTab, setListTab] = useState<OrderListTab>("all");
+  const [attentionPayment, setAttentionPayment] = useState<
+    "awaiting_payment" | "payment_verification" | null
+  >(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Staff-assisted order creation dialog state.
   const [staffOrderOpen, setStaffOrderOpen] = useState(false);
@@ -239,9 +268,84 @@ export default function ProjectIlawOrders() {
   );
   const summary = useMemo(() => buildOrderSummary(filtered), [filtered]);
 
+  // Actionable payment counts come from the full order list so attention
+  // counts never shift while a search or tab is applied.
+  const attentionCounts = useMemo(
+    () => {
+      let awaitingPaymentOrders = 0;
+      let paymentVerificationOrders = 0;
+      for (const order of orders) {
+        if (order.fulfillmentStatus === "cancelled") continue;
+        if (order.paymentStatus === "awaiting_payment") {
+          awaitingPaymentOrders += 1;
+        }
+        if (order.paymentStatus === "payment_verification") {
+          paymentVerificationOrders += 1;
+        }
+      }
+      return { awaitingPaymentOrders, paymentVerificationOrders };
+    },
+    [orders],
+  );
+
+  const displayedOrders = useMemo(() => {
+    switch (listTab) {
+      case "needs_attention":
+        return filtered.filter(
+          (order) =>
+            order.fulfillmentStatus !== "cancelled" &&
+            (order.paymentStatus === "awaiting_payment" ||
+              order.paymentStatus === "payment_verification"),
+        );
+      case "paid":
+        return filtered.filter((order) => order.paymentStatus === "paid");
+      case "in_progress":
+        return filtered.filter(
+          (order) =>
+            order.fulfillmentStatus === "in_production" ||
+            order.fulfillmentStatus === "ready_for_pickup",
+        );
+      case "completed":
+        return filtered.filter(
+          (order) => order.fulfillmentStatus === "completed",
+        );
+      case "all":
+      default:
+        return filtered;
+    }
+  }, [filtered, listTab]);
+
   const updateFilter = (key: keyof ProjectIlawOrderFilters, value: string) => {
+    // Choosing a payment status by hand replaces any attention-card focus.
+    if (key === "payment") setAttentionPayment(null);
     setFilters((current) => ({ ...current, [key]: value }));
   };
+
+  function focusPaymentFilter(
+    payment: "awaiting_payment" | "payment_verification",
+  ) {
+    setFilters({ ...EMPTY_FILTERS, payment });
+    setAttentionPayment(payment);
+    setListTab("needs_attention");
+  }
+
+  function selectListTab(tab: OrderListTab) {
+    // The attention cards narrow the Needs Attention tab through the payment
+    // filter. That hidden narrowing is dropped as soon as the staff member
+    // moves to another tab, so no tab silently hides orders.
+    if (attentionPayment) {
+      setFilters((current) => ({ ...current, payment: "" }));
+      setAttentionPayment(null);
+    }
+    setListTab(tab);
+  }
+
+  function clearOrderFilters() {
+    setFilters(EMPTY_FILTERS);
+    setSearch("");
+    setAttentionPayment(null);
+    setListTab("all");
+  }
 
   async function handleExport() {
     if (!canExport || exporting) return;
@@ -266,29 +370,90 @@ export default function ProjectIlawOrders() {
 
   async function openProductionExport() {
     if (!canExport || productionExportLoading) return;
-    setProductionExportLoading(true); setProductionExportError("");
-    try { setProductionReport(await getProjectIlawProductionReport()); setProductionExportOpen(true); }
-    catch { setProductionExportError("The production export preview could not be loaded."); }
-    finally { setProductionExportLoading(false); }
+    setProductionExportLoading(true);
+    setProductionExportError("");
+    try {
+      setProductionReport(await getProjectIlawProductionReport());
+      setProductionExportOpen(true);
+    } catch {
+      setProductionExportError(
+        "The production export preview could not be loaded.",
+      );
+    } finally {
+      setProductionExportLoading(false);
+    }
   }
 
+  // The production files carry no customer or payment details, matching the
+  // report scope enforced by the service.
   function downloadProductionSpreadsheet() {
-    if (!productionReport || !productionReport.rows.length) return;
-    const esc = (v: string | number) => String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\"/g,"&quot;");
-    const rows = productionReport.rows.map((r) => "<tr><td>"+esc(r.productName)+"</td><td>"+esc(r.productType === "t_shirt" ? "T-shirt" : "Eco Bag")+"</td><td>"+esc(r.color)+"</td><td>"+esc(r.productType === "eco_bag" ? "One Size" : r.size)+"</td><td>"+r.quantity+"</td></tr>").join("");
-    const html = "<html><head><meta charset='utf-8'><style>body{font-family:Arial}h1{color:#36551d}table{border-collapse:collapse;width:100%}th,td{border:1px solid #cbd5e1;padding:8px;text-align:left}th{background:#eef3e7}td:last-child,th:last-child{text-align:right}</style></head><body><h1>PROJECT ILAW – PRODUCTION ORDER</h1><p>Generated: "+esc(formatOrderDateTime(productionReport.generatedAt))+"</p><p>Production cutoff: "+esc(productionReport.cutoff || "Not set")+" | Total units: "+productionReport.totalQuantity+"</p><table><thead><tr><th>Product</th><th>Product Type</th><th>Color</th><th>Size</th><th>Quantity</th></tr></thead><tbody>"+rows+"</tbody></table><p>Production notes: ______________________________________________</p></body></html>";
-    const blob = new Blob(["\uFEFF"+html], {type:"application/vnd.ms-excel;charset=utf-8"});
-    const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href=url;
-    a.download="project-ilaw-production-"+new Date().toISOString().slice(0,10)+".xls"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    if (!productionReport || productionReport.rows.length === 0) return;
+    const rows = productionReport.rows
+      .map(
+        (row) =>
+          `<tr><td>${escapeHtml(row.productName)}</td><td>${escapeHtml(
+            row.productType === "t_shirt" ? "T-shirt" : "Eco Bag",
+          )}</td><td>${escapeHtml(row.color)}</td><td>${escapeHtml(
+            row.productType === "eco_bag" ? "One Size" : row.size,
+          )}</td><td>${row.quantity}</td></tr>`,
+      )
+      .join("");
+    const html =
+      "<html><head><meta charset='utf-8'><style>body{font-family:Arial}h1{color:#36551d}table{border-collapse:collapse;width:100%}th,td{border:1px solid #cbd5e1;padding:8px;text-align:left}th{background:#eef3e7}td:last-child,th:last-child{text-align:right}</style></head><body><h1>PROJECT ILAW – PRODUCTION ORDER</h1><p>Generated: " +
+      escapeHtml(formatOrderDateTime(productionReport.generatedAt)) +
+      "</p><p>Production cutoff: " +
+      escapeHtml(productionReport.cutoff || "Not set") +
+      " | Total units: " +
+      productionReport.totalQuantity +
+      "</p><table><thead><tr><th>Product</th><th>Product Type</th><th>Color</th><th>Size</th><th>Quantity</th></tr></thead><tbody>" +
+      rows +
+      "</tbody></table><p>Production notes: ______________________________________________</p></body></html>";
+    const blob = new Blob(["\uFEFF" + html], {
+      type: "application/vnd.ms-excel;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `project-ilaw-production-${new Date()
+      .toISOString()
+      .slice(0, 10)}.xls`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
   }
 
   function printProductionOrder() {
-    if (!productionReport || !productionReport.rows.length) return;
-    const w = window.open("", "_blank"); if (!w) { setProductionExportError("Allow pop-ups to print the production order."); return; }
-    const esc = (v: string) => v.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-    const rows = productionReport.rows.map((r) => "<tr><td>"+esc(r.productName)+"</td><td>"+esc(r.color)+"</td><td>"+esc(r.productType === "eco_bag" ? "One Size" : r.size)+"</td><td>"+r.quantity+"</td></tr>").join("");
-    w.document.write("<html><head><title>Project Ilaw Production Order</title><style>body{font:14px Arial;padding:24px;color:#172033}table{border-collapse:collapse;width:100%;margin-top:20px}th,td{border:1px solid #cbd5e1;padding:10px;text-align:left}th{background:#eef3e7}td:last-child,th:last-child{text-align:right}</style></head><body><h1>PROJECT ILAW – PRODUCTION ORDER</h1><p>Generated: "+esc(formatOrderDateTime(productionReport.generatedAt))+"</p><p>Production cutoff: "+esc(productionReport.cutoff || "Not set")+" · Total units: "+productionReport.totalQuantity+"</p><table><thead><tr><th>Product</th><th>Color</th><th>Size</th><th>Quantity</th></tr></thead><tbody>"+rows+"</tbody></table><p style='margin-top:40px'>Production notes: ______________________________________________</p><script>window.onload=function(){window.print()}</script></body></html>");
-    w.document.close();
+    if (!productionReport || productionReport.rows.length === 0) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      setProductionExportError(
+        "Allow pop-ups to print the production order.",
+      );
+      return;
+    }
+    const rows = productionReport.rows
+      .map(
+        (row) =>
+          `<tr><td>${escapeHtml(row.productName)}</td><td>${escapeHtml(
+            row.color,
+          )}</td><td>${escapeHtml(
+            row.productType === "eco_bag" ? "One Size" : row.size,
+          )}</td><td>${row.quantity}</td></tr>`,
+      )
+      .join("");
+    printWindow.document.write(
+      "<html><head><title>Project Ilaw Production Order</title><style>body{font:14px Arial;padding:24px;color:#172033}table{border-collapse:collapse;width:100%;margin-top:20px}th,td{border:1px solid #cbd5e1;padding:10px;text-align:left}th{background:#eef3e7}td:last-child,th:last-child{text-align:right}</style></head><body><h1>PROJECT ILAW – PRODUCTION ORDER</h1><p>Generated: " +
+        escapeHtml(formatOrderDateTime(productionReport.generatedAt)) +
+        "</p><p>Production cutoff: " +
+        escapeHtml(productionReport.cutoff || "Not set") +
+        " · Total units: " +
+        productionReport.totalQuantity +
+        "</p><table><thead><tr><th>Product</th><th>Color</th><th>Size</th><th>Quantity</th></tr></thead><tbody>" +
+        rows +
+        "</tbody></table><p style='margin-top:40px'>Production notes: ______________________________________________</p><script>window.onload=function(){window.print()}</script></body></html>",
+    );
+    printWindow.document.close();
   }
 
   async function submitStaffOrder() {
@@ -561,16 +726,53 @@ export default function ProjectIlawOrders() {
       cashConfirmed: staffCashConfirmed,
     }) !== "";
 
+  function renderOrderActions(order: ProjectIlawOrder) {
+    return (
+      <>
+        {order.paymentStatus === "awaiting_payment" &&
+          canConfirmPayment && (
+            <Button
+              variant="secondary"
+              onClick={() => openCashPayment(order)}
+              disabled={cashBusy}
+            >
+              Record cash payment
+            </Button>
+          )}
+        {order.paymentStatus === "payment_verification" &&
+          canConfirmPayment && (
+            <Button
+              variant="secondary"
+              onClick={() => void openPaymentReview(order)}
+            >
+              Review payment
+            </Button>
+          )}
+        {order.paymentStatus === "paid" && (
+          <span className="pilaw-paid-indicator">
+            Paid
+            {order.paymentMethod
+              ? ` · ${order.paymentMethod === "cash" ? "Cash" : "GCash"}`
+              : ""}
+          </span>
+        )}
+        <Link
+          className="pilaw-order-link"
+          to={`/admin/project-ilaw-orders/${order.id}`}
+        >
+          View Order
+        </Link>
+      </>
+    );
+  }
+
   return (
     <div className="pilaw-orders-page">
       <header className="pilaw-orders-header">
         <div>
           <p className="pilaw-eyebrow">Project Ilaw</p>
-          <h1>Project Ilaw — Order Management</h1>
-          <p>
-            Review orders and payment evidence, manually confirm payments, and
-            track fulfilment and made-to-order production quantities.
-          </p>
+          <h1>Order Management</h1>
+          <p>View customer orders, check payments, and manage order progress.</p>
         </div>
         <div className="pilaw-orders-actions">
           {canCreateStaffOrder && (
@@ -583,10 +785,28 @@ export default function ProjectIlawOrders() {
             <RefreshCcw size={16} aria-hidden="true" />
             Refresh
           </Button>
-          {canExport && <>
-            <Button variant="secondary" onClick={() => void handleExport()} disabled={exporting}><Download size={16} aria-hidden="true" />{exporting ? "Exporting..." : "Export Orders CSV"}</Button>
-            <Button onClick={() => void openProductionExport()} disabled={productionExportLoading}><Download size={16} aria-hidden="true" />{productionExportLoading ? "Preparing..." : "Export Production Order"}</Button>
-          </>}
+          {canExport && (
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => void handleExport()}
+                disabled={exporting}
+              >
+                <Download size={16} aria-hidden="true" />
+                {exporting ? "Exporting..." : "Export Orders CSV"}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => void openProductionExport()}
+                disabled={productionExportLoading}
+              >
+                <Download size={16} aria-hidden="true" />
+                {productionExportLoading
+                  ? "Preparing..."
+                  : "Export Production Order"}
+              </Button>
+            </>
+          )}
         </div>
       </header>
 
@@ -626,6 +846,40 @@ export default function ProjectIlawOrders() {
         </div>
       )}
 
+      <section className="pilaw-attention" aria-label="Orders needing attention">
+        <h2 className="pilaw-attention-title">Needs attention</h2>
+        <div className="pilaw-attention-grid">
+          <button
+            type="button"
+            className="pilaw-attention-card"
+            aria-pressed={attentionPayment === "payment_verification"}
+            onClick={() => focusPaymentFilter("payment_verification")}
+          >
+            <span className="pilaw-attention-count">
+              {attentionCounts.paymentVerificationOrders}
+            </span>
+            <span className="pilaw-attention-label">Payment Verification</span>
+            <span className="pilaw-attention-hint">
+              Receipts waiting for manual review
+            </span>
+          </button>
+          <button
+            type="button"
+            className="pilaw-attention-card"
+            aria-pressed={attentionPayment === "awaiting_payment"}
+            onClick={() => focusPaymentFilter("awaiting_payment")}
+          >
+            <span className="pilaw-attention-count">
+              {attentionCounts.awaitingPaymentOrders}
+            </span>
+            <span className="pilaw-attention-label">Awaiting Payment</span>
+            <span className="pilaw-attention-hint">
+              Waiting for the buyer to pay
+            </span>
+          </button>
+        </div>
+      </section>
+
       <section className="pilaw-search-panel" aria-label="Order search">
         <label className="pilaw-filter-search pilaw-search-prominent">
           <span>Search orders</span>
@@ -642,9 +896,44 @@ export default function ProjectIlawOrders() {
         </label>
       </section>
 
-      <section className="pilaw-action-summary" aria-label="Orders needing attention">
-        <button type="button" onClick={() => setFilters((v) => ({...v,payment:"payment_verification"}))}><span>Payment verification</span><strong>{summary.paymentVerificationOrders}</strong><small>Orders needing review</small></button>
-        <button type="button" onClick={() => setFilters((v) => ({...v,payment:"awaiting_payment"}))}><span>Awaiting payment</span><strong>{summary.awaitingPaymentOrders}</strong><small>Orders not yet paid</small></button>
+      <details className="pilaw-reporting">
+        <summary>Reporting</summary>
+        <section className="pilaw-summary" aria-label="Order summary">
+          <div className="pilaw-summary-card">
+          <span>Total orders received</span>
+          <strong>{summary.totalOrders}</strong>
+          <small>All submitted orders in this view</small>
+        </div>
+        <div className="pilaw-summary-card">
+          <span>Total units ordered</span>
+          <strong>{summary.totalUnits}</strong>
+          <small>{summary.activeUnits} active · {summary.cancelledUnits} cancelled</small>
+        </div>
+        <div className="pilaw-summary-card">
+          <span>Awaiting payment</span>
+          <strong>{summary.awaitingPaymentOrders}</strong>
+          <small>Cancelled orders are excluded</small>
+        </div>
+        <div className="pilaw-summary-card">
+          <span>Payment verification</span>
+          <strong>{summary.paymentVerificationOrders}</strong>
+          <small>Evidence submitted, awaiting manual review</small>
+        </div>
+        <div className="pilaw-summary-card">
+          <span>Paid orders</span>
+          <strong>{summary.paidOrders}</strong>
+          <small>Manually confirmed by authorised staff</small>
+        </div>
+        <div className="pilaw-summary-card">
+          <span>Total expected sales</span>
+          <strong>{formatPeso(summary.expectedSales)}</strong>
+          <small>Cancelled orders are excluded</small>
+        </div>
+        <div className="pilaw-summary-card pilaw-summary-collections">
+          <span>Total confirmed collections</span>
+          <strong>{formatPeso(summary.confirmedCollections)}</strong>
+          <small>Paid orders only</small>
+        </div>
       </section>
 
       {summary.cancelledPaidOrders > 0 && (
@@ -655,84 +944,113 @@ export default function ProjectIlawOrders() {
           collections and are not treated as refunds.
         </p>
       )}
+      </details>
 
       <section className="pilaw-panel" aria-label="Order management">
-        <details className="pilaw-filter-disclosure"><summary>Filters</summary>
+        <div className="pilaw-panel-head">
+          <div
+            className="pilaw-tabs"
+            role="group"
+            aria-label="Filter orders by status"
+          >
+            {ORDER_LIST_TABS.map((tab) => (
+              <button
+                key={tab.value}
+                type="button"
+                className={
+                  listTab === tab.value
+                    ? "pilaw-tab pilaw-tab-active"
+                    : "pilaw-tab"
+                }
+                aria-pressed={listTab === tab.value}
+                onClick={() => selectListTab(tab.value)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          <Button
+            variant="secondary"
+            onClick={() => setFiltersOpen((open) => !open)}
+            aria-expanded={filtersOpen}
+          >
+            {filtersOpen ? "Hide filters" : "Filters"}
+          </Button>
+        </div>
+
+        {filtersOpen && (
           <div className="pilaw-filters">
-          <label>
-            <span>From date</span>
-            <Input
-              type="date"
-              value={filters.from}
-              onChange={(event) => updateFilter("from", event.target.value)}
-            />
-          </label>
-          <label>
-            <span>To date</span>
-            <Input
-              type="date"
-              value={filters.to}
-              onChange={(event) => updateFilter("to", event.target.value)}
-            />
-          </label>
-          <label>
-            <span>Product</span>
-            <Select
-              value={filters.product}
-              onChange={(event) => updateFilter("product", event.target.value)}
-            >
-              <option value="">All products</option>
-              {SHOP_ITEMS.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <label>
-            <span>Payment status</span>
-            <Select
-              value={filters.payment}
-              onChange={(event) => updateFilter("payment", event.target.value)}
-            >
-              <option value="">All payment statuses</option>
-              {Object.entries(PAYMENT_STATUS_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <label>
-            <span>Fulfillment status</span>
-            <Select
-              value={filters.fulfillment}
-              onChange={(event) =>
-                updateFilter("fulfillment", event.target.value)
-              }
-            >
-              <option value="">All fulfillment statuses</option>
-              {Object.entries(FULFILLMENT_STATUS_LABELS).map(
-                ([value, label]) => (
+            <label>
+              <span>From date</span>
+              <Input
+                type="date"
+                value={filters.from}
+                onChange={(event) => updateFilter("from", event.target.value)}
+              />
+            </label>
+            <label>
+              <span>To date</span>
+              <Input
+                type="date"
+                value={filters.to}
+                onChange={(event) => updateFilter("to", event.target.value)}
+              />
+            </label>
+            <label>
+              <span>Product</span>
+              <Select
+                value={filters.product}
+                onChange={(event) => updateFilter("product", event.target.value)}
+              >
+                <option value="">All products</option>
+                {SHOP_ITEMS.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label>
+              <span>Payment status</span>
+              <Select
+                value={filters.payment}
+                onChange={(event) => updateFilter("payment", event.target.value)}
+              >
+                <option value="">All payment statuses</option>
+                {Object.entries(PAYMENT_STATUS_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
                   </option>
-                ),
-              )}
-            </Select>
-          </label>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setFilters(EMPTY_FILTERS);
-              setSearch("");
-            }}
-            disabled={filters === EMPTY_FILTERS && !search}
-          >
-            Clear filters
-          </Button>
+                ))}
+              </Select>
+            </label>
+            <label>
+              <span>Fulfillment status</span>
+              <Select
+                value={filters.fulfillment}
+                onChange={(event) =>
+                  updateFilter("fulfillment", event.target.value)
+                }
+              >
+                <option value="">All fulfillment statuses</option>
+                {Object.entries(FULFILLMENT_STATUS_LABELS).map(
+                  ([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ),
+                )}
+              </Select>
+            </label>
+            <Button
+              variant="secondary"
+              onClick={clearOrderFilters}
+              disabled={filters === EMPTY_FILTERS && !search}
+            >
+              Clear filters
+            </Button>
           </div>
-        </details>
+        )}
 
         {error && (
           <div className="pilaw-error" role="alert">
@@ -745,7 +1063,7 @@ export default function ProjectIlawOrders() {
 
         {loading ? (
           <p className="pilaw-state">Loading Project Ilaw orders...</p>
-        ) : filtered.length === 0 ? (
+        ) : displayedOrders.length === 0 ? (
           <div className="pilaw-state">
             <strong>
               {orders.length === 0
@@ -757,15 +1075,102 @@ export default function ProjectIlawOrders() {
             </p>
           </div>
         ) : (
-          <div className="pilaw-table-wrap pilaw-orders-list-wrap"><table className="pilaw-table pilaw-orders-list">
-            <thead><tr><th scope="col">Order Reference</th><th scope="col">Actions</th></tr></thead>
-            <tbody>{filtered.map((order) => <tr key={order.id}>
-              <td><Link className="pilaw-order-link" to={"/admin/project-ilaw-orders/" + order.id}>{order.reference}</Link></td>
-              <td><div className="pilaw-row-actions">
-                {order.paymentStatus === "awaiting_payment" && canConfirmPayment && <Button variant="secondary" onClick={() => openCashPayment(order)} disabled={cashBusy}>Record cash payment</Button>}
-                {order.paymentStatus === "payment_verification" && canConfirmPayment && <Button variant="secondary" onClick={() => void openPaymentReview(order)}>Review payment</Button>}
-              </div></td>
-            </tr>)}</tbody></table></div>
+          <>
+            <div className="pilaw-table-wrap">
+            <table className="pilaw-table">
+              <thead>
+                <tr>
+                  <th scope="col">Order</th>
+                  <th scope="col">Customer</th>
+                  <th scope="col">Payment status</th>
+                  <th scope="col">Fulfillment</th>
+                  <th scope="col">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayedOrders.map((order) => (
+                  <tr key={order.id}>
+                    <td>
+                      <Link
+                        className="pilaw-order-link"
+                        to={`/admin/project-ilaw-orders/${order.id}`}
+                      >
+                        {order.reference}
+                      </Link>
+                      <span className="pilaw-order-amount">
+                        {formatPeso(order.totalAmount)}
+                      </span>
+                    </td>
+                    <td>
+                      <span className="pilaw-order-customer">
+                        {order.customerName}
+                      </span>
+                      <span className="pilaw-order-mobile">
+                        {order.mobile || "No mobile number"}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        className={`pilaw-status pilaw-status-${order.paymentStatus}`}
+                      >
+                        {PAYMENT_STATUS_LABELS[order.paymentStatus]}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        className={`pilaw-status pilaw-status-${order.fulfillmentStatus}`}
+                      >
+                        {FULFILLMENT_STATUS_LABELS[order.fulfillmentStatus]}
+                      </span>
+                    </td>
+                     <td>
+                       <div className="pilaw-row-actions">
+                          {renderOrderActions(order)}
+                        </div>
+                     </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="pilaw-order-cards">
+            {displayedOrders.map((order) => (
+              <article key={order.id} className="pilaw-order-card">
+                <div className="pilaw-order-card-head">
+                  <Link
+                    className="pilaw-order-link"
+                    to={`/admin/project-ilaw-orders/${order.id}`}
+                  >
+                    {order.reference}
+                  </Link>
+                  <span className="pilaw-order-amount">
+                    {formatPeso(order.totalAmount)}
+                  </span>
+                </div>
+                <p className="pilaw-order-card-customer">{order.customerName}</p>
+                <p className="pilaw-order-card-meta">
+                  {order.mobile || "No mobile number"}
+                </p>
+                <div className="pilaw-order-card-statuses">
+                  <span
+                    className={`pilaw-status pilaw-status-${order.paymentStatus}`}
+                  >
+                    {PAYMENT_STATUS_LABELS[order.paymentStatus]}
+                  </span>
+                  <span
+                    className={`pilaw-status pilaw-status-${order.fulfillmentStatus}`}
+                  >
+                    {FULFILLMENT_STATUS_LABELS[order.fulfillmentStatus]}
+                  </span>
+                </div>
+                <div className="pilaw-order-card-actions">
+                  {renderOrderActions(order)}
+                </div>
+              </article>
+            ))}
+          </div>
+          </>
         )}
       </section>
 
@@ -776,12 +1181,86 @@ export default function ProjectIlawOrders() {
         refund.
       </p>
 
-      <Modal open={productionExportOpen} title="Export Production Order" onClose={() => setProductionExportOpen(false)}>
-        <div className="pilaw-embedded-form"><p>Supplier-ready quantities from paid, non-cancelled orders only. Customer and payment details are excluded.</p>
-          {productionReport && <><div className="pilaw-production-meta"><div><dt>Production lines</dt><dd>{productionReport.rows.length}</dd></div><div><dt>Total units</dt><dd>{productionReport.totalQuantity}</dd></div><div><dt>Cutoff</dt><dd>{productionReport.cutoff || "Not set"}</dd></div></div>
-          {productionReport.rows.length ? <div className="pilaw-table-wrap"><table className="pilaw-table pilaw-production-table"><thead><tr><th>Product</th><th>Color</th><th>Size</th><th>Qty</th></tr></thead><tbody>{productionReport.rows.map((row) => <tr key={row.productId+"-"+row.color+"-"+row.size}><td>{row.productName}</td><td>{row.color}</td><td>{row.productType === "eco_bag" ? "One Size" : row.size}</td><td>{row.quantity}</td></tr>)}</tbody></table></div> : <p className="pilaw-state">No paid, non-cancelled orders are eligible for production yet.</p>}</>}
-          {productionExportError && <p className="pilaw-inline-error" role="alert">{productionExportError}</p>}
-          <div className="pilaw-embedded-form-actions"><Button variant="secondary" onClick={printProductionOrder} disabled={!productionReport?.rows.length}>Print / Save PDF</Button><Button onClick={downloadProductionSpreadsheet} disabled={!productionReport?.rows.length}>Download Excel-compatible file</Button></div>
+      <Modal
+        open={productionExportOpen}
+        title="Export Production Order"
+        onClose={() => setProductionExportOpen(false)}
+      >
+        <div className="pilaw-embedded-form">
+          <p>
+            Supplier-ready quantities from paid, non-cancelled orders only.
+            Customer and payment details are excluded.
+          </p>
+          {productionReport && (
+            <>
+              <div className="pilaw-production-meta">
+                <div>
+                  <dt>Production lines</dt>
+                  <dd>{productionReport.rows.length}</dd>
+                </div>
+                <div>
+                  <dt>Total units</dt>
+                  <dd>{productionReport.totalQuantity}</dd>
+                </div>
+                <div>
+                  <dt>Cutoff</dt>
+                  <dd>{productionReport.cutoff || "Not set"}</dd>
+                </div>
+              </div>
+              {productionReport.rows.length ? (
+                <div className="pilaw-table-wrap">
+                  <table className="pilaw-table pilaw-production-table">
+                    <thead>
+                      <tr>
+                        <th>Product</th>
+                        <th>Color</th>
+                        <th>Size</th>
+                        <th>Qty</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {productionReport.rows.map((row) => (
+                        <tr key={`${row.productId}-${row.color}-${row.size}`}>
+                          <td>{row.productName}</td>
+                          <td>{row.color}</td>
+                          <td>
+                            {row.productType === "eco_bag"
+                              ? "One Size"
+                              : row.size}
+                          </td>
+                          <td>{row.quantity}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="pilaw-state">
+                  No paid, non-cancelled orders are eligible for production yet.
+                </p>
+              )}
+            </>
+          )}
+          {productionExportError && (
+            <p className="pilaw-inline-error" role="alert">
+              {productionExportError}
+            </p>
+          )}
+          <div className="pilaw-embedded-form-actions">
+            <Button
+              variant="secondary"
+              onClick={printProductionOrder}
+              disabled={!productionReport?.rows.length}
+            >
+              Print / Save PDF
+            </Button>
+            <Button
+              onClick={downloadProductionSpreadsheet}
+              disabled={!productionReport?.rows.length}
+            >
+              Download Excel-compatible file
+            </Button>
+          </div>
         </div>
       </Modal>
 

@@ -677,7 +677,7 @@ test("the confirmed GCash InstaPay QR is a public, unchanged asset", async () =>
   const give = await read("../../src/pages/GivePage.tsx");
   // The Give page points at the approved Tom Dones InstaPay QR asset, while the
   // Shop payment panel keeps its own original GCash InstaPay QR asset.
-  assert.match(give, /\/images\/fundraising\/tom-dones-instapay-qr\.png/);
+  assert.match(give, /\/images\/fundraising\/tom-dones-instapay-qr\.svg/);
   assert.doesNotMatch(give, /assets\/instapay-qr\.png/);
   assert.match(give, /GCash/);
 });
@@ -831,6 +831,86 @@ test("order management puts search before summary cards and hides production rep
   assert.match(page, /pilaw-paid-indicator/);
 });
 
+test("order management is a task-oriented workspace with attention, tabs, and reporting", async () => {
+  const page = await read("../../src/pages/admin/ProjectIlawOrders.tsx");
+  const css = await read("../../src/pages/admin/ProjectIlawOrders.css");
+
+  // The page opens with a plain-language title, subtitle, and primary action.
+  assert.match(page, /<h1>Order Management<\/h1>/);
+  assert.match(page, /View customer orders, check payments, and manage order progress\./);
+  assert.match(page, /Create Staff Order/);
+
+  // Actionable attention counts lead the page and open the payment queue.
+  const attentionIndex = page.indexOf('aria-label="Orders needing attention"');
+  const searchIndex = page.indexOf('aria-label="Order search"');
+  const summaryIndex = page.indexOf('aria-label="Order summary"');
+  assert.ok(attentionIndex !== -1, "attention section is required");
+  assert.ok(searchIndex > attentionIndex, "attention must lead the page");
+  assert.ok(searchIndex < summaryIndex, "search must precede summary cards");
+  assert.match(page, /focusPaymentFilter\("payment_verification"\)/);
+  assert.match(page, /focusPaymentFilter\("awaiting_payment"\)/);
+  assert.match(page, /attentionCounts\.paymentVerificationOrders/);
+  assert.match(page, /attentionCounts\.awaitingPaymentOrders/);
+
+  // Financial reporting moves behind a disclosure and keeps its summary label.
+  assert.match(page, /<details className="pilaw-reporting">/);
+  assert.match(page, /<summary>Reporting<\/summary>/);
+  assert.doesNotMatch(page, /<ProductionReportPanel/);
+  assert.doesNotMatch(page, /pilaw-breakdown/);
+
+  // Simple status tabs drive the order list.
+  assert.match(page, /ORDER_LIST_TABS/);
+  for (const label of [
+    "All Orders",
+    "Needs Attention",
+    "Paid",
+    "In Progress",
+    "Completed",
+  ]) {
+    assert.ok(page.includes(`"${label}"`), `status tab "${label}" is required`);
+  }
+  assert.match(page, /displayedOrders/);
+
+  // A hidden attention-card narrowing is dropped when another tab is opened, so
+  // no tab can silently show an empty list.
+  assert.match(page, /function selectListTab\(tab: OrderListTab\)/);
+  assert.match(page, /setFilters\(\(current\) => \(\{ \.\.\.current, payment: "" \}\)\)/);
+  assert.match(page, /onClick=\{\(\) => selectListTab\(tab\.value\)\}/);
+  assert.match(page, /aria-pressed=\{attentionPayment === "payment_verification"\}/);
+
+  // Mobile uses responsive order cards instead of the wide table.
+  assert.match(page, /pilaw-order-cards/);
+  assert.match(page, /pilaw-order-card/);
+  assert.match(css, /@media \(max-width: 900px\)[\s\S]*pilaw-order-cards/);
+
+  // Rows keep only what the payment workflow needs: who paid, how to reach
+  // them, the payment status, fulfilment context, and the next action.
+  for (const header of [
+    "Order",
+    "Customer",
+    "Payment status",
+    "Fulfillment",
+    "Action",
+  ]) {
+    assert.ok(
+      page.includes(`<th scope="col">${header}</th>`),
+      `order list column "${header}" is required`,
+    );
+  }
+  assert.match(page, /order\.customerName/);
+  assert.match(page, /order\.mobile \|\| "No mobile number"/);
+  assert.match(page, /renderOrderActions\(order\)/);
+  assert.doesNotMatch(page, /<th scope="col">Source<\/th>/);
+
+  // The supplier production export added on main is preserved and permission
+  // gated, and it never carries customer or payment details.
+  assert.match(page, /getProjectIlawProductionReport/);
+  assert.match(page, /Export Production Order/);
+  assert.match(page, /Print \/ Save PDF/);
+  assert.match(page, /Download Excel-compatible file/);
+  assert.match(page, /if \(!canExport \|\| productionExportLoading\) return;/);
+});
+
 test("order detail offers a cash recording action with an explicit receipt confirmation", async () => {
   const detail = await read("../../src/pages/admin/ProjectIlawOrderDetail.tsx");
   const service = await read("../../src/features/fundraising/orderService.ts");
@@ -925,11 +1005,17 @@ test("the payment evidence form requires both the transaction reference and the 
 
 test("order management offers a permission-gated staff-assisted order flow", async () => {
   const page = await read("../../src/pages/admin/ProjectIlawOrders.tsx");
+  const detail = await read("../../src/pages/admin/ProjectIlawOrderDetail.tsx");
   const service = await read("../../src/features/fundraising/orderService.ts");
 
-  // The entry point sits beside the existing page actions and is manage-only.
+  // The entry point sits beside the existing page actions and is gated on the
+  // dedicated create permission, while managing orders keeps its own gate.
   assert.match(page, /Create Staff Order/);
-  assert.match(page, /canManage &&/);
+  assert.match(
+    page,
+    /const canCreateStaffOrder = hasPermission\("project_ilaw\.orders\.create"\)/,
+  );
+  assert.match(page, /\{canCreateStaffOrder && \([\s\S]*?Create Staff Order/);
   assert.match(page, /hasPermission\("project_ilaw\.orders\.manage"\)/);
 
   // The form covers the three required sections and reuses the catalogue.
@@ -964,8 +1050,8 @@ test("order management offers a permission-gated staff-assisted order flow", asy
   assert.match(service, /rpc\("create_project_ilaw_staff_order"/);
   assert.doesNotMatch(service, /p_staff_id|p_actor_id/);
 
-  // Order source is visible in the existing order table.
-  assert.match(page, /<th scope="col">Source<\/th>/);
-  assert.match(page, /Staff-assisted/);
-  assert.match(page, /"Online"/);
+  // The list stays lean and the order detail page names the order source.
+  assert.match(detail, /Order source:/);
+  assert.match(detail, /Staff-assisted/);
+  assert.match(detail, /"Online customer"/);
 });
