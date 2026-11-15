@@ -764,7 +764,6 @@ export default function ProjectIlawOrders() {
               <td><div className="pilaw-row-actions">
                 {order.paymentStatus === "awaiting_payment" && canConfirmPayment && <Button variant="secondary" onClick={() => openCashPayment(order)} disabled={cashBusy}>Record cash payment</Button>}
                 {order.paymentStatus === "payment_verification" && canConfirmPayment && <Button variant="secondary" onClick={() => void openPaymentReview(order)}>Review payment</Button>}
-                {order.paymentStatus === "paid" && <span className="pilaw-paid-indicator">Paid</span>}
               </div></td>
             </tr>)}</tbody></table></div>
         )}
