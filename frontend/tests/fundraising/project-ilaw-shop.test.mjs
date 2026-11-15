@@ -884,14 +884,10 @@ test("order management is a task-oriented workspace with attention, tabs, and re
   assert.match(css, /@media \(max-width: 900px\)[\s\S]*pilaw-order-cards/);
 
   // Rows keep only what the payment workflow needs: who paid, how to reach
-  // them, the payment status, fulfilment context, and the next action.
-  for (const header of [
-    "Order",
-    "Customer",
-    "Payment status",
-    "Fulfillment",
-    "Action",
-  ]) {
+  // them, the payment status, and the next action. The reference itself is the
+  // link to the order page, so there is no separate View Order control, and
+  // Fulfillment is left to the detail page. Cancelled orders still carry a badge.
+  for (const header of ["Order", "Customer", "Payment status", "Action"]) {
     assert.ok(
       page.includes(`<th scope="col">${header}</th>`),
       `order list column "${header}" is required`,
@@ -901,6 +897,10 @@ test("order management is a task-oriented workspace with attention, tabs, and re
   assert.match(page, /order\.mobile \|\| "No mobile number"/);
   assert.match(page, /renderOrderActions\(order\)/);
   assert.doesNotMatch(page, /<th scope="col">Source<\/th>/);
+  assert.doesNotMatch(page, /<th scope="col">Fulfillment<\/th>/);
+  assert.doesNotMatch(page, /View Order<\/Link>/);
+  assert.match(page, /order\.fulfillmentStatus === "cancelled"/);
+  assert.match(page, /to={`\/admin\/project-ilaw-orders\/\$\{order\.id}`}/);
 
   // The supplier production export added on main is preserved and permission
   // gated, and it never carries customer or payment details.
