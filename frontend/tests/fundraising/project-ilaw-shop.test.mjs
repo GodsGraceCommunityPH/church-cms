@@ -882,6 +882,33 @@ test("order management is a task-oriented workspace with attention, tabs, and re
   assert.match(page, /pilaw-order-cards/);
   assert.match(page, /pilaw-order-card/);
   assert.match(css, /@media \(max-width: 900px\)[\s\S]*pilaw-order-cards/);
+
+  // Rows keep only what the payment workflow needs: who paid, how to reach
+  // them, the payment status, fulfilment context, and the next action.
+  for (const header of [
+    "Order",
+    "Customer",
+    "Payment status",
+    "Fulfillment",
+    "Action",
+  ]) {
+    assert.ok(
+      page.includes(`<th scope="col">${header}</th>`),
+      `order list column "${header}" is required`,
+    );
+  }
+  assert.match(page, /order\.customerName/);
+  assert.match(page, /order\.mobile \|\| "No mobile number"/);
+  assert.match(page, /renderOrderActions\(order\)/);
+  assert.doesNotMatch(page, /<th scope="col">Source<\/th>/);
+
+  // The supplier production export added on main is preserved and permission
+  // gated, and it never carries customer or payment details.
+  assert.match(page, /getProjectIlawProductionReport/);
+  assert.match(page, /Export Production Order/);
+  assert.match(page, /Print \/ Save PDF/);
+  assert.match(page, /Download Excel-compatible file/);
+  assert.match(page, /if \(!canExport \|\| productionExportLoading\) return;/);
 });
 
 test("order detail offers a cash recording action with an explicit receipt confirmation", async () => {
@@ -978,6 +1005,7 @@ test("the payment evidence form requires both the transaction reference and the 
 
 test("order management offers a permission-gated staff-assisted order flow", async () => {
   const page = await read("../../src/pages/admin/ProjectIlawOrders.tsx");
+  const detail = await read("../../src/pages/admin/ProjectIlawOrderDetail.tsx");
   const service = await read("../../src/features/fundraising/orderService.ts");
 
   // The entry point sits beside the existing page actions and is gated on the
@@ -1022,8 +1050,8 @@ test("order management offers a permission-gated staff-assisted order flow", asy
   assert.match(service, /rpc\("create_project_ilaw_staff_order"/);
   assert.doesNotMatch(service, /p_staff_id|p_actor_id/);
 
-  // Order source is visible in the existing order table.
-  assert.match(page, /<th scope="col">Source<\/th>/);
-  assert.match(page, /Staff-assisted/);
-  assert.match(page, /"Online"/);
+  // The list stays lean and the order detail page names the order source.
+  assert.match(detail, /Order source:/);
+  assert.match(detail, /Staff-assisted/);
+  assert.match(detail, /"Online customer"/);
 });
