@@ -4,6 +4,7 @@ import type { ChangeEvent, FormEvent } from "react";
 import {
   ArrowLeft,
   FileImage,
+  Pencil,
   RefreshCcw,
   ShieldAlert,
   ShieldCheck,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 import Button from "../../components/ui/Button";
 import Input from "../../components/ui/Input";
+import Select from "../../components/ui/Select";
 import OrderLineItemsEditor from "../../components/fundraising/OrderLineItemsEditor";
 import { useAuth } from "../../features/auth/auth";
 import { supabase } from "../../lib/supabase";
@@ -43,6 +45,7 @@ import {
   rejectProjectIlawPayment,
   submitProjectIlawPayment,
   updateProjectIlawFulfillment,
+  updateProjectIlawPaymentMethod,
   uploadProjectIlawPaymentEvidence,
   uploadStaffProjectIlawPaymentEvidence,
 } from "../../features/fundraising/orderService";
@@ -62,6 +65,7 @@ const EVENT_LABELS: Record<ProjectIlawOrderEvent["eventType"], string> = {
   payment_submitted: "Payment submitted",
   payment_confirmed: "Payment confirmed",
   payment_rejected: "Payment submission rejected",
+  payment_method_changed: "Payment method changed",
   fulfillment_changed: "Fulfillment updated",
   order_amended: "Order amended",
   order_cancelled: "Order cancelled",
@@ -85,10 +89,10 @@ function draftFromOrder(order: ProjectIlawOrder): OrderDraft {
 
 function statusChange(event: ProjectIlawOrderEvent) {
   const previous = event.previousValue as
-    | { fulfillment_status?: string; payment_status?: string }
+    | { fulfillment_status?: string; payment_status?: string; payment_method?: string | null }
     | null;
   const next = event.newValue as
-    | { fulfillment_status?: string; payment_status?: string }
+    | { fulfillment_status?: string; payment_status?: string; payment_method?: string | null }
     | null;
   const labels = {
     ...PAYMENT_STATUS_LABELS,
@@ -99,6 +103,11 @@ function statusChange(event: ProjectIlawOrderEvent) {
     return `${labels[previous.fulfillment_status] ?? previous.fulfillment_status} → ${
       labels[next.fulfillment_status] ?? next.fulfillment_status
     }`;
+  }
+  if (event.eventType === "payment_method_changed") {
+    const methodLabel = (method: string | null | undefined) =>
+      method === "cash" ? "Cash" : method === "gcash" ? "GCash" : "Not set";
+    return methodLabel(previous?.payment_method) + " → " + methodLabel(next?.payment_method);
   }
   if (previous?.payment_status && next?.payment_status) {
     return `${labels[previous.payment_status] ?? previous.payment_status} → ${
@@ -128,6 +137,8 @@ export default function ProjectIlawOrderDetail() {
   const [busy, setBusy] = useState("");
 
   const [paymentNote, setPaymentNote] = useState("");
+  const [editingPaymentMethod, setEditingPaymentMethod] = useState(false);
+  const [paymentMethodDraft, setPaymentMethodDraft] = useState<"gcash" | "cash" | "">("");
   const [cashAmount, setCashAmount] = useState("");
   const [cashConfirmed, setCashConfirmed] = useState(false);
   const [cashNote, setCashNote] = useState("");
@@ -282,6 +293,48 @@ export default function ProjectIlawOrderDetail() {
     } finally {
       setBusy("");
     }
+  }
+
+  function beginPaymentMethodEdit() {
+    if (!order) return;
+    setPaymentMethodDraft(order.paymentMethod ?? "");
+    setEditingPaymentMethod(true);
+  }
+
+  function cancelPaymentMethodEdit() {
+    setEditingPaymentMethod(false);
+    setPaymentMethodDraft("");
+  }
+
+  async function handleSavePaymentMethod() {
+    if (!order || !paymentMethodDraft || busy) return;
+    if (paymentMethodDraft === order.paymentMethod) {
+      cancelPaymentMethodEdit();
+      return;
+    }
+
+    const previousLabel = order.paymentMethod === "cash"
+      ? "Cash"
+      : order.paymentMethod === "gcash"
+        ? "GCash"
+        : "Not set";
+    const nextLabel = paymentMethodDraft === "cash" ? "Cash" : "GCash";
+    const resetsPreviousSubmission = Boolean(
+      order.paymentReference || order.paymentEvidencePath || order.paymentRejectedAt,
+    );
+    const message = resetsPreviousSubmission
+      ? "Change the payment method from " + previousLabel + " to " + nextLabel + "? Previous rejected GCash receipt details will be cleared from the current payment fields. The activity history will remain."
+      : "Change the payment method from " + previousLabel + " to " + nextLabel + "?";
+
+    if (!window.confirm(message)) return;
+
+    await runAction("payment-method", async () => {
+      await updateProjectIlawPaymentMethod(order.id, paymentMethodDraft);
+      setEditingPaymentMethod(false);
+      setPaymentMethodDraft("");
+      setNotice("Payment method changed to " + nextLabel + ".");
+      await load();
+    });
   }
 
   async function handleConfirmPayment() {
@@ -904,16 +957,32 @@ export default function ProjectIlawOrderDetail() {
                   <dt>Submitted</dt>
                   <dd>{formatOrderDateTime(order.paymentSubmittedAt)}</dd>
                 </div>
-                {order.paymentMethod && (
+                <div className="pilaw-payment-method-value">
                   <div>
                     <dt>Payment method</dt>
                     <dd>
                       {order.paymentMethod === "cash"
                         ? "Cash"
-                        : "GCash (InstaPay QR)"}
+                        : order.paymentMethod === "gcash"
+                          ? "GCash (InstaPay QR)"
+                          : "Not set"}
                     </dd>
                   </div>
-                )}
+                  {(canConfirmPayment || canManage) &&
+                    order.paymentStatus === "awaiting_payment" &&
+                    order.fulfillmentStatus !== "completed" &&
+                    !editingPaymentMethod && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={beginPaymentMethodEdit}
+                        disabled={Boolean(busy)}
+                      >
+                        <Pencil size={14} aria-hidden="true" />
+                        Edit
+                      </Button>
+                    )}
+                </div>
                 {order.paymentAmountReceived != null && (
                   <div>
                     <dt>Amount received</dt>
@@ -921,6 +990,43 @@ export default function ProjectIlawOrderDetail() {
                   </div>
                 )}
               </dl>
+
+              {editingPaymentMethod && (
+                <div className="pilaw-payment-method-editor">
+                  <label htmlFor="project-ilaw-payment-method-select">Payment method</label>
+                  <Select
+                    id="project-ilaw-payment-method-select"
+                    value={paymentMethodDraft}
+                    onChange={(event) => setPaymentMethodDraft(event.target.value as "gcash" | "cash" | "")}
+                    disabled={Boolean(busy)}
+                  >
+                    <option value="">Choose payment method</option>
+                    <option value="gcash">GCash</option>
+                    <option value="cash">Cash</option>
+                  </Select>
+                  <p className="pilaw-detail-note">
+                    Payment method can only be changed while the order is Awaiting Payment.
+                    Once a payment is submitted for verification or confirmed, it is locked.
+                  </p>
+                  <div className="pilaw-embedded-form-actions">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={cancelPaymentMethodEdit}
+                      disabled={Boolean(busy)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => void handleSavePaymentMethod()}
+                      disabled={Boolean(busy) || !paymentMethodDraft || paymentMethodDraft === order.paymentMethod}
+                    >
+                      {busy === "payment-method" ? "Saving..." : "Save payment method"}
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {order.paymentRejectedAt && !awaitingVerification && !paid && (
                 <div className="pilaw-payment-alert" role="status">
