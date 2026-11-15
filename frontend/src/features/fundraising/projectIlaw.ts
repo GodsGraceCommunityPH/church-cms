@@ -87,6 +87,7 @@ export interface ProjectIlawOrderEvent {
     | "payment_submitted"
     | "payment_confirmed"
     | "payment_rejected"
+    | "payment_method_changed"
     | "fulfillment_changed"
     | "order_amended"
     | "order_cancelled";
