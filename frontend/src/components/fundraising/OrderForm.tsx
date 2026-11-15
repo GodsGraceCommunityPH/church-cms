@@ -1,8 +1,8 @@
 import { useRef, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
 import Modal from "../Modal";
 import OrderLineItemsEditor from "./OrderLineItemsEditor";
 import MerchandiseCard from "./MerchandiseCard";
+import PaymentPanel from "./PaymentPanel";
 import { createProjectIlawOrder } from "../../features/fundraising/orderService";
 import {
   ORDER_FULFILMENT,
@@ -39,7 +39,6 @@ export default function OrderForm({ ordersEnabled = true }: { ordersEnabled?: bo
   const [paymentSeed, setPaymentSeed] = useState<ProjectIlawPaymentSeed | null>(
     null,
   );
-  const navigate = useNavigate();
   const requestIdRef = useRef(createRequestId());
 
   const updateDraft = (patch: Partial<OrderDraft>) => {
@@ -334,14 +333,73 @@ export default function OrderForm({ ordersEnabled = true }: { ordersEnabled?: bo
         open={Boolean(confirmation)}
         title="Orders Received!"
         onClose={closeConfirmation}
+        maxWidth={paymentMethod === "gcash" && paymentSeed ? "800px" : "576px"}
+        contentClassName={
+          paymentMethod === "gcash" && paymentSeed
+            ? "order-confirmation-modal-body"
+            : ""
+        }
       >
-        {confirmation && (
+        {confirmation && paymentMethod === "cash" && (
           <div className="order-confirmation">
-            <p>Thank you for supporting Project Ilaw!</p>
+            <p>Your order has been saved.</p>
             <p>
-              {paymentMethod === "cash"
-                ? "Your order has been saved. You chose to pay in cash at church. Please present your order reference to authorized church staff when you pay."
-                : "Your order has been saved. Open the payment section and enter this reference with the mobile number you used to submit your GCash payment."}
+              You selected cash payment. Please present your order reference to
+              authorized church staff when paying at church.
+            </p>
+            <div className="order-confirmation-reference">
+              <span>Order reference</span>
+              <strong>{confirmation.reference}</strong>
+              <span>Exact amount due</span>
+              <strong>{formatPeso(confirmation.totalAmount)}</strong>
+              <span>Payment status</span>
+              <strong>Awaiting Payment</strong>
+            </div>
+            <div className="order-confirmation-actions">
+              <button
+                type="button"
+                className="ilaw-primary"
+                onClick={closeConfirmation}
+              >
+                Pay cash at church
+              </button>
+            </div>
+            <p className="order-confirmation-hint">
+              Your order is still Awaiting Payment. It will only be marked Paid
+              after authorized church staff receive your cash and record the
+              payment. Keep your order reference and present it when paying.
+              Orders are collected at church.
+            </p>
+          </div>
+        )}
+        {confirmation && paymentMethod === "gcash" && paymentSeed && (
+          <div className="order-confirmation-gcash">
+            <p className="order-confirmation-gcash-intro">
+              <strong>Order received!</strong>
+              <br />
+              Thank you for supporting Project Ilaw!
+            </p>
+            <p>
+              Your order has been successfully saved. Please complete your GCash
+              payment below.
+            </p>
+            <div className="order-confirmation-reference order-confirmation-reference-inline">
+              <span>Order reference</span>
+              <strong>{confirmation.reference}</strong>
+              <span>Exact amount due</span>
+              <strong>{formatPeso(confirmation.totalAmount)}</strong>
+              <span>Payment status</span>
+              <strong>Awaiting Payment</strong>
+            </div>
+            <PaymentPanel initialOrder={paymentSeed} hideLookupForm />
+          </div>
+        )}
+        {confirmation && paymentMethod === "gcash" && !paymentSeed && (
+          <div className="order-confirmation">
+            <p>Your order has been saved.</p>
+            <p>
+              Keep your reference and submit your GCash payment details from the
+              payment section on the shop page.
             </p>
             <div className="order-confirmation-reference">
               <span>Order reference</span>
@@ -350,51 +408,28 @@ export default function OrderForm({ ordersEnabled = true }: { ordersEnabled?: bo
               <strong>{formatPeso(confirmation.totalAmount)}</strong>
             </div>
             <div className="order-confirmation-actions">
-              {paymentMethod === "cash" ? (
-                <button
-                  type="button"
-                  className="ilaw-primary"
-                  onClick={closeConfirmation}
-                >
-                  Pay cash at church
-                </button>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className="ilaw-primary"
-                    onClick={() => {
-                      closeConfirmation();
-                      if (paymentSeed) {
-                        navigate("/shop", {
-                          state: { projectIlawPayment: paymentSeed },
-                        });
-                        return;
-                      }
-                      window.setTimeout(() => {
-                        document
-                          .getElementById("pay-order")
-                          ?.scrollIntoView({ behavior: "smooth", block: "start" });
-                      }, 0);
-                    }}
-                  >
-                    Go to payment
-                  </button>
-                  <button
-                    type="button"
-                    className="ilaw-secondary"
-                    onClick={closeConfirmation}
-                  >
-                    Close
-                  </button>
-                </>
-              )}
+              <button
+                type="button"
+                className="ilaw-primary"
+                onClick={() => {
+                  closeConfirmation();
+                  window.setTimeout(() => {
+                    document
+                      .getElementById("pay-order")
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }, 0);
+                }}
+              >
+                Go to payment
+              </button>
+              <button
+                type="button"
+                className="ilaw-secondary"
+                onClick={closeConfirmation}
+              >
+                Close
+              </button>
             </div>
-            <p className="order-confirmation-hint">
-              {paymentMethod === "cash"
-                ? "Your order is still Awaiting Payment. It will only be marked Paid after authorized church staff receive your cash and record the payment. Keep your order reference and present it when paying. Orders are collected at church."
-                : "Keep your reference. Submit your GCash transaction reference and receipt for manual verification. Orders are collected at church."}
-            </p>
           </div>
         )}
       </Modal>

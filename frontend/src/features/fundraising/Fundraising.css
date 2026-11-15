@@ -1439,6 +1439,35 @@
   }
 }
 
+/* Inline payment inside order confirmation modal */
+.order-confirmation-modal-body {
+  padding: 0;
+}
+.order-confirmation-gcash {
+  display: grid;
+  gap: 14px;
+  padding: 0 24px 24px;
+}
+.order-confirmation-gcash-intro {
+  margin: 0;
+  color: #334155;
+  line-height: 1.7;
+}
+.order-confirmation-gcash-intro strong {
+  color: #243813;
+  font-family: "Source Serif 4", serif;
+  font-size: 1.35rem;
+}
+.order-confirmation-reference-inline {
+  margin: 0;
+}
+.order-confirmation-gcash .payment-panel {
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  scroll-margin-top: 0;
+}
+
 @media (max-width: 860px) {
   .order-line-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
