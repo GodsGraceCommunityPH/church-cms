@@ -114,6 +114,7 @@ export default function ProjectIlawOrderDetail() {
   );
   const canManage = hasPermission("project_ilaw.orders.manage");
   const canAmendItems = hasPermission("project_ilaw.orders.amend_items");
+  const restrictedAmendment = canAmendItems && !canManage;
   const canFulfill = hasPermission("project_ilaw.orders.fulfill");
 
   const [order, setOrder] = useState<ProjectIlawOrder | null>(null);
@@ -554,7 +555,6 @@ export default function ProjectIlawOrderDetail() {
   }
 
   const cancelled = order.fulfillmentStatus === "cancelled";
-  const restrictedAmendment = canAmendItems && !canManage;
   const amendable =
     (canManage || canAmendItems) &&
     order.fulfillmentStatus !== "completed" &&
