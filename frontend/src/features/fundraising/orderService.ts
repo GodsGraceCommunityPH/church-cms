@@ -344,6 +344,42 @@ export async function uploadProjectIlawPaymentEvidence(
   return path;
 }
 
+export async function uploadStaffProjectIlawPaymentEvidence(
+  orderId: string,
+  file: File,
+): Promise<string> {
+  const extension = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "application/pdf": "pdf",
+  }[file.type];
+  if (!extension) throw new Error("Use a JPG, PNG, WEBP, or PDF payment receipt.");
+
+  const path = `staff/${orderId}/${crypto.randomUUID()}.${extension}`;
+  const { error } = await supabase.storage
+    .from(PAYMENT_EVIDENCE_BUCKET)
+    .upload(path, file, { contentType: file.type, upsert: false });
+  if (error) throw error;
+  return path;
+}
+
+export async function recordStaffProjectIlawPaymentEvidence(input: {
+  orderId: string;
+  evidencePath: string;
+  paymentReference: string;
+  note: string;
+}) {
+  const { data, error } = await supabase.rpc("record_project_ilaw_staff_payment_evidence", {
+    p_order_id: input.orderId,
+    p_evidence_path: input.evidencePath,
+    p_payment_reference: input.paymentReference.trim() || null,
+    p_note: input.note.trim() || null,
+  });
+  if (error) throw error;
+  return data;
+}
+
 export async function submitProjectIlawPayment(input: {
   reference: string;
   mobile: string;
