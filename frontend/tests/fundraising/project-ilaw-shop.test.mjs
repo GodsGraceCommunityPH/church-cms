@@ -407,7 +407,7 @@ test("the order form requires an explicit review before saving", async () => {
   assert.doesNotMatch(submitHandler, /createProjectIlawOrder/);
 });
 
-test("the confirmation dialog only appears after a successful save and routes to payment", async () => {
+test("the confirmation dialog only appears after a successful save and offers inline GCash payment", async () => {
   const form = await read("../../src/components/fundraising/OrderForm.tsx");
 
   assert.match(form, /setConfirmation\(created\)/);
@@ -415,28 +415,26 @@ test("the confirmation dialog only appears after a successful save and routes to
   assert.match(form, /Thank you for supporting Project Ilaw!/);
   assert.match(form, /confirmation\.reference/);
   assert.match(form, /confirmation\.totalAmount/);
-  assert.match(form, /Go to payment/);
-  assert.match(form, /"pay-order"/);
+  assert.match(form, /PaymentPanel/);
+  assert.match(form, /hideLookupForm/);
   assert.match(form, /requestIdRef/);
   assert.match(form, /submitting/);
   assert.doesNotMatch(form, /messenger/i);
   assert.doesNotMatch(form, /bryan/i);
 });
 
-test("the order confirmation carries the created order into the payment step", async () => {
+test("the order confirmation carries the created order into the inline payment step", async () => {
   const form = await read("../../src/components/fundraising/OrderForm.tsx");
   const page = await read("../../src/pages/ShopPage.tsx");
   const panel = await read("../../src/components/fundraising/PaymentPanel.tsx");
 
-  // The confirmation seeds the payment step with the just-created order.
+  // The confirmation seeds the payment step with the just-created order and
+  // shows PaymentPanel inside the confirmation modal for GCash orders.
   assert.match(form, /setPaymentSeed\(/);
   assert.match(form, /setConfirmation\(created\)/);
-  assert.match(
-    form,
-    /navigate\("\/shop", \{\s*state: \{ projectIlawPayment: paymentSeed \},?\s*\}\)/,
-  );
+  assert.match(form, /<PaymentPanel initialOrder=\{paymentSeed\} hideLookupForm \/>/);
 
-  // The shop page forwards the carried order into the payment panel.
+  // The shop page still forwards any carried order into the payment panel.
   assert.match(page, /location\.state/);
   assert.match(page, /initialOrder=\{paymentSeed\}/);
 

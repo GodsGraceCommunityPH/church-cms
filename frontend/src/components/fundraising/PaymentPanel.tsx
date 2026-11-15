@@ -22,8 +22,10 @@ const MAX_EVIDENCE_BYTES = 5 * 1024 * 1024;
 
 export default function PaymentPanel({
   initialOrder = null,
+  hideLookupForm = false,
 }: {
   initialOrder?: ProjectIlawPaymentSeed | null;
+  hideLookupForm?: boolean;
 }) {
   const [customerName, setCustomerName] = useState("");
   const [mobile, setMobile] = useState("");
@@ -172,72 +174,77 @@ export default function PaymentPanel({
   return (
     <div className="payment-panel" id="pay-order">
       <div className="payment-panel-heading">
-        <h3>Pay for your order</h3>
+        <h3>{hideLookupForm ? "Complete your GCash payment" : "Pay for your order"}</h3>
         <p>
-          Enter the name and mobile number you used when you submitted the
-          order. You do not need your order reference.
+          {hideLookupForm
+            ? "Scan the QR, pay the exact amount, then submit your transaction reference and receipt below."
+            : "Enter the name and mobile number you used when you submitted the order. You do not need your order reference."}
         </p>
       </div>
 
-      <form className="payment-lookup" onSubmit={lookup}>
-        <div className="order-field">
-          <label htmlFor="payment-name">Your name</label>
-          <input
-            id="payment-name"
-            value={customerName}
-            autoComplete="name"
-            placeholder="Name used when ordering"
-            onChange={(event) => setCustomerName(event.target.value)}
-            required
-          />
-        </div>
-        <div className="order-field">
-          <label htmlFor="payment-mobile">Mobile number</label>
-          <input
-            id="payment-mobile"
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            value={mobile}
-            placeholder="09XX XXX XXXX"
-            onChange={(event) => setMobile(event.target.value)}
-            required
-          />
-        </div>
-        <button type="submit" className="ilaw-secondary" disabled={lookupLoading}>
-          {lookupLoading ? "Looking up..." : "Find my order"}
-        </button>
-      </form>
+      {!hideLookupForm && (
+        <>
+          <form className="payment-lookup" onSubmit={lookup}>
+            <div className="order-field">
+              <label htmlFor="payment-name">Your name</label>
+              <input
+                id="payment-name"
+                value={customerName}
+                autoComplete="name"
+                placeholder="Name used when ordering"
+                onChange={(event) => setCustomerName(event.target.value)}
+                required
+              />
+            </div>
+            <div className="order-field">
+              <label htmlFor="payment-mobile">Mobile number</label>
+              <input
+                id="payment-mobile"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                value={mobile}
+                placeholder="09XX XXX XXXX"
+                onChange={(event) => setMobile(event.target.value)}
+                required
+              />
+            </div>
+            <button type="submit" className="ilaw-secondary" disabled={lookupLoading}>
+              {lookupLoading ? "Looking up..." : "Find my order"}
+            </button>
+          </form>
 
-      {matches.length > 1 && (
-        <div className="payment-matches" role="list">
-          <p className="payment-note">
-            We found several orders with those details. Choose the one you want
-            to pay.
-          </p>
-          <ul className="payment-match-list">
-            {matches.map((match) => (
-              <li key={match.reference} className="payment-match">
-                <div>
-                  <strong>{match.reference}</strong>
-                  <span>
-                    {formatPeso(match.totalAmount)} ·{" "}
-                    {CUSTOMER_PAYMENT_STATUS_LABELS[match.paymentStatus]} ·{" "}
-                    {CUSTOMER_FULFILLMENT_STATUS_LABELS[match.fulfillmentStatus]}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  className="ilaw-secondary"
-                  onClick={() => openOrder(match.reference)}
-                  disabled={lookupLoading}
-                >
-                  View / pay
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
+          {matches.length > 1 && (
+            <div className="payment-matches" role="list">
+              <p className="payment-note">
+                We found several orders with those details. Choose the one you want
+                to pay.
+              </p>
+              <ul className="payment-match-list">
+                {matches.map((match) => (
+                  <li key={match.reference} className="payment-match">
+                    <div>
+                      <strong>{match.reference}</strong>
+                      <span>
+                        {formatPeso(match.totalAmount)} ·{" "}
+                        {CUSTOMER_PAYMENT_STATUS_LABELS[match.paymentStatus]} ·{" "}
+                        {CUSTOMER_FULFILLMENT_STATUS_LABELS[match.fulfillmentStatus]}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="ilaw-secondary"
+                      onClick={() => openOrder(match.reference)}
+                      disabled={lookupLoading}
+                    >
+                      View / pay
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
       )}
 
       {lookupError && (
