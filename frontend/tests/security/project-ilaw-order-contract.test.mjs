@@ -396,6 +396,21 @@ test("fulfilment changes and amendments require project_ilaw.orders.manage", asy
   assert.doesNotMatch(amend, /delete from public\.project_ilaw_order_items/);
 });
 
+test("Project Ilaw Orders Staff receives only the constrained amendment permission", async () => {
+  const migration = await readFile(
+    new URL("../../../supabase/migrations/20261115140000_project_ilaw_order_amend_items_permission.sql", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(migration, /project_ilaw\.orders\.amend_items/);
+  assert.match(migration, /where r\.code = 'project_ilaw_orders_staff'/);
+  assert.match(migration, /or public\.has_permission\('project_ilaw\.orders\.amend_items'\)/);
+  assert.match(migration, /cannot change customer details or order notes/i);
+  assert.match(migration, /cannot add or remove order lines/i);
+  assert.match(migration, /cannot change existing products/i);
+  assert.match(migration, /current_items\.product_id is distinct from submitted\.value ->> 'product_id'/);
+});
+
 test("production reports count only paid, non-cancelled orders by product, size, and colour", async () => {
   const source = await migrationSource();
   const report = functionBody(
