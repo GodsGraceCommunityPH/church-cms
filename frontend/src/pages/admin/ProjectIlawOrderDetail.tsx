@@ -496,7 +496,7 @@ export default function ProjectIlawOrderDetail() {
           mobile: order.mobile,
           notes: order.notes,
           items: validation.items,
-          note: amendNote,
+          note: "",
         });
         setAmendNote("");
         setShowAmend(false);
@@ -787,16 +787,18 @@ export default function ProjectIlawOrderDetail() {
                 restricted={restrictedAmendment}
               />
 
-              <label>
-                Amendment note
-                <Input
-                  value={amendNote}
-                  maxLength={1000}
-                  onChange={(event) => setAmendNote(event.target.value)}
-                  placeholder="Why is this order being changed?"
-                  disabled={Boolean(busy)}
-                />
-              </label>
+              {!restrictedAmendment && (
+                <label>
+                  Amendment note
+                  <Input
+                    value={amendNote}
+                    maxLength={1000}
+                    onChange={(event) => setAmendNote(event.target.value)}
+                    placeholder="Why is this order being changed?"
+                    disabled={Boolean(busy)}
+                  />
+                </label>
+              )}
 
               {amendErrors.length > 0 && (
                 <div className="order-form-errors" role="alert">
