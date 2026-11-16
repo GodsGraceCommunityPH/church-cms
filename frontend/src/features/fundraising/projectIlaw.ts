@@ -13,6 +13,7 @@ export interface ShopItem {
   category: string;
   price: number;
   image: ShopItemImage;
+  imageVariants: Record<string, ShopItemImage>;
   description: string;
   sizes: string[];
   sizeLabel: string;
@@ -290,6 +291,38 @@ export const SHOP_ITEMS: ShopItem[] = [
       width: 1156,
       height: 800,
     },
+    imageVariants: {
+      Black: {
+        src: "/images/fundraising/variants/project-ilaw-shirt-black.webp",
+        alt: "Black Project Ilaw T-shirt shown from the front and back",
+        width: 480,
+        height: 334,
+      },
+      White: {
+        src: "/images/fundraising/variants/project-ilaw-shirt-white.webp",
+        alt: "White Project Ilaw T-shirt shown from the front and back",
+        width: 480,
+        height: 334,
+      },
+      Maroon: {
+        src: "/images/fundraising/variants/project-ilaw-shirt-maroon.webp",
+        alt: "Maroon Project Ilaw T-shirt shown from the front and back",
+        width: 480,
+        height: 334,
+      },
+      Green: {
+        src: "/images/fundraising/variants/project-ilaw-shirt-green.webp",
+        alt: "Green Project Ilaw T-shirt shown from the front and back",
+        width: 480,
+        height: 334,
+      },
+      Blue: {
+        src: "/images/fundraising/variants/project-ilaw-shirt-blue.webp",
+        alt: "Blue Project Ilaw T-shirt shown from the front and back",
+        width: 480,
+        height: 334,
+      },
+    },
     description:
       "Everyday T-shirt with the Project Ilaw logo on the front and “Let His Light Shine, Let His Glory Rise” (Haggai 2:9) on the back.",
     sizes: T_SHIRT_SIZES,
@@ -307,6 +340,26 @@ export const SHOP_ITEMS: ShopItem[] = [
       alt: "Project Ilaw eco bag mockup showing the front logo and back design with maroon, green, and blue handles",
       width: 2048,
       height: 822,
+    },
+    imageVariants: {
+      Maroon: {
+        src: "/images/fundraising/variants/project-ilaw-eco-bag-maroon.webp",
+        alt: "Project Ilaw eco bag with maroon handles",
+        width: 400,
+        height: 400,
+      },
+      Green: {
+        src: "/images/fundraising/variants/project-ilaw-eco-bag-green.webp",
+        alt: "Project Ilaw eco bag with green handles",
+        width: 400,
+        height: 400,
+      },
+      Blue: {
+        src: "/images/fundraising/variants/project-ilaw-eco-bag-blue.webp",
+        alt: "Project Ilaw eco bag with blue handles",
+        width: 400,
+        height: 400,
+      },
     },
     description:
       "Reusable eco bag with the Project Ilaw logo and the “Let His Light Shine, Let His Glory Rise” design. Available with maroon, green, or blue handles.",
