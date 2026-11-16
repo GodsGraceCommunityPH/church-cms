@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { T_SHIRT_SIZES, type OrderDraftItem } from "../../features/fundraising/projectIlaw";
 import type { ShopItem } from "../../features/fundraising/projectIlaw";
 import { formatPeso, SHOP_STATUS } from "../../features/fundraising/projectIlaw";
@@ -17,6 +18,19 @@ export default function MerchandiseCard({ item, ordersEnabled = false, onAddItem
   const [quantity, setQuantity] = useState("1");
   const [imageOpen, setImageOpen] = useState(false);
   const selectedImage = item.imageVariants[selectedColor] ?? item.image;
+  const colorIndex = Math.max(0, item.colors.indexOf(selectedColor));
+  const canPrevColor = colorIndex > 0;
+  const canNextColor = colorIndex < item.colors.length - 1;
+
+  function goPrevColor() {
+    if (!canPrevColor) return;
+    setSelectedColor(item.colors[colorIndex - 1]);
+  }
+
+  function goNextColor() {
+    if (!canNextColor) return;
+    setSelectedColor(item.colors[colorIndex + 1]);
+  }
 
   useEffect(() => {
     if (!imageOpen) return;
@@ -56,11 +70,29 @@ export default function MerchandiseCard({ item, ordersEnabled = false, onAddItem
               </select>
             </div>
           )}
-          <div className="order-field">
-            <label htmlFor={`merch-color-${item.id}`}>{item.colorLabel}</label>
-            <select id={`merch-color-${item.id}`} value={selectedColor} onChange={(event) => setSelectedColor(event.target.value)} disabled={disabled || !ordersEnabled}>
-              {item.colors.map((color) => <option key={color} value={color}>{color}</option>)}
-            </select>
+          <div className="order-field merch-color-field">
+            <label id={`merch-color-label-${item.id}`}>{item.colorLabel}</label>
+            <div className="merch-color-picker" role="group" aria-labelledby={`merch-color-label-${item.id}`}>
+              <button
+                type="button"
+                className="merch-color-arrow"
+                onClick={goPrevColor}
+                disabled={disabled || !ordersEnabled || !canPrevColor}
+                aria-label={`Previous ${item.colorLabel.toLowerCase()}`}
+              >
+                <ChevronLeft size={18} aria-hidden="true" />
+              </button>
+              <span className="merch-color-value" aria-live="polite">{selectedColor}</span>
+              <button
+                type="button"
+                className="merch-color-arrow"
+                onClick={goNextColor}
+                disabled={disabled || !ordersEnabled || !canNextColor}
+                aria-label={`Next ${item.colorLabel.toLowerCase()}`}
+              >
+                <ChevronRight size={18} aria-hidden="true" />
+              </button>
+            </div>
           </div>
           <div className="order-field">
             <label htmlFor={`merch-quantity-${item.id}`}>Quantity</label>

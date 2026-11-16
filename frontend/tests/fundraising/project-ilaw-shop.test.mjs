@@ -96,13 +96,15 @@ test("the eco bag is one size with maroon, green, and blue handles", async () =>
   assert.equal(bag.colorLabel, "Handle colours");
   assert.match(bag.description, /Let His Light Shine, Let His Glory Rise/);
 
-  // The public product card shows the single "One Size" chip from the
-  // showcase release; the order editor still skips the redundant selector.
+  // The public product card shows the size control for shirts and uses arrow
+  // controls for colours; the order editor still skips the redundant selector.
   const card = await read(
     "../../src/components/fundraising/MerchandiseCard.tsx",
   );
   assert.match(card, /Choose size/);
-  assert.match(card, /item\.colors\.map/);
+  assert.match(card, /merch-color-picker/);
+  assert.match(card, /ChevronLeft/);
+  assert.match(card, /ChevronRight/);
   assert.match(card, /One Size/);
 
   const editor = await read(
@@ -595,9 +597,8 @@ test("every order item renders its own colour selector from the product configur
   const card = await read(
     "../../src/components/fundraising/MerchandiseCard.tsx",
   );
-  assert.match(card, /id=\{`merch-color-\$\{item\.id\}`\}/);
-  assert.match(card, /value=\{selectedColor\}/);
-  assert.match(card, /item\.colors\.map/);
+  assert.match(card, /merch-color-picker/);
+  assert.match(card, /selectedColor/);
   assert.match(card, /item\.colorLabel/);
   assert.match(card, /T_SHIRT_SIZES\.map/);
   assert.match(card, /onAddItem\(\{/);
