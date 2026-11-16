@@ -143,8 +143,9 @@ test("the catalog renders the supplied mockup images without distortion", async 
     "../../src/components/fundraising/MerchandiseCard.tsx",
   );
   assert.match(card, /<img/);
-  assert.match(card, /src=\{item\.image\.src\}/);
-  assert.match(card, /alt=\{item\.image\.alt\}/);
+  assert.match(card, /selectedImage/);
+  assert.match(card, /src=\{selectedImage\.src\}/);
+  assert.match(card, /alt=\{selectedImage\.alt\}/);
   assert.match(card, /formatPeso\(item\.price\)/);
 
   const css = await read("../../src/features/fundraising/Fundraising.css");

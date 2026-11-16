@@ -293,31 +293,31 @@ export const SHOP_ITEMS: ShopItem[] = [
     },
     imageVariants: {
       Black: {
-        src: "/images/fundraising/variants/project-ilaw-shirt-black.webp",
+        src: "/images/fundraising/variants/project-ilaw-shirt-black.jpg",
         alt: "Black Project Ilaw T-shirt shown from the front and back",
         width: 480,
         height: 334,
       },
       White: {
-        src: "/images/fundraising/variants/project-ilaw-shirt-white.webp",
+        src: "/images/fundraising/variants/project-ilaw-shirt-white.jpg",
         alt: "White Project Ilaw T-shirt shown from the front and back",
         width: 480,
         height: 334,
       },
       Maroon: {
-        src: "/images/fundraising/variants/project-ilaw-shirt-maroon.webp",
+        src: "/images/fundraising/variants/project-ilaw-shirt-maroon.jpg",
         alt: "Maroon Project Ilaw T-shirt shown from the front and back",
         width: 480,
         height: 334,
       },
       Green: {
-        src: "/images/fundraising/variants/project-ilaw-shirt-green.webp",
+        src: "/images/fundraising/variants/project-ilaw-shirt-green.jpg",
         alt: "Green Project Ilaw T-shirt shown from the front and back",
         width: 480,
         height: 334,
       },
       Blue: {
-        src: "/images/fundraising/variants/project-ilaw-shirt-blue.webp",
+        src: "/images/fundraising/variants/project-ilaw-shirt-blue.jpg",
         alt: "Blue Project Ilaw T-shirt shown from the front and back",
         width: 480,
         height: 334,
@@ -343,19 +343,19 @@ export const SHOP_ITEMS: ShopItem[] = [
     },
     imageVariants: {
       Maroon: {
-        src: "/images/fundraising/variants/project-ilaw-eco-bag-maroon.webp",
+        src: "/images/fundraising/variants/project-ilaw-eco-bag-maroon.jpg",
         alt: "Project Ilaw eco bag with maroon handles",
         width: 400,
         height: 400,
       },
       Green: {
-        src: "/images/fundraising/variants/project-ilaw-eco-bag-green.webp",
+        src: "/images/fundraising/variants/project-ilaw-eco-bag-green.jpg",
         alt: "Project Ilaw eco bag with green handles",
         width: 400,
         height: 400,
       },
       Blue: {
-        src: "/images/fundraising/variants/project-ilaw-eco-bag-blue.webp",
+        src: "/images/fundraising/variants/project-ilaw-eco-bag-blue.jpg",
         alt: "Project Ilaw eco bag with blue handles",
         width: 400,
         height: 400,
