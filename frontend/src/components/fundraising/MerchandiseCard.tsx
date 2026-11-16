@@ -16,6 +16,7 @@ export default function MerchandiseCard({ item, ordersEnabled = false, onAddItem
   const [selectedSize, setSelectedSize] = useState(isShirt ? "" : "One Size");
   const [quantity, setQuantity] = useState("1");
   const [imageOpen, setImageOpen] = useState(false);
+  const selectedImage = item.imageVariants[selectedColor] ?? item.image;
 
   useEffect(() => {
     if (!imageOpen) return;
@@ -33,10 +34,10 @@ export default function MerchandiseCard({ item, ordersEnabled = false, onAddItem
           className="merch-image-trigger"
           type="button"
           onClick={() => setImageOpen(true)}
-          aria-label={`Enlarge ${item.name} image`}
+          aria-label={`Enlarge ${item.name} in ${selectedColor}`}
           aria-haspopup="dialog"
         >
-          <img src={item.image.src} alt={item.image.alt} width={item.image.width} height={item.image.height} loading="lazy" decoding="async" />
+          <img src={selectedImage.src} alt={selectedImage.alt} width={selectedImage.width} height={selectedImage.height} loading="lazy" decoding="async" />
           <span className="merch-image-hint">Tap to enlarge</span>
         </button>
       </div>
@@ -100,7 +101,7 @@ export default function MerchandiseCard({ item, ordersEnabled = false, onAddItem
         >
           <div className="merch-image-dialog" role="dialog" aria-modal="true" aria-label={`${item.name} enlarged image`}>
             <button className="merch-image-close" type="button" onClick={() => setImageOpen(false)} aria-label="Close enlarged image" autoFocus>×</button>
-            <img src={item.image.src} alt={item.image.alt} />
+            <img src={selectedImage.src} alt={selectedImage.alt} width={selectedImage.width} height={selectedImage.height} />
             <p>{item.name} · {selectedColor}</p>
           </div>
         </div>
