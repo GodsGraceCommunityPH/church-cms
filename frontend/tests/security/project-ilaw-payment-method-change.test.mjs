@@ -54,10 +54,8 @@ test("paid orders can be corrected but payment verification and cancelled orders
   assert.match(fn, /target\.fulfillment_status <> 'not_started'/);
   assert.match(fn, /payment_status = 'paid'/);
   assert.match(fn, /'payment_amount_received', target\.payment_amount_received/);
-  assert.match(
-    fn,
-    /payment_amount_received = case[\\s\\S]*?coalesce\\(payment_amount_received, target\\.total_amount\\)/,
-  );
+  assert.ok(fn.includes("payment_amount_received = case"));
+  assert.ok(fn.includes("coalesce(payment_amount_received, target.total_amount)"));
   assert.doesNotMatch(fn, /payment_amount_received = p_total_amount/);
 });
 
