@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
 const MIGRATION =
-  "../../../supabase/migrations/20261117140000_project_ilaw_payment_details.sql";
+  "../../../supabase/migrations/20261117131848_project_ilaw_payment_details.sql";
 
 function functionBody(source, signature) {
   const start = source.indexOf(signature);
