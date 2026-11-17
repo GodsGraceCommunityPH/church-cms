@@ -3,22 +3,22 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const read = (path) => readFile(new URL(path, import.meta.url), "utf8");
+const MIGRATION =
+  "../../../supabase/migrations/20261117140000_project_ilaw_payment_details.sql";
 
 function functionBody(source, signature) {
   const start = source.indexOf(signature);
   assert.notEqual(start, -1, `missing function ${signature}`);
-  const end = source.indexOf("$$;", start);
+  const end = source.indexOf("$function$;", start);
   assert.notEqual(end, -1, `unterminated function ${signature}`);
   return source.slice(start, end);
 }
 
-test("payment method changes use an authenticated, permission-checked RPC", async () => {
-  const migration = await read(
-    "../../../supabase/migrations/20261115131500_project_ilaw_payment_method_change.sql",
-  );
+test("payment detail edits are authenticated, permission checked, and narrowly scoped", async () => {
+  const migration = await read(MIGRATION);
   const fn = functionBody(
     migration,
-    "create or replace function public.update_project_ilaw_payment_method(",
+    "create or replace function public.update_project_ilaw_payment_details(",
   );
 
   assert.match(fn, /security definer/);
@@ -26,70 +26,82 @@ test("payment method changes use an authenticated, permission-checked RPC", asyn
   assert.match(fn, /actor uuid := auth\.uid\(\)/);
   assert.match(fn, /project_ilaw\.orders\.confirm_payment/);
   assert.match(fn, /project_ilaw\.orders\.manage/);
-  assert.match(fn, /clean_payment_method not in \('gcash', 'cash'\)/);
   assert.match(fn, /for update/);
+  assert.match(fn, /p_total_amount is null/);
+  assert.match(fn, /p_total_amount > 9999999/);
+  assert.match(fn, /update public\.project_ilaw_orders/);
+  assert.doesNotMatch(fn, /update public\.project_ilaw_order_items/);
   assert.match(
     migration,
-    /revoke all on function public\.update_project_ilaw_payment_method\(uuid, text\)\s+from public, anon, authenticated/,
+    /revoke all on function public\.update_project_ilaw_payment_details\(uuid, text, integer\)\s+from public, anon, authenticated/,
   );
   assert.match(
     migration,
-    /grant execute on function public\.update_project_ilaw_payment_method\(uuid, text\)\s+to authenticated/,
+    /grant execute on function public\.update_project_ilaw_payment_details\(uuid, text, integer\)\s+to authenticated/,
   );
 });
 
-test("payment method is locked after payment submission or fulfillment starts", async () => {
-  const migration = await read(
-    "../../../supabase/migrations/20261115131500_project_ilaw_payment_method_change.sql",
-  );
+test("paid orders can be corrected but payment verification and cancelled orders stay locked", async () => {
+  const migration = await read(MIGRATION);
   const fn = functionBody(
     migration,
-    "create or replace function public.update_project_ilaw_payment_method(",
+    "create or replace function public.update_project_ilaw_payment_details(",
   );
 
-  assert.match(fn, /target\.payment_status <> 'awaiting_payment'/);
+  assert.match(fn, /target\.payment_status not in \('awaiting_payment', 'paid'\)/);
+  assert.match(fn, /target\.fulfillment_status = 'cancelled'/);
+  assert.match(fn, /target\.payment_status = 'awaiting_payment'/);
   assert.match(fn, /target\.fulfillment_status <> 'not_started'/);
-  assert.match(fn, /target\.payment_method is not distinct from clean_payment_method/);
-  assert.match(fn, /A valid customer mobile number is required for GCash/);
-  assert.doesNotMatch(fn, /set payment_status\s*=/);
+  assert.match(fn, /payment_status = 'paid'/);
+  assert.match(fn, /'payment_amount_received', target\.payment_amount_received/);
+  assert.doesNotMatch(
+    fn.slice(fn.indexOf("  update public.project_ilaw_orders"), fn.indexOf("  insert into public.project_ilaw_order_events")),
+    /payment_amount_received\s*=/,
+  );
 });
 
-test("changing method clears stale rejected receipt fields but records them in history", async () => {
-  const migration = await read(
-    "../../../supabase/migrations/20261115131500_project_ilaw_payment_method_change.sql",
-  );
+test("the amount due adjustment preserves item prices and remains auditable", async () => {
+  const migration = await read(MIGRATION);
   const fn = functionBody(
     migration,
-    "create or replace function public.update_project_ilaw_payment_method(",
+    "create or replace function public.update_project_ilaw_payment_details(",
+  );
+  const totals = functionBody(
+    migration,
+    "create or replace function public.verify_project_ilaw_order_totals()",
   );
 
-  assert.match(fn, /'payment_reference', target\.payment_reference/);
-  assert.match(fn, /'payment_evidence_path', target\.payment_evidence_path/);
-  assert.match(fn, /'payment_rejected_at', target\.payment_rejected_at/);
-  assert.match(fn, /payment_reference = null/);
-  assert.match(fn, /payment_evidence_path = null/);
-  assert.match(fn, /payment_rejected_at = null/);
-  assert.match(fn, /'payment_method_changed'/);
-  assert.match(
-    migration,
-    /'payment_method_changed'[\s\S]*?'order_cancelled'/,
-  );
+  assert.match(fn, /active_subtotal/);
+  assert.match(fn, /next_adjustment := p_total_amount - active_subtotal/);
+  assert.match(fn, /total_amount_adjustment = next_adjustment/);
+  assert.match(fn, /'payment_details_changed'/);
+  assert.match(fn, /'total_amount_adjustment', target\.total_amount_adjustment/);
+  assert.match(fn, /previous_value/);
+  assert.match(totals, /total_amount <> active_amount \+ total_amount_adjustment/);
+  assert.match(migration, /payment details and payment method changed by authorised staff/i);
+  assert.match(migration, /total_amount_adjustment/);
 });
 
-test("order detail exposes Edit only for authorised, not-yet-paid orders", async () => {
+test("Project Ilaw order amendment preserves existing price adjustments", async () => {
+  const migration = await read(MIGRATION);
+
+  assert.match(migration, /amend_project_ilaw_order\(uuid,text,text,text,jsonb,text\)/);
+  assert.match(migration, /existing price adjustment would make the revised amount due invalid/);
+  assert.match(migration, /total_amount = \(validated ->> 'total_amount'\)::integer \+ target\.total_amount_adjustment/);
+});
+
+test("the Payment card uses one compact pencil action for both editable fields", async () => {
   const page = await read("../../src/pages/admin/ProjectIlawOrderDetail.tsx");
   const service = await read("../../src/features/fundraising/orderService.ts");
-  const model = await read("../../src/features/fundraising/projectIlaw.ts");
 
-  assert.match(page, /payment_method_changed: "Payment method changed"/);
-  assert.match(page, /\(canConfirmPayment \|\| canManage\)/);
-  assert.match(page, /order\.paymentStatus === "awaiting_payment"/);
-  assert.match(page, /order\.fulfillmentStatus === "not_started"/);
-  assert.match(page, /<option value="gcash">GCash<\/option>/);
-  assert.match(page, /<option value="cash">Cash<\/option>/);
-  assert.match(page, /Save payment method/);
-  assert.match(page, /await updateProjectIlawPaymentMethod\(order\.id, paymentMethodDraft\)/);
-  assert.match(service, /supabase\.rpc\("update_project_ilaw_payment_method"/);
-  assert.match(model, /"payment_method_changed"/);
-  assert.match(page, /Payment method changed/);
+  assert.match(page, /className="pilaw-card-edit-button"/);
+  assert.match(page, /<PencilLine size=\{17\}/);
+  assert.match(page, /aria-label="Edit payment details"/);
+  assert.match(page, /editingPaymentDetails/);
+  assert.match(page, /project-ilaw-payment-method-select/);
+  assert.match(page, /project-ilaw-payment-amount/);
+  assert.match(page, /updateProjectIlawPaymentDetails\(/);
+  assert.match(page, /order\.paymentStatus === "awaiting_payment" \|\| paid/);
+  assert.match(service, /supabase\.rpc\("update_project_ilaw_payment_details"/);
+  assert.doesNotMatch(page, /updateProjectIlawPaymentMethod/);
 });
