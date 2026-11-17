@@ -327,7 +327,7 @@ test("CSV export keeps the accounting columns and escapes customer text", () => 
 test("export RPC returns the saved payment method and keeps the export permission check", async () => {
   const migration = await readFile(
     new URL(
-      "../../../supabase/migrations/20261117140000_project_ilaw_payment_details.sql",
+      "../../../supabase/migrations/20261117131848_project_ilaw_payment_details.sql",
       import.meta.url,
     ),
     "utf8",
