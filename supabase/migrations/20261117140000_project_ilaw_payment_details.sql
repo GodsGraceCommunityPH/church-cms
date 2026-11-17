@@ -251,6 +251,11 @@ begin
       payment_submitted_at = case when clear_previous_submission then null else payment_submitted_at end,
       payment_rejected_at = case when clear_previous_submission then null else payment_rejected_at end,
       payment_rejection_reason = case when clear_previous_submission then null else payment_rejection_reason end,
+      payment_amount_received = case
+        when target.payment_status = 'paid'
+          then coalesce(payment_amount_received, target.total_amount)
+        else payment_amount_received
+      end,
       updated_at = now()
   where id = target.id
   returning * into target;
