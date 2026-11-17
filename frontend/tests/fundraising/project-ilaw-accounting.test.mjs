@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 
 import {
   buildOrderSummary,
@@ -312,4 +313,24 @@ test("CSV export keeps the accounting columns and escapes customer text", () => 
   assert.match(line, /Paid,GCash,GC-123456/);
   assert.match(line, /Cancelled/);
   assert.ok(csv.endsWith("\r\n"));
+});
+
+
+test("export RPC returns the saved payment method and keeps the export permission check", async () => {
+  const migration = await readFile(
+    new URL(
+      "../../../supabase/migrations/20261117100000_project_ilaw_export_payment_method.sql",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  assert.match(migration, /'payment_method', orders\\.payment_method/);
+  assert.match(
+    migration,
+    /public\\.has_permission\\('project_ilaw\\.orders\\.export'\\)/,
+  );
+  assert.match(migration, /p_from is null/);
+  assert.match(migration, /p_payment_status is null/);
+  assert.match(migration, /p_fulfillment_status is null/);
 });
