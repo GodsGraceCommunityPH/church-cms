@@ -54,10 +54,11 @@ test("paid orders can be corrected but payment verification and cancelled orders
   assert.match(fn, /target\.fulfillment_status <> 'not_started'/);
   assert.match(fn, /payment_status = 'paid'/);
   assert.match(fn, /'payment_amount_received', target\.payment_amount_received/);
-  assert.doesNotMatch(
-    fn.slice(fn.indexOf("  update public.project_ilaw_orders"), fn.indexOf("  insert into public.project_ilaw_order_events")),
-    /payment_amount_received\s*=/,
+  assert.match(
+    fn,
+    /payment_amount_received = case[\\s\\S]*?coalesce\\(payment_amount_received, target\\.total_amount\\)/,
   );
+  assert.doesNotMatch(fn, /payment_amount_received = p_total_amount/);
 });
 
 test("the amount due adjustment preserves item prices and remains auditable", async () => {
