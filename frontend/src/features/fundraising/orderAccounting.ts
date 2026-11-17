@@ -242,6 +242,7 @@ const CSV_HEADERS = [
   "Unit Price",
   "Line Total",
   "Payment Status",
+  "Payment Method",
   "Payment Reference",
   "Payment Submitted At",
   "Fulfillment Status",
@@ -266,6 +267,11 @@ export function projectIlawExportRowsToCsv(rows: ProjectIlawExportRow[]) {
         row.unitPrice,
         row.lineTotal,
         PAYMENT_STATUS_LABELS[row.paymentStatus] ?? row.paymentStatus,
+        row.paymentMethod === "cash"
+          ? "Cash"
+          : row.paymentMethod === "gcash"
+            ? "GCash"
+            : "",
         row.paymentReference,
         formatOrderDateTime(row.paymentSubmittedAt),
         FULFILLMENT_STATUS_LABELS[row.fulfillmentStatus] ??
