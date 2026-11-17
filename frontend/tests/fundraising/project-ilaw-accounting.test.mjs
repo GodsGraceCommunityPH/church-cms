@@ -284,6 +284,7 @@ test("CSV export keeps the accounting columns and escapes customer text", () => 
       unitPrice: 499,
       lineTotal: 998,
       paymentStatus: "paid",
+      paymentMethod: "gcash",
       paymentReference: "GC-123456",
       paymentSubmittedAt: "2026-11-10T09:30:00+08:00",
       fulfillmentStatus: "cancelled",
@@ -298,6 +299,7 @@ test("CSV export keeps the accounting columns and escapes customer text", () => 
   assert.equal(header.split(",")[0], "Order Reference");
   assert.match(header, /Color/);
   assert.match(header, /Payment Status/);
+  assert.match(header, /Payment Method/);
   assert.match(header, /Payment Reference/);
   assert.match(header, /Fulfillment Status/);
   assert.match(header, /Payment Confirmed By/);
@@ -307,7 +309,7 @@ test("CSV export keeps the accounting columns and escapes customer text", () => 
   assert.match(line, /Project Ilaw T-shirt/);
   assert.match(line, /Black/);
   assert.match(line, /GC-123456/);
-  assert.match(line, /Paid/);
+  assert.match(line, /Paid,GCash,GC-123456/);
   assert.match(line, /Cancelled/);
   assert.ok(csv.endsWith("\r\n"));
 });
