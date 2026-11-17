@@ -158,6 +158,7 @@ export interface ProjectIlawExportRow {
   unitPrice: number;
   lineTotal: number;
   paymentStatus: PaymentStatus;
+  paymentMethod: "gcash" | "cash" | null;
   paymentReference: string;
   paymentSubmittedAt: string | null;
   fulfillmentStatus: FulfillmentStatus;

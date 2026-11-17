@@ -614,6 +614,7 @@ export async function getProjectIlawExportRows(
     unitPrice: row.unit_price,
     lineTotal: row.line_total,
     paymentStatus: row.payment_status,
+    paymentMethod: row.payment_method ?? null,
     paymentReference: row.payment_reference ?? "",
     paymentSubmittedAt: row.payment_submitted_at,
     fulfillmentStatus: row.fulfillment_status,
