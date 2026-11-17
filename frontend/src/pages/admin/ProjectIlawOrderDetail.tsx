@@ -4,7 +4,7 @@ import type { ChangeEvent, FormEvent } from "react";
 import {
   ArrowLeft,
   FileImage,
-  Pencil,
+  PencilLine,
   RefreshCcw,
   ShieldAlert,
   ShieldCheck,
@@ -45,7 +45,7 @@ import {
   rejectProjectIlawPayment,
   submitProjectIlawPayment,
   updateProjectIlawFulfillment,
-  updateProjectIlawPaymentMethod,
+  updateProjectIlawPaymentDetails,
   uploadProjectIlawPaymentEvidence,
   uploadStaffProjectIlawPaymentEvidence,
 } from "../../features/fundraising/orderService";
@@ -66,6 +66,7 @@ const EVENT_LABELS: Record<ProjectIlawOrderEvent["eventType"], string> = {
   payment_confirmed: "Payment confirmed",
   payment_rejected: "Payment submission rejected",
   payment_method_changed: "Payment method changed",
+  payment_details_changed: "Payment details updated",
   fulfillment_changed: "Fulfillment updated",
   order_amended: "Order amended",
   order_cancelled: "Order cancelled",
@@ -89,10 +90,20 @@ function draftFromOrder(order: ProjectIlawOrder): OrderDraft {
 
 function statusChange(event: ProjectIlawOrderEvent) {
   const previous = event.previousValue as
-    | { fulfillment_status?: string; payment_status?: string; payment_method?: string | null }
+    | {
+        fulfillment_status?: string;
+        payment_status?: string;
+        payment_method?: string | null;
+        total_amount?: number | null;
+      }
     | null;
   const next = event.newValue as
-    | { fulfillment_status?: string; payment_status?: string; payment_method?: string | null }
+    | {
+        fulfillment_status?: string;
+        payment_status?: string;
+        payment_method?: string | null;
+        total_amount?: number | null;
+      }
     | null;
   const labels = {
     ...PAYMENT_STATUS_LABELS,
@@ -104,9 +115,18 @@ function statusChange(event: ProjectIlawOrderEvent) {
       labels[next.fulfillment_status] ?? next.fulfillment_status
     }`;
   }
-  if (event.eventType === "payment_method_changed") {
+  if (
+    event.eventType === "payment_method_changed" ||
+    event.eventType === "payment_details_changed"
+  ) {
     const methodLabel = (method: string | null | undefined) =>
       method === "cash" ? "Cash" : method === "gcash" ? "GCash" : "Not set";
+    const detailsLabel = (value: typeof previous) =>
+      methodLabel(value?.payment_method) +
+      (value?.total_amount == null ? "" : " · " + formatPeso(value.total_amount));
+    if (event.eventType === "payment_details_changed") {
+      return detailsLabel(previous) + " → " + detailsLabel(next);
+    }
     return methodLabel(previous?.payment_method) + " → " + methodLabel(next?.payment_method);
   }
   if (previous?.payment_status && next?.payment_status) {
@@ -137,8 +157,9 @@ export default function ProjectIlawOrderDetail() {
   const [busy, setBusy] = useState("");
 
   const [paymentNote, setPaymentNote] = useState("");
-  const [editingPaymentMethod, setEditingPaymentMethod] = useState(false);
+  const [editingPaymentDetails, setEditingPaymentDetails] = useState(false);
   const [paymentMethodDraft, setPaymentMethodDraft] = useState<"gcash" | "cash" | "">("");
+  const [paymentAmountDraft, setPaymentAmountDraft] = useState("");
   const [cashAmount, setCashAmount] = useState("");
   const [cashConfirmed, setCashConfirmed] = useState(false);
   const [cashNote, setCashNote] = useState("");
@@ -295,21 +316,42 @@ export default function ProjectIlawOrderDetail() {
     }
   }
 
-  function beginPaymentMethodEdit() {
+  function beginPaymentDetailsEdit() {
     if (!order) return;
     setPaymentMethodDraft(order.paymentMethod ?? "");
-    setEditingPaymentMethod(true);
+    setPaymentAmountDraft(String(order.totalAmount));
+    setEditingPaymentDetails(true);
   }
 
-  function cancelPaymentMethodEdit() {
-    setEditingPaymentMethod(false);
+  function cancelPaymentDetailsEdit() {
+    setEditingPaymentDetails(false);
     setPaymentMethodDraft("");
+    setPaymentAmountDraft("");
   }
 
-  async function handleSavePaymentMethod() {
-    if (!order || !paymentMethodDraft || busy) return;
-    if (paymentMethodDraft === order.paymentMethod) {
-      cancelPaymentMethodEdit();
+  async function handleSavePaymentDetails() {
+    if (!order || busy) return;
+
+    const totalAmount = Number(paymentAmountDraft);
+    if (
+      !Number.isSafeInteger(totalAmount) ||
+      totalAmount < 1 ||
+      totalAmount > 9_999_999
+    ) {
+      setActionError("Enter a whole-number amount from ₱1 to ₱9,999,999.");
+      return;
+    }
+
+    const paymentMethod = paymentMethodDraft || null;
+    if (!paymentMethod && order.paymentMethod !== null) {
+      setActionError("Choose Cash or GCash as the payment method.");
+      return;
+    }
+
+    const methodChanged = paymentMethod !== order.paymentMethod;
+    const amountChanged = totalAmount !== order.totalAmount;
+    if (!methodChanged && !amountChanged) {
+      cancelPaymentDetailsEdit();
       return;
     }
 
@@ -318,21 +360,60 @@ export default function ProjectIlawOrderDetail() {
       : order.paymentMethod === "gcash"
         ? "GCash"
         : "Not set";
-    const nextLabel = paymentMethodDraft === "cash" ? "Cash" : "GCash";
-    const resetsPreviousSubmission = Boolean(
+    const nextLabel = paymentMethod === "cash"
+      ? "Cash"
+      : paymentMethod === "gcash"
+        ? "GCash"
+        : "Not set";
+    const hasStaleSubmission = Boolean(
       order.paymentReference || order.paymentEvidencePath || order.paymentRejectedAt,
     );
-    const message = resetsPreviousSubmission
-      ? "Change the payment method from " + previousLabel + " to " + nextLabel + "? Previous rejected GCash receipt details will be cleared from the current payment fields. The activity history will remain."
-      : "Change the payment method from " + previousLabel + " to " + nextLabel + "?";
 
-    if (!window.confirm(message)) return;
+    const changedFields = [
+      methodChanged ? "payment method" : "",
+      amountChanged ? "amount due" : "",
+    ].filter(Boolean).join(" and ");
 
-    await runAction("payment-method", async () => {
-      await updateProjectIlawPaymentMethod(order.id, paymentMethodDraft);
-      setEditingPaymentMethod(false);
-      setPaymentMethodDraft("");
-      setNotice("Payment method changed to " + nextLabel + ".");
+    let confirmation = "Save the updated " + changedFields + "?";
+    if (paid) {
+      confirmation =
+        "Update the " +
+        changedFields +
+        " for this paid order? The recorded amount received, confirmation record, and receipt evidence will remain unchanged.";
+    } else if (methodChanged && hasStaleSubmission) {
+      confirmation =
+        "Change the payment method from " +
+        previousLabel +
+        " to " +
+        nextLabel +
+        (amountChanged ? " and update the amount due" : "") +
+        "? Previous rejected payment submission details will be cleared from the current payment fields. The activity history will remain.";
+    } else if (methodChanged) {
+      confirmation =
+        "Change the payment method from " +
+        previousLabel +
+        " to " +
+        nextLabel +
+        (amountChanged ? " and update the amount due" : "") +
+        "?";
+    } else {
+      confirmation = "Update the amount due for this order?";
+    }
+
+    if (!window.confirm(confirmation)) return;
+
+    await runAction("payment-details", async () => {
+      await updateProjectIlawPaymentDetails(
+        order.id,
+        paymentMethod,
+        totalAmount,
+      );
+      cancelPaymentDetailsEdit();
+      setNotice(
+        paid
+          ? "Payment details updated. The recorded amount received was preserved."
+          : "Payment method and amount due updated.",
+      );
       await load();
     });
   }
@@ -665,6 +746,14 @@ export default function ProjectIlawOrderDetail() {
     order.fulfillmentStatus !== "cancelled";
   const paid = order.paymentStatus === "paid";
   const awaitingVerification = order.paymentStatus === "payment_verification";
+  const canEditPaymentDetails =
+    (canConfirmPayment || canManage) &&
+    (order.paymentStatus === "awaiting_payment" || paid) &&
+    (paid || order.fulfillmentStatus === "not_started");
+  const itemsSubtotal = order.items.reduce(
+    (total, item) => total + item.lineTotal,
+    0,
+  );
   const gcashRetryAvailable = canRetryStaffGcashPayment(
     order,
     paymentsEnabled,
@@ -763,11 +852,20 @@ export default function ProjectIlawOrderDetail() {
           </div>
           <div className="pilaw-detail-total">
             <span>
-              {order.totalQuantity} total item
+              Items subtotal · {order.totalQuantity} item
               {order.totalQuantity === 1 ? "" : "s"}
             </span>
-            <strong>{formatPeso(order.totalAmount)}</strong>
+            <strong>{formatPeso(itemsSubtotal)}</strong>
           </div>
+          {order.totalAmountAdjustment !== 0 && (
+            <div className="pilaw-detail-total pilaw-detail-total-adjustment">
+              <span>Price adjustment</span>
+              <strong>
+                {order.totalAmountAdjustment > 0 ? "+" : ""}
+                {formatPeso(order.totalAmountAdjustment)}
+              </strong>
+            </div>
+          )}
 
           <h2 style={{ marginTop: 24 }}>Customer</h2>
           <dl className="pilaw-detail-meta">
@@ -938,7 +1036,21 @@ export default function ProjectIlawOrderDetail() {
               className="pilaw-detail-card"
               aria-labelledby="payment-review-title"
             >
-              <h2 id="payment-review-title">Payment</h2>
+              <div className="pilaw-card-heading">
+                <h2 id="payment-review-title">Payment</h2>
+                {canEditPaymentDetails && !editingPaymentDetails && (
+                  <button
+                    type="button"
+                    className="pilaw-card-edit-button"
+                    aria-label="Edit payment details"
+                    title="Edit payment details"
+                    onClick={beginPaymentDetailsEdit}
+                    disabled={Boolean(busy)}
+                  >
+                    <PencilLine size={17} aria-hidden="true" />
+                  </button>
+                )}
+              </div>
 
               <dl className="pilaw-detail-meta">
                 <div>
@@ -957,31 +1069,15 @@ export default function ProjectIlawOrderDetail() {
                   <dt>Submitted</dt>
                   <dd>{formatOrderDateTime(order.paymentSubmittedAt)}</dd>
                 </div>
-                <div className="pilaw-payment-method-value">
-                  <div>
-                    <dt>Payment method</dt>
-                    <dd>
-                      {order.paymentMethod === "cash"
-                        ? "Cash"
-                        : order.paymentMethod === "gcash"
-                          ? "GCash (InstaPay QR)"
-                          : "Not set"}
-                    </dd>
-                  </div>
-                  {(canConfirmPayment || canManage) &&
-                    order.paymentStatus === "awaiting_payment" &&
-                    order.fulfillmentStatus === "not_started" &&
-                    !editingPaymentMethod && (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={beginPaymentMethodEdit}
-                        disabled={Boolean(busy)}
-                      >
-                        <Pencil size={14} aria-hidden="true" />
-                        Edit
-                      </Button>
-                    )}
+                <div>
+                  <dt>Payment method</dt>
+                  <dd>
+                    {order.paymentMethod === "cash"
+                      ? "Cash"
+                      : order.paymentMethod === "gcash"
+                        ? "GCash (InstaPay QR)"
+                        : "Not set"}
+                  </dd>
                 </div>
                 {order.paymentAmountReceived != null && (
                   <div>
@@ -991,38 +1087,63 @@ export default function ProjectIlawOrderDetail() {
                 )}
               </dl>
 
-              {editingPaymentMethod && (
-                <div className="pilaw-payment-method-editor">
-                  <label htmlFor="project-ilaw-payment-method-select">Payment method</label>
-                  <Select
-                    id="project-ilaw-payment-method-select"
-                    value={paymentMethodDraft}
-                    onChange={(event) => setPaymentMethodDraft(event.target.value as "gcash" | "cash" | "")}
-                    disabled={Boolean(busy)}
-                  >
-                    <option value="">Choose payment method</option>
-                    <option value="gcash">GCash</option>
-                    <option value="cash">Cash</option>
-                  </Select>
+              {editingPaymentDetails && (
+                <div className="pilaw-payment-details-editor">
+                  <div className="order-field">
+                    <label htmlFor="project-ilaw-payment-method-select">Payment method</label>
+                    <Select
+                      id="project-ilaw-payment-method-select"
+                      value={paymentMethodDraft}
+                      onChange={(event) =>
+                        setPaymentMethodDraft(event.target.value as "gcash" | "cash" | "")
+                      }
+                      disabled={Boolean(busy)}
+                    >
+                      <option value="">Choose payment method</option>
+                      <option value="gcash">GCash</option>
+                      <option value="cash">Cash</option>
+                    </Select>
+                  </div>
+                  <div className="order-field">
+                    <label htmlFor="project-ilaw-payment-amount">Amount due (PHP)</label>
+                    <Input
+                      id="project-ilaw-payment-amount"
+                      type="number"
+                      min={1}
+                      max={9999999}
+                      step={1}
+                      inputMode="numeric"
+                      value={paymentAmountDraft}
+                      onChange={(event) => setPaymentAmountDraft(event.target.value)}
+                      disabled={Boolean(busy)}
+                    />
+                  </div>
                   <p className="pilaw-detail-note">
-                    Payment method can only be changed while the order is Awaiting Payment and fulfillment has not started.
-                    Once a payment is submitted for verification or confirmed, it is locked.
+                    Only the payment method and amount due can be edited here. Order
+                    items, quantities, sizes, and colours are not changed.
+                    {paid
+                      ? " The recorded amount received and payment evidence are preserved."
+                      : " Payment details stay locked while a submitted payment is awaiting verification."}
                   </p>
                   <div className="pilaw-embedded-form-actions">
                     <Button
                       type="button"
                       variant="secondary"
-                      onClick={cancelPaymentMethodEdit}
+                      onClick={cancelPaymentDetailsEdit}
                       disabled={Boolean(busy)}
                     >
                       Cancel
                     </Button>
                     <Button
                       type="button"
-                      onClick={() => void handleSavePaymentMethod()}
-                      disabled={Boolean(busy) || !paymentMethodDraft || paymentMethodDraft === order.paymentMethod}
+                      onClick={() => void handleSavePaymentDetails()}
+                      disabled={
+                        Boolean(busy) ||
+                        (!paymentMethodDraft && order.paymentMethod !== null) ||
+                        !paymentAmountDraft
+                      }
                     >
-                      {busy === "payment-method" ? "Saving..." : "Save payment method"}
+                      {busy === "payment-details" ? "Saving..." : "Save payment details"}
                     </Button>
                   </div>
                 </div>

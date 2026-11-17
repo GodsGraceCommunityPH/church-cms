@@ -46,6 +46,8 @@ function order(overrides = {}) {
     totalQuantity,
     totalAmount,
     paymentStatus: "awaiting_payment",
+    paymentAmountReceived: null,
+    totalAmountAdjustment: 0,
     paymentReference: "",
     paymentSubmittedAt: null,
     paymentEvidencePath: null,
@@ -286,6 +288,9 @@ test("CSV export keeps the accounting columns and escapes customer text", () => 
       lineTotal: 998,
       paymentStatus: "paid",
       paymentMethod: "gcash",
+      orderTotalAmount: 998,
+      totalAmountAdjustment: 0,
+      paymentAmountReceived: 998,
       paymentReference: "GC-123456",
       paymentSubmittedAt: "2026-11-10T09:30:00+08:00",
       fulfillmentStatus: "cancelled",
@@ -301,6 +306,9 @@ test("CSV export keeps the accounting columns and escapes customer text", () => 
   assert.match(header, /Color/);
   assert.match(header, /Payment Status/);
   assert.match(header, /Payment Method/);
+  assert.match(header, /Order Amount Due/);
+  assert.match(header, /Price Adjustment/);
+  assert.match(header, /Amount Received/);
   assert.match(header, /Payment Reference/);
   assert.match(header, /Fulfillment Status/);
   assert.match(header, /Payment Confirmed By/);
@@ -310,7 +318,7 @@ test("CSV export keeps the accounting columns and escapes customer text", () => 
   assert.match(line, /Project Ilaw T-shirt/);
   assert.match(line, /Black/);
   assert.match(line, /GC-123456/);
-  assert.match(line, /Paid,GCash,GC-123456/);
+  assert.match(line, /Paid,GCash,998,0,998,GC-123456/);
   assert.match(line, /Cancelled/);
   assert.ok(csv.endsWith("\r\n"));
 });
@@ -319,7 +327,7 @@ test("CSV export keeps the accounting columns and escapes customer text", () => 
 test("export RPC returns the saved payment method and keeps the export permission check", async () => {
   const migration = await readFile(
     new URL(
-      "../../../supabase/migrations/20261117100000_project_ilaw_export_payment_method.sql",
+      "../../../supabase/migrations/20261117131848_project_ilaw_payment_details.sql",
       import.meta.url,
     ),
     "utf8",
@@ -333,4 +341,27 @@ test("export RPC returns the saved payment method and keeps the export permissio
   assert.match(migration, /p_from is null/);
   assert.match(migration, /p_payment_status is null/);
   assert.match(migration, /p_fulfillment_status is null/);
+});
+
+
+test("correcting a paid order amount due does not rewrite confirmed collections", () => {
+  const paid = order({
+    totalAmount: 450,
+    paymentAmountReceived: 499,
+    totalAmountAdjustment: -49,
+    paymentStatus: "paid",
+  });
+  const summary = buildOrderSummary([paid]);
+  assert.equal(summary.expectedSales, 450);
+  assert.equal(summary.confirmedCollections, 499);
+});
+
+test("paid orders without an explicit received amount retain legacy collection totals", () => {
+  const paid = order({
+    totalAmount: 499,
+    paymentAmountReceived: null,
+    paymentStatus: "paid",
+  });
+  const summary = buildOrderSummary([paid]);
+  assert.equal(summary.confirmedCollections, 499);
 });

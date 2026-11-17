@@ -29,6 +29,7 @@ const ORDER_SELECT = `
   notes,
   total_quantity,
   total_amount,
+  total_amount_adjustment,
   payment_status,
   payment_reference,
   payment_evidence_path,
@@ -89,6 +90,7 @@ function mapOrder(row: any): ProjectIlawOrder {
     notes: row.notes ?? "",
     totalQuantity: row.total_quantity,
     totalAmount: row.total_amount,
+    totalAmountAdjustment: row.total_amount_adjustment ?? 0,
     paymentStatus: row.payment_status as PaymentStatus,
     paymentReference: row.payment_reference ?? "",
     paymentSubmittedAt: row.payment_submitted_at,
@@ -410,13 +412,15 @@ export async function getPaymentEvidenceUrl(
   return data.signedUrl;
 }
 
-export async function updateProjectIlawPaymentMethod(
+export async function updateProjectIlawPaymentDetails(
   id: string,
-  paymentMethod: "gcash" | "cash",
+  paymentMethod: "gcash" | "cash" | null,
+  totalAmount: number,
 ) {
-  const { data, error } = await supabase.rpc("update_project_ilaw_payment_method", {
+  const { data, error } = await supabase.rpc("update_project_ilaw_payment_details", {
     p_order_id: id,
     p_payment_method: paymentMethod,
+    p_total_amount: totalAmount,
   });
 
   if (error) throw error;
@@ -615,6 +619,9 @@ export async function getProjectIlawExportRows(
     lineTotal: row.line_total,
     paymentStatus: row.payment_status,
     paymentMethod: row.payment_method ?? null,
+    orderTotalAmount: row.order_total_amount,
+    totalAmountAdjustment: row.total_amount_adjustment ?? 0,
+    paymentAmountReceived: row.payment_amount_received ?? null,
     paymentReference: row.payment_reference ?? "",
     paymentSubmittedAt: row.payment_submitted_at,
     fulfillmentStatus: row.fulfillment_status,

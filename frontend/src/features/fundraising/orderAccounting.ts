@@ -139,11 +139,12 @@ export function buildOrderSummary(
     }
 
     if (order.paymentStatus === "paid") {
+      const amountReceived = order.paymentAmountReceived ?? order.totalAmount;
       summary.paidOrders += 1;
-      summary.confirmedCollections += order.totalAmount;
+      summary.confirmedCollections += amountReceived;
       if (cancelled) {
         summary.cancelledPaidOrders += 1;
-        summary.cancelledPaidAmount += order.totalAmount;
+        summary.cancelledPaidAmount += amountReceived;
       }
     }
 
@@ -243,6 +244,9 @@ const CSV_HEADERS = [
   "Line Total",
   "Payment Status",
   "Payment Method",
+  "Order Amount Due",
+  "Price Adjustment",
+  "Amount Received",
   "Payment Reference",
   "Payment Submitted At",
   "Fulfillment Status",
@@ -272,6 +276,9 @@ export function projectIlawExportRowsToCsv(rows: ProjectIlawExportRow[]) {
           : row.paymentMethod === "gcash"
             ? "GCash"
             : "",
+        row.orderTotalAmount,
+        row.totalAmountAdjustment,
+        row.paymentAmountReceived ?? "",
         row.paymentReference,
         formatOrderDateTime(row.paymentSubmittedAt),
         FULFILLMENT_STATUS_LABELS[row.fulfillmentStatus] ??
