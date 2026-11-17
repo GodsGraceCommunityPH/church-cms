@@ -330,7 +330,7 @@ export default function ProjectIlawOrderDetail() {
   }
 
   async function handleSavePaymentDetails() {
-    if (!order || !paymentMethodDraft || busy) return;
+    if (!order || busy) return;
 
     const totalAmount = Number(paymentAmountDraft);
     if (
@@ -342,7 +342,13 @@ export default function ProjectIlawOrderDetail() {
       return;
     }
 
-    const methodChanged = paymentMethodDraft !== order.paymentMethod;
+    const paymentMethod = paymentMethodDraft || null;
+    if (!paymentMethod && order.paymentMethod !== null) {
+      setActionError("Choose Cash or GCash as the payment method.");
+      return;
+    }
+
+    const methodChanged = paymentMethod !== order.paymentMethod;
     const amountChanged = totalAmount !== order.totalAmount;
     if (!methodChanged && !amountChanged) {
       cancelPaymentDetailsEdit();
@@ -354,7 +360,11 @@ export default function ProjectIlawOrderDetail() {
       : order.paymentMethod === "gcash"
         ? "GCash"
         : "Not set";
-    const nextLabel = paymentMethodDraft === "cash" ? "Cash" : "GCash";
+    const nextLabel = paymentMethod === "cash"
+      ? "Cash"
+      : paymentMethod === "gcash"
+        ? "GCash"
+        : "Not set";
     const hasStaleSubmission = Boolean(
       order.paymentReference || order.paymentEvidencePath || order.paymentRejectedAt,
     );
@@ -386,7 +396,7 @@ export default function ProjectIlawOrderDetail() {
     await runAction("payment-details", async () => {
       await updateProjectIlawPaymentDetails(
         order.id,
-        paymentMethodDraft,
+        paymentMethod,
         totalAmount,
       );
       cancelPaymentDetailsEdit();
@@ -1118,7 +1128,11 @@ export default function ProjectIlawOrderDetail() {
                     <Button
                       type="button"
                       onClick={() => void handleSavePaymentDetails()}
-                      disabled={Boolean(busy) || !paymentMethodDraft || !paymentAmountDraft}
+                      disabled={
+                        Boolean(busy) ||
+                        (!paymentMethodDraft && order.paymentMethod !== null) ||
+                        !paymentAmountDraft
+                      }
                     >
                       {busy === "payment-details" ? "Saving..." : "Save payment details"}
                     </Button>
