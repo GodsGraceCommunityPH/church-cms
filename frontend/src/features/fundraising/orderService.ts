@@ -414,7 +414,7 @@ export async function getPaymentEvidenceUrl(
 
 export async function updateProjectIlawPaymentDetails(
   id: string,
-  paymentMethod: "gcash" | "cash",
+  paymentMethod: "gcash" | "cash" | null,
   totalAmount: number,
 ) {
   const { data, error } = await supabase.rpc("update_project_ilaw_payment_details", {
