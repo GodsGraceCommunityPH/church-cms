@@ -369,24 +369,33 @@ export default function ProjectIlawOrderDetail() {
       order.paymentReference || order.paymentEvidencePath || order.paymentRejectedAt,
     );
 
-    let confirmation = "Save the updated payment method and amount due?";
+    const changedFields = [
+      methodChanged ? "payment method" : "",
+      amountChanged ? "amount due" : "",
+    ].filter(Boolean).join(" and ");
+
+    let confirmation = "Save the updated " + changedFields + "?";
     if (paid) {
       confirmation =
-        "Update payment details for this paid order? The payment method and amount due will change, but the recorded amount received, confirmation record, and receipt evidence will remain unchanged.";
+        "Update the " +
+        changedFields +
+        " for this paid order? The recorded amount received, confirmation record, and receipt evidence will remain unchanged.";
     } else if (methodChanged && hasStaleSubmission) {
       confirmation =
         "Change the payment method from " +
         previousLabel +
         " to " +
         nextLabel +
-        " and save the amount due? Previous rejected payment submission details will be cleared from the current payment fields. The activity history will remain.";
+        (amountChanged ? " and update the amount due" : "") +
+        "? Previous rejected payment submission details will be cleared from the current payment fields. The activity history will remain.";
     } else if (methodChanged) {
       confirmation =
         "Change the payment method from " +
         previousLabel +
         " to " +
         nextLabel +
-        " and save the amount due?";
+        (amountChanged ? " and update the amount due" : "") +
+        "?";
     } else {
       confirmation = "Update the amount due for this order?";
     }
@@ -843,7 +852,7 @@ export default function ProjectIlawOrderDetail() {
           </div>
           <div className="pilaw-detail-total">
             <span>
-              {order.totalQuantity} total item
+              Items subtotal · {order.totalQuantity} item
               {order.totalQuantity === 1 ? "" : "s"}
             </span>
             <strong>{formatPeso(itemsSubtotal)}</strong>
