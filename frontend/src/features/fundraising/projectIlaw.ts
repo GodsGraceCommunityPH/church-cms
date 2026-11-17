@@ -62,6 +62,7 @@ export interface ProjectIlawOrder {
   notes: string;
   totalQuantity: number;
   totalAmount: number;
+  totalAmountAdjustment: number;
   paymentStatus: PaymentStatus;
   paymentReference: string;
   paymentSubmittedAt: string | null;
@@ -89,6 +90,7 @@ export interface ProjectIlawOrderEvent {
     | "payment_confirmed"
     | "payment_rejected"
     | "payment_method_changed"
+    | "payment_details_changed"
     | "fulfillment_changed"
     | "order_amended"
     | "order_cancelled";
@@ -159,6 +161,9 @@ export interface ProjectIlawExportRow {
   lineTotal: number;
   paymentStatus: PaymentStatus;
   paymentMethod: "gcash" | "cash" | null;
+  orderTotalAmount: number;
+  totalAmountAdjustment: number;
+  paymentAmountReceived: number | null;
   paymentReference: string;
   paymentSubmittedAt: string | null;
   fulfillmentStatus: FulfillmentStatus;
