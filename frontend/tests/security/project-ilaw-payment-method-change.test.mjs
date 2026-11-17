@@ -78,7 +78,7 @@ test("the amount due adjustment preserves item prices and remains auditable", as
   assert.match(fn, /'total_amount_adjustment', target\.total_amount_adjustment/);
   assert.match(fn, /previous_value/);
   assert.match(totals, /total_amount <> active_amount \+ total_amount_adjustment/);
-  assert.match(migration, /payment details and payment method changed by authorised staff/i);
+  assert.match(migration, /Payment method and\/or amount due changed by authorised staff/i);
   assert.match(migration, /total_amount_adjustment/);
 });
 
