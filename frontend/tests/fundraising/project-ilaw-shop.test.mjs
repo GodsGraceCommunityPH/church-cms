@@ -85,6 +85,40 @@ test("the T-shirt lists XS through 3XL and the five documented colours", () => {
   assert.match(shirt.description, /Haggai 2:9/);
 });
 
+test("the T-shirt has an accessible size chart button with the supplied measurements", async () => {
+  const card = await read(
+    "../../src/components/fundraising/MerchandiseCard.tsx",
+  );
+  const css = await read("../../src/features/fundraising/Fundraising.css");
+
+  assert.match(card, /className="merch-size-chart-button"/);
+  assert.match(card, /aria-label="View T-shirt size chart"/);
+  assert.match(card, /aria-haspopup="dialog"/);
+  assert.match(card, /aria-modal="true"/);
+  assert.match(card, /aria-labelledby="merch-size-chart-title"/);
+  assert.match(card, /T-shirt size chart/);
+  assert.match(card, /setSizeChartOpen\(false\)/);
+  assert.match(card, /event\.key === "Escape"/);
+
+  for (const measurement of [
+    '["XS", "17″", "24″"]',
+    '["S", "18″", "25″"]',
+    '["M", "19″", "26″"]',
+    '["L", "20″", "27″"]',
+    '["XL", "21″", "28″"]',
+    '["2XL", "22″", "29″"]',
+    '["3XL", "23″", "30″"]',
+    '["5XL", "25″", "32″"]',
+  ]) {
+    assert.ok(card.includes(measurement), `missing size chart row ${measurement}`);
+  }
+
+  assert.match(card, /5XL appears in the reference chart but is not currently available/);
+  assert.match(css, /\.merch-size-chart-dialog/);
+  assert.match(css, /\.merch-size-chart-table/);
+  assert.match(css, /@media \(max-width: 620px\)/);
+});
+
 test("the eco bag is one size with maroon, green, and blue handles", async () => {
   const bag = SHOP_ITEMS.find((item) => item.id === "project-ilaw-eco-bag");
 
